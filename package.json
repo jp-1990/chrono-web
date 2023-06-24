@@ -9,7 +9,10 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "date-fns": "^2.30.0"
+    "@formkit/icons": "^0.17.2",
+    "@formkit/nuxt": "^0.17.2",
+    "date-fns": "^2.30.0",
+    "vue-material-design-icons": "^5.2.0"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.7.0",

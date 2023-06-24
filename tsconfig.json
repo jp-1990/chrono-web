@@ -1,4 +1,8 @@
 {
+  "compilerOptions": {
+    "noImplicitAny": false,
+    "noImplicitThis": false
+  },
   // https://nuxt.com/docs/guide/concepts/typescript
   "extends": "./.nuxt/tsconfig.json"
 }

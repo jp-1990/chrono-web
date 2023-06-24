@@ -4,5 +4,8 @@ export default defineNuxtConfig({
     strict: true,
     shim: false
   },
-  modules: ['@nuxtjs/tailwindcss']
+  modules: ['@nuxtjs/tailwindcss', '@formkit/nuxt'],
+  build: {
+    transpile: ['@vuepic/vue-datepicker']
+  }
 });
