@@ -2,64 +2,11 @@
   <div class="relative flex flex-col flex-1 bg-slate-200">
     <!-- header -->
     <section class="flex justify-between items-center mx-2 mt-2">
-      <div class="flex flex-col w-36 px-2 py-2">
-        <div
-          @click="onToggleMonthYearModal"
-          class="flex relative bg-white cursor-pointer border border-slate-300 rounded-sm"
-        >
-          <input
-            inputmode="none"
-            autocomplete="off"
-            readonly
-            class="w-full h-8 ml-9 cursor-pointer font-mono font-light text-slate-500 bg-transparent outline-none"
-            :value="`${format(selectedMonth, 'MMM').toUpperCase()} ${format(
-              selectedYear,
-              'yyyy'
-            )}`"
-          />
-          <month-calendar-icon
-            :size="18"
-            class="absolute mt-px top-1/2 -translate-y-1/2 left-1.5 text-slate-500"
-          />
-        </div>
-        <div class="relative">
-          <div
-            v-if="monthYearModelOpen"
-            class="absolute top-0.5 z-10 flex flex-col bg-white border border-slate-300 w-48 pb-0.5 rounded-sm"
-          >
-            <div class="flex justify-center items-center">
-              <div
-                class="flex items-center font-mono text-slate-400 text-xl my-1"
-              >
-                <div @click="decrementYear" class="cursor-pointer">
-                  <left-icon :size="18" />
-                </div>
-                <span class="px-7 mx-3 border text-slate-500">{{
-                  format(selectedYear, 'yyyy')
-                }}</span>
-                <div @click="incrementYear" class="cursor-pointer">
-                  <right-icon :size="18" />
-                </div>
-              </div>
-            </div>
-            <div class="flex flex-wrap content-start px-px">
-              <div
-                v-for="month in monthsInYear"
-                @click="selectMonth(month)"
-                :class="[
-                  month.valueOf() === selectedMonth.valueOf()
-                    ? 'bg-slate-500 text-slate-200'
-                    : 'bg-slate-200 text-slate-500'
-                ]"
-                class="flex items-center h-8 m-0.5 px-4 font-mono font-light cursor-pointer"
-              >
-                <span>{{ format(month, 'MMM').toUpperCase() }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- <button @click="getAllTasks">Get Tasks</button> -->
+      <calendar
+        :selected-month="selectedMonth"
+        :selected-year="selectedYear"
+        @on-change="onCalendarChange"
+      />
     </section>
 
     <section class="flex flex-col bg-slate-200 p-4 pt-2">
@@ -112,7 +59,7 @@
             <!-- tasks -->
             <div class="h-14 flex flex-1 bg-slate-50 mb-0.5 rounded-sm">
               <!-- @insert-new-shift="onInsertNewShift" -->
-              <cell-detailed
+              <item-row
                 @change-item-start-time="onMouseDown"
                 @change-item-end-time="onMouseDown"
                 :date="date"
@@ -124,53 +71,49 @@
         </ul>
       </section>
     </section>
+  </div>
 
-    <!-- modal background -->
-    <div
-      @click="onToggleNewTaskModal"
-      :class="[
-        newTaskModalOpen
-          ? 'w-full opacity-20 [transition:opacity_0.2s_cubic-bezier(0.4,0,0.2,1)_0s]'
-          : 'w-0 opacity-0 [transition:width,_0s,_linear,_1s,opacity_0.2s_cubic-bezier(0.4,0,0.2,1)_0s]'
-      ]"
-      class="absolute z-20 h-full bg-black"
-    ></div>
+  <!-- drag tracker -->
+  <div
+    v-if="mouseDownState.pressed"
+    class="flex flex-col justify-center fixed bottom-2 left-64 h-8 w-16 ml-2 pl-2 bg-slate-900 text-slate-50 font-mono rounded-sm"
+  >
+    <span>{{ dragTime }}</span>
   </div>
 
   <!-- add button -->
   <div
     @click="onToggleNewTaskModal"
     role="button"
-    class="absolute bottom-4 right-8 h-14 w-14 flex items-center justify-center bg-slate-800 rounded-xl"
+    class="fixed bottom-4 right-8 h-14 w-14 flex items-center justify-center bg-slate-800 rounded-xl"
   >
     <add-icon :size="30" class="text-slate-200" />
   </div>
 
-  <!-- side panel -->
-  <div
-    :class="[newTaskModalOpen ? 'w-96 border-l p-2' : 'w-0 border-none p-0']"
-    class="absolute z-30 right-0 flex flex-col h-screen overflow-hidden bg-white border-l-slate-200 transition-all duration-200"
+  <side-panel
+    :is-open="newTaskModalOpen"
+    :disable-submit="formStateNotValid"
+    @on-close="onToggleNewTaskModal"
+    @on-submit="onAddTask"
   >
-    <!-- title -->
-    <div class="flex justify-between items-start mb-2">
-      <h1 class="text-2xl ml-2 mt-1 font-bold">Add Task</h1>
-      <close-icon @click="onToggleNewTaskModal" :size="30" role="button" />
-    </div>
-
-    <!-- content -->
-    <div class="flex flex-col mx-2">
-      <label for="title" class="text-xs mt-2 mb-1">Title</label>
+    <template v-slot:title-text>Add Task</template>
+    <template v-slot:content>
+      <label for="title" class="text-xs mt-2 mb-1">Title*</label>
       <input
+        @blur="onTitleBlur"
         id="title"
+        :class="[formStateValid.title === false ? 'border-red-600' : '']"
         class="border px-1"
         placeholder="Title"
         name="title"
         v-model="formState.title"
       />
 
-      <label for="group" class="text-xs mt-2 mb-1">Group</label>
+      <label for="group" class="text-xs mt-2 mb-1">Group*</label>
       <input
+        @blur="onGroupBlur"
         id="group"
+        :class="[formStateValid.group === false ? 'border-red-600' : '']"
         class="border px-1"
         placeholder="Group"
         name="group"
@@ -186,19 +129,23 @@
         v-model="formState.notes"
       />
 
-      <label for="start" class="text-xs mt-2 mb-1">Start</label>
+      <label for="start" class="text-xs mt-2 mb-1">Start*</label>
       <input
+        @blur="onStartDateBlur"
         type="datetime-local"
         id="start"
+        :class="[formStateValid.startDate === false ? 'border-red-600' : '']"
         class="border px-1"
         name="start"
         v-model="formState.startDate"
       />
 
-      <label for="end" class="text-xs mt-2 mb-1">End</label>
+      <label for="end" class="text-xs mt-2 mb-1">End*</label>
       <input
+        @blur="onEndDateBlur"
         type="datetime-local"
         id="end"
+        :class="[formStateValid.endDate === false ? 'border-red-600' : '']"
         class="border px-1"
         name="end"
         v-model="formState.endDate"
@@ -227,63 +174,70 @@
           class="h-8 w-12 m-px rounded-sm"
         ></div>
       </div>
-    </div>
 
-    <div class="flex flex-1"></div>
-    {{ formState }}
-    <button
-      @click="onAddTask"
-      type="submit"
-      class="h-14 bg-slate-700 rounded-sm text-lg text-slate-200"
-    >
-      Create
-    </button>
-  </div>
+      <div>{{ JSON.stringify(formStateValid) }}</div>
+    </template>
+    <template v-slot:submit-text>Create Task</template>
+  </side-panel>
 </template>
 
 <script setup lang="ts">
-import { add, sub, format, startOfMonth, startOfYear } from 'date-fns';
+import { sub, format, startOfMonth, startOfYear, endOfMonth } from 'date-fns';
 import { ref, computed } from 'vue';
-import MonthCalendarIcon from 'vue-material-design-icons/CalendarFilter.vue';
-import LeftIcon from 'vue-material-design-icons/ArrowLeftBold.vue';
-import RightIcon from 'vue-material-design-icons/ArrowRightBold.vue';
 import AddIcon from 'vue-material-design-icons/Plus.vue';
-import CloseIcon from 'vue-material-design-icons/Close.vue';
 import {
   getDatesInMonthYear,
   getAllHoursInDay,
-  getAllMonthsInYear,
-  minutesToHoursAndMinutes
+  getDateId,
+  minutesToHoursAndMinutes,
+  timeOfDayToPercentage,
+  roundSeconds
 } from '~~/utils/date';
 import { Handles, Container, FormattedItem } from '~/types/item';
-import { formatItems } from '~/utils/item';
+import { Diff, formatItems, getTestData, getItemDate } from '~/utils/item';
 
 const now = new Date();
 const timeZoneOffset = minutesToHoursAndMinutes(now.getTimezoneOffset());
 
 const hoursInDay = ref(getAllHoursInDay());
-const monthsInYear = ref(getAllMonthsInYear(now.getFullYear()));
 
 // month year select
 
 const selectedMonth = ref(startOfMonth(now));
 const selectedYear = ref(startOfYear(now));
 
-const monthYearModelOpen = ref(false);
-
-const onToggleMonthYearModal = () => {
-  monthYearModelOpen.value = !monthYearModelOpen.value;
+const onCalendarChange = (month: Date, year: Date) => {
+  selectedMonth.value = month;
+  selectedYear.value = year;
 };
 
-const incrementYear = () => {
-  selectedYear.value = add(selectedYear.value, { years: 1 });
-};
-const decrementYear = () => {
-  selectedYear.value = sub(selectedYear.value, { years: 1 });
-};
-const selectMonth = (date: Date) => {
-  selectedMonth.value = date;
-};
+const startDate = computed(() => {
+  return sub(
+    startOfMonth(
+      new Date(selectedYear.value.getFullYear(), selectedMonth.value.getMonth())
+    ),
+    {
+      hours: timeZoneOffset.hours,
+      minutes: timeZoneOffset.minutes
+    }
+  );
+});
+const endDate = computed(() => {
+  return sub(
+    endOfMonth(
+      new Date(selectedYear.value.getFullYear(), selectedMonth.value.getMonth())
+    ),
+    {
+      hours: timeZoneOffset.hours,
+      minutes: timeZoneOffset.minutes
+    }
+  );
+});
+
+const { data, pending, error } = await useFetch('/api/items', {
+  params: { startDate, endDate },
+  server: false
+});
 
 // row dates
 
@@ -296,77 +250,19 @@ const datesInSelectedMonthYear = computed(() => {
 
 // tasks
 
-const formattedItems = formatItems(
-  datesInSelectedMonthYear.value,
-  getTestData() as any
-);
-
-console.log(formattedItems);
-
-// get tasks
-// const getAllTasks = async () => {
-//   try {
-//     const response = await fetch('http://localhost:4000/graphql', {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/json',
-//         authorization:
-//           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2ODA0MjQ3ODYsImV4cCI6MTY4ODIwMDc4Nn0.1DlG74ddbP71P62p-JY5G1Jwy5oPM_Zc42MZp0__zNY'
-//       },
-//       body: JSON.stringify({
-//         query: `
-//           query {
-//             allTasks {
-//               id
-//               title
-//               group
-//               description
-//               colour
-//               start
-//               end
-//               createdAt
-//               percentageTimes {
-//                 startPercentage
-//                 endPercentage
-//               }
-//               luminance
-//               user {
-//                 id
-//                 name
-//               }
-//             }
-//           }
-//         `
-//       })
-//     });
-
-//     const { data } = await response.json();
-//     console.log(data);
-//   } catch (error) {
-//     console.error(error);
-//     // Handle any errors that occur during the request
-//   }
-// };
+const formattedItems = computed(() => {
+  const formattedItems = formatItems(
+    getDatesInMonthYear(
+      selectedMonth.value.getMonth(),
+      selectedYear.value.getFullYear()
+    ),
+    data.value as any
+    // getTestData() as any
+  );
+  return formattedItems;
+});
 
 // add task
-
-const newTaskModalOpen = ref(false);
-const onToggleNewTaskModal = () => {
-  newTaskModalOpen.value = !newTaskModalOpen.value;
-  formState.value.startDate = sub(new Date(), {
-    hours: timeZoneOffset.hours,
-    minutes: timeZoneOffset.minutes
-  })
-    .toISOString()
-    .slice(0, -8);
-  formState.value.endDate = sub(new Date(), {
-    hours: timeZoneOffset.hours,
-    minutes: timeZoneOffset.minutes
-  })
-    .toISOString()
-    .slice(0, -8);
-};
-
 const formState = ref({
   title: '',
   group: '',
@@ -375,6 +271,30 @@ const formState = ref({
   endDate: '',
   color: 'rgb(38, 203, 255)'
 });
+
+const formStateValid = ref({
+  title: undefined as boolean | undefined,
+  group: undefined as boolean | undefined,
+  startDate: undefined as boolean | undefined,
+  endDate: undefined as boolean | undefined
+});
+const formStateNotValid = computed(() => {
+  return Object.values(formStateValid.value).some((v) => !v);
+});
+
+const newTaskModalOpen = ref(false);
+const onToggleNewTaskModal = () => {
+  if (newTaskModalOpen.value) {
+    for (const key of Object.keys(formState.value)) {
+      formState.value[key] = '';
+    }
+    formState.value.color = 'rgb(38, 203, 255)';
+    for (const key of Object.keys(formStateValid.value)) {
+      formStateValid.value[key] = undefined;
+    }
+  }
+  newTaskModalOpen.value = !newTaskModalOpen.value;
+};
 
 const colorSelection = [
   'rgb(229, 229, 229)',
@@ -388,7 +308,7 @@ const colorSelection = [
   'rgb(255, 86, 0)',
   'rgb(177, 64, 0)',
   'rgb(86, 26, 0)',
-  'rgb(2, 0, 80)',
+  'rgb(0, 0, 128)',
   'rgb(0, 22, 218)',
   'rgb(38, 203, 255)',
   'rgb(255, 0, 199)',
@@ -409,10 +329,153 @@ const setSelectedColor = (color: string) => {
   selectColorOpen.value = false;
 };
 
+const validateTitle = () => {
+  const isValid = !!formState.value.title;
+  formStateValid.value.title = isValid;
+};
+
+const validateGroup = () => {
+  const isValid = !!formState.value.group;
+  formStateValid.value.group = isValid;
+};
+
+const validateStartDate = () => {
+  const newStartDate = new Date(formState.value.startDate);
+  const newStartDateId = getDateId(newStartDate);
+  const startPercentage = timeOfDayToPercentage(newStartDate);
+
+  let isValid = true;
+  for (const id of formattedItems.value[newStartDateId]?.ids.value) {
+    const item = formattedItems.value[newStartDateId]?.items.value[id];
+    if (
+      startPercentage >= item.startPercentage &&
+      startPercentage < item.endPercentage
+    ) {
+      isValid = false;
+      break;
+    }
+  }
+  formStateValid.value.startDate = isValid;
+
+  if (formStateValid.value.endDate !== undefined) {
+    validateEndDate();
+  }
+};
+
+const validateEndDate = () => {
+  const newEndDate = new Date(formState.value.endDate);
+  const newEndDateId = getDateId(newEndDate);
+  const endPercentage = timeOfDayToPercentage(newEndDate);
+  const newStartDate = new Date(formState.value.startDate);
+  const startPercentage = timeOfDayToPercentage(newStartDate);
+
+  let isValid = true;
+  for (const id of formattedItems.value[newEndDateId]?.ids.value) {
+    if (startPercentage >= endPercentage) {
+      isValid = false;
+      break;
+    }
+    const item = formattedItems.value[newEndDateId]?.items.value[id];
+    if (
+      endPercentage > item.startPercentage &&
+      endPercentage < item.endPercentage
+    ) {
+      isValid = false;
+      break;
+    }
+  }
+  formStateValid.value.endDate = isValid;
+};
+
+const validateDateRange = () => {
+  const newStartDate = new Date(formState.value.startDate);
+  const newStartDateId = getDateId(newStartDate);
+  const startPercentage = timeOfDayToPercentage(newStartDate);
+  const newEndDate = new Date(formState.value.endDate);
+  const newEndDateId = getDateId(newEndDate);
+  const endPercentage = timeOfDayToPercentage(newEndDate);
+
+  if (newStartDateId === newEndDateId && startPercentage > endPercentage) {
+    formStateValid.value.endDate = false;
+    return;
+  }
+
+  const ids = [
+    ...new Set([
+      ...formattedItems.value[newStartDateId]?.ids.value,
+      ...formattedItems.value[newEndDateId]?.ids.value
+    ])
+  ];
+  const items = {
+    ...formattedItems.value[newStartDateId]?.items.value,
+    ...formattedItems.value[newStartDateId]?.items.value
+  };
+
+  let isValid = false;
+  for (let i = 1; i < ids.length; i++) {
+    const id = ids[i];
+    const item = items[id];
+
+    const prevId = ids[i - 1];
+    const prevItem = items[prevId];
+
+    if (
+      i === 1 &&
+      startPercentage >= 0 &&
+      endPercentage <= prevItem.startPercentage
+    ) {
+      isValid = true;
+      break;
+    }
+
+    if (
+      startPercentage >= prevItem.endPercentage &&
+      endPercentage <= item.startPercentage
+    ) {
+      isValid = true;
+      break;
+    }
+
+    if (
+      i === ids.length - 1 &&
+      startPercentage >= item.endPercentage &&
+      endPercentage <= 100
+    ) {
+      isValid = true;
+      break;
+    }
+  }
+  formStateValid.value.endDate = isValid;
+};
+
+const onTitleBlur = validateTitle;
+const onGroupBlur = validateGroup;
+const onStartDateBlur = validateStartDate;
+const onEndDateBlur = validateDateRange;
+
 const onAddTask = () => {
+  formState.value.startDate = sub(new Date(), {
+    hours: timeZoneOffset.hours,
+    minutes: timeZoneOffset.minutes
+  })
+    .toISOString()
+    .slice(0, -8);
+  formState.value.endDate = sub(new Date(), {
+    hours: timeZoneOffset.hours,
+    minutes: timeZoneOffset.minutes
+  })
+    .toISOString()
+    .slice(0, -8);
+
   selectColorOpen.value = false;
   newTaskModalOpen.value = false;
   console.log('form-state:', formState.value);
+};
+
+// drag tracker
+const dragTime = ref<string | undefined>(undefined);
+const setDragTime = (date: Date) => {
+  dragTime.value = format(date, 'HH:mm');
 };
 
 // MOUSE EVENTS
@@ -435,7 +498,8 @@ const initialMouseDown = {
   container: undefined as Container | undefined,
   target: undefined as FormattedItem | undefined,
   min: 0,
-  max: 100
+  max: 100,
+  date: undefined as Date | undefined
 };
 const mouseDownState = ref({ ...initialMouseDown });
 const resetMouseDownState = () => {
@@ -448,9 +512,9 @@ const onMouseDown = (
   container: Container,
   target: FormattedItem,
   min: number,
-  max: number
+  max: number,
+  date: Date
 ) => {
-  console.log('mousedown');
   if (mouseDownState.value.pressed) return;
 
   mouseDownState.value.handle = handle;
@@ -460,6 +524,9 @@ const onMouseDown = (
   mouseDownState.value.target = target;
   mouseDownState.value.min = min;
   mouseDownState.value.max = max;
+  mouseDownState.value.date = date;
+
+  setDragTime(target[handle]);
 };
 
 const onMouseUp = (event: MouseEvent) => {
@@ -486,8 +553,6 @@ const onMouseUp = (event: MouseEvent) => {
     difference: diff.value,
     date: target[handle]
   });
-
-  console.log(newDate);
 
   if (handle === Handles.START) {
     const width = target.width - diff.value;
@@ -551,5 +616,13 @@ const onMouseMove = (event: MouseEvent) => {
     const style = `left: ${target.startPercentage}%; width: ${width}%;`;
     target.style = style;
   }
+
+  diff.applyBreakpoint();
+  setDragTime(
+    getItemDate({
+      difference: diff.value,
+      date: target[handle]
+    })
+  );
 };
 </script>

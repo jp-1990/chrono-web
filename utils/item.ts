@@ -7,7 +7,7 @@ export const getTestData = () => {
   return data.slice(-100);
 };
 
-export const formatItems = (dates: Date[], items: GetItemsRes) => {
+export const formatItems = (dates: Date[], items?: GetItemsRes) => {
   const structure = {};
   for (const date of dates) {
     structure[getDateId(date)] = {
@@ -16,15 +16,15 @@ export const formatItems = (dates: Date[], items: GetItemsRes) => {
     };
   }
 
+  if (!items) return structure;
+
   // loop items
   for (const item of items) {
     // split items that span multiple days and adjust start/end percentages
-    const localStart = new Date(item.start);
-    const localEnd = new Date(item.end);
+    const localStart = new Date(+item.start);
+    const localEnd = new Date(+item.end);
 
     const dateRange = localEnd.getDate() - localStart.getDate();
-
-    console.log({ localStart, localEnd, dateRange });
 
     if (dateRange === 0) {
       const dateId = getDateId(localStart);

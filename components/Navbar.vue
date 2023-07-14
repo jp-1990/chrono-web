@@ -1,5 +1,5 @@
 <template>
-  <div class="flex">
+  <div class="relative flex">
     <div class="flex flex-col h-screen">
       <NuxtLink to="/dashboard">
         <div class="flex items-center h-14 bg-slate-800">
@@ -25,10 +25,10 @@
     </div>
 
     <div
-      class="flex flex-col w-full h-screen overflow-x-hidden overflow-y-auto"
+      class="relative flex flex-col w-full h-screen overflow-x-hidden overflow-y-auto"
     >
       <nav
-        class="flex items-center justify-between h-14 w-full bg-slate-50 border-b border-slate-300"
+        class="relative flex items-center justify-between h-14 w-full bg-slate-50 border-b border-slate-300"
       >
         <ul class="flex pl-6 text-slate-500 tracking-wide"></ul>
         <ul>

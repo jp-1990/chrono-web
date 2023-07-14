@@ -14,14 +14,13 @@
       v-if="ids"
       v-for="(id, index) in ids?.value || []"
       :key="id"
-      :style="`${items?.value[id].style}`"
+      :style="`${items?.value[id].style} background-color:${items?.value[id].colour}`"
       :id="`${items?.value[id].id}-${index}-${id}-container`"
-      class="h-full py-0.5 rounded-md flex overflow-hidden absolute"
+      class="h-full py-0.5 rounded-sm flex overflow-hidden absolute"
     >
       <div
         v-if="items?.value[id].isStart"
-        :style="`background-color:${items?.value[id].colour}`"
-        class="w-1 h-full cursor-ew-resize"
+        class="bg-transparent w-1 h-full cursor-ew-resize"
       >
         <div
           v-on:mousedown.left.self="
@@ -38,20 +37,17 @@
               : null
           "
           :id="`${items?.value[id].id}-${index}-${id}-start`"
-          :style="`opacity: ${getOpacity(items?.value[id].luminance)}`"
-          class="bg-slate-800 h-full w-full"
+          class="h-full w-full"
         ></div>
       </div>
       <div
         :id="`${items?.value[id].id}-${index}-${id}-duration`"
-        :style="`background-color:${items?.value[id].colour}`"
-        class="flex-1 h-full overflow-hidden"
+        class="flex-1 bg-transparent h-full overflow-hidden"
         :class="[!isReady ? 'bg-slate-100' : 'bg-slate-100']"
       ></div>
       <div
         v-if="items?.value[id].isEnd"
-        :style="`background-color:${items?.value[id].colour}`"
-        class="w-1 h-full cursor-ew-resize"
+        class="bg-transparent w-1 h-full cursor-ew-resize"
       >
         <div
           v-on:mousedown.left.self="
@@ -68,8 +64,7 @@
               : null
           "
           :id="`${items?.value[id].id}-${index}-${id}-end`"
-          :style="`opacity: ${getOpacity(items.value[id].luminance)}`"
-          class="bg-slate-800 h-full w-full"
+          class="h-full w-full"
         ></div>
       </div>
     </div>
@@ -77,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { Ref } from 'vue';
+import { Ref, ref, onMounted, onUpdated } from 'vue';
 import { Container, Handles, FormattedItem } from '~/types/item';
 
 const props = defineProps<{
@@ -93,7 +88,8 @@ defineEmits<{
     container: Container,
     target: FormattedItem,
     min: number,
-    max: number
+    max: number,
+    date: Date
   ): void;
   (
     e: 'changeItemEndTime',
@@ -102,7 +98,8 @@ defineEmits<{
     container: Container,
     target: FormattedItem,
     min: number,
-    max: number
+    max: number,
+    date: Date
   ): void;
   // (e: 'insertNewItem', v: DragEvent, date: Date, container: Container): void;
 }>();
@@ -116,13 +113,13 @@ const containerRect = ref({
 
 const getPrevEnd = (index: number) => {
   const targetId = props.ids?.value[index - 1];
-  if (typeof targetId !== 'number') return 0;
+  if (typeof targetId !== 'string') return 0;
   return props.items?.value[targetId].endPercentage ?? 0;
 };
 
 const getNextStart = (index: number) => {
   const targetId = props.ids?.value[index + 1];
-  if (typeof targetId !== 'number') return 99.9999999999;
+  if (typeof targetId !== 'string') return 99.9999999999;
   return props.items?.value[targetId].startPercentage ?? 99.9999999999;
 };
 
