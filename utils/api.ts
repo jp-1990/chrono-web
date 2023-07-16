@@ -1,6 +1,4 @@
-export default defineEventHandler(async (event) => {
-  const query = getQuery(event);
-
+export const getItems = async (startDate: Date, endDate: Date) => {
   const response = await fetch('http://localhost:4000/graphql', {
     method: 'POST',
     headers: {
@@ -11,7 +9,7 @@ export default defineEventHandler(async (event) => {
     body: JSON.stringify({
       query: `
           query {
-            tasks (startDate:${query.startDate}, endDate: ${query.endDate}) {
+            tasks (startDate: "${startDate}", endDate: "${endDate}") {
               id
               title
               group
@@ -36,4 +34,4 @@ export default defineEventHandler(async (event) => {
   });
   const { data } = await response.json();
   return data.tasks;
-});
+};

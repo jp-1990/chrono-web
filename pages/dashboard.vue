@@ -195,6 +195,7 @@ import {
 } from '~~/utils/date';
 import { Handles, Container, FormattedItem } from '~/types/item';
 import { Diff, formatItems, getTestData, getItemDate } from '~/utils/item';
+import { getItems } from '~/utils/api';
 
 const now = new Date();
 const timeZoneOffset = minutesToHoursAndMinutes(now.getTimezoneOffset());
@@ -234,10 +235,11 @@ const endDate = computed(() => {
   );
 });
 
-const { data, pending, error } = await useFetch('/api/items', {
-  params: { startDate, endDate },
-  server: false
-});
+const { data, pending, error } = await useAsyncData(
+  'http://localhost:4000/graphql',
+  async () => getItems(startDate.value, endDate.value),
+  { watch: [startDate, endDate] }
+);
 
 // row dates
 
