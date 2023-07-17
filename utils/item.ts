@@ -1,4 +1,4 @@
-import { FormattedItem, GetItemsRes, Item } from '~/types/item';
+import { FormattedItem, FormattedItems, GetItemsRes, Item } from '~/types/item';
 import { ref } from 'vue';
 import { add, set } from 'date-fns';
 import data from '~/assets/tasks.json';
@@ -7,7 +7,10 @@ export const getTestData = () => {
   return data.slice(-100);
 };
 
-export const formatItems = (dates: Date[], items?: GetItemsRes) => {
+export const formatItems = (
+  dates: Date[],
+  items?: GetItemsRes
+): FormattedItems => {
   const structure = {};
   for (const date of dates) {
     structure[getDateId(date)] = {

@@ -92,7 +92,6 @@
 
   <side-panel
     :is-open="newTaskModalOpen"
-    :disable-submit="formStateNotValid"
     @on-close="onToggleNewTaskModal"
     @on-submit="onAddTask"
   >
@@ -102,22 +101,22 @@
       <input
         @blur="onTitleBlur"
         id="title"
-        :class="[formStateValid.title === false ? 'border-red-600' : '']"
+        :class="[formState.valid.title === false ? 'border-red-600' : '']"
         class="border px-1"
         placeholder="Title"
         name="title"
-        v-model="formState.title"
+        v-model="formState.data.title"
       />
 
       <label for="group" class="text-xs mt-2 mb-1">Group*</label>
       <input
         @blur="onGroupBlur"
         id="group"
-        :class="[formStateValid.group === false ? 'border-red-600' : '']"
+        :class="[formState.valid.group === false ? 'border-red-600' : '']"
         class="border px-1"
         placeholder="Group"
         name="group"
-        v-model="formState.group"
+        v-model="formState.data.group"
       />
 
       <label for="notes" class="text-xs mt-2 mb-1">Notes</label>
@@ -126,7 +125,7 @@
         class="border px-1"
         placeholder="Notes"
         name="notes"
-        v-model="formState.notes"
+        v-model="formState.data.notes"
       />
 
       <label for="start" class="text-xs mt-2 mb-1">Start*</label>
@@ -134,10 +133,10 @@
         @blur="onStartDateBlur"
         type="datetime-local"
         id="start"
-        :class="[formStateValid.startDate === false ? 'border-red-600' : '']"
+        :class="[formState.valid.startDate === false ? 'border-red-600' : '']"
         class="border px-1"
         name="start"
-        v-model="formState.startDate"
+        v-model="formState.data.startDate"
       />
 
       <label for="end" class="text-xs mt-2 mb-1">End*</label>
@@ -145,16 +144,16 @@
         @blur="onEndDateBlur"
         type="datetime-local"
         id="end"
-        :class="[formStateValid.endDate === false ? 'border-red-600' : '']"
+        :class="[formState.valid.endDate === false ? 'border-red-600' : '']"
         class="border px-1"
         name="end"
-        v-model="formState.endDate"
+        v-model="formState.data.endDate"
       />
 
       <label for="color" class="text-xs mt-2 mb-1">Color</label>
       <div
         id="color"
-        :style="`background-color:${formState.color}`"
+        :style="`background-color:${formState.data.color}`"
         @click="onToggleSelectColor"
         @keyup.enter="onToggleSelectColor"
         role="button"
@@ -175,14 +174,21 @@
         ></div>
       </div>
 
-      <div>{{ JSON.stringify(formStateValid) }}</div>
+      <div>{{ JSON.stringify(formState.valid) }}</div>
     </template>
     <template v-slot:submit-text>Create Task</template>
   </side-panel>
 </template>
 
 <script setup lang="ts">
-import { sub, format, startOfMonth, startOfYear, endOfMonth } from 'date-fns';
+import {
+  add,
+  sub,
+  format,
+  startOfMonth,
+  startOfYear,
+  endOfMonth
+} from 'date-fns';
 import { ref, computed } from 'vue';
 import AddIcon from 'vue-material-design-icons/Plus.vue';
 import {
@@ -193,12 +199,21 @@ import {
   timeOfDayToPercentage,
   roundSeconds
 } from '~~/utils/date';
-import { Handles, Container, FormattedItem } from '~/types/item';
-import { Diff, formatItems, getTestData, getItemDate } from '~/utils/item';
+import { Handles, Container, FormattedItem, PostItemArgs } from '~/types/item';
+import { Validation } from '~/types/form';
+import { Diff, formatItems, getItemDate } from '~/utils/item';
 import { getItems } from '~/utils/api';
+import {
+  validateDateRange,
+  validateGroup,
+  validateStartDate,
+  validateTitle
+} from '~/utils/form/validation';
 
 const now = new Date();
 const timeZoneOffset = minutesToHoursAndMinutes(now.getTimezoneOffset());
+const applyTZOffset = (date: Date) =>
+  sub(date, { hours: timeZoneOffset.hours, minutes: timeZoneOffset.minutes });
 
 const hoursInDay = ref(getAllHoursInDay());
 
@@ -213,31 +228,23 @@ const onCalendarChange = (month: Date, year: Date) => {
 };
 
 const startDate = computed(() => {
-  return sub(
+  return applyTZOffset(
     startOfMonth(
       new Date(selectedYear.value.getFullYear(), selectedMonth.value.getMonth())
-    ),
-    {
-      hours: timeZoneOffset.hours,
-      minutes: timeZoneOffset.minutes
-    }
+    )
   );
 });
 const endDate = computed(() => {
-  return sub(
+  return applyTZOffset(
     endOfMonth(
       new Date(selectedYear.value.getFullYear(), selectedMonth.value.getMonth())
-    ),
-    {
-      hours: timeZoneOffset.hours,
-      minutes: timeZoneOffset.minutes
-    }
+    )
   );
 });
 
-const { data, pending, error } = await useAsyncData(
-  'http://localhost:4000/graphql',
-  async () => getItems(startDate.value, endDate.value),
+const { data, pending, error, refresh } = await useAsyncData(
+  'getItems',
+  async () => getItems({ startDate: startDate.value, endDate: endDate.value }),
   { watch: [startDate, endDate] }
 );
 
@@ -259,40 +266,52 @@ const formattedItems = computed(() => {
       selectedYear.value.getFullYear()
     ),
     data.value as any
-    // getTestData() as any
   );
   return formattedItems;
 });
 
 // add task
-const formState = ref({
-  title: '',
-  group: '',
-  notes: '',
-  startDate: '',
-  endDate: '',
-  color: 'rgb(38, 203, 255)'
+const formState = ref<{ data: PostItemArgs; valid: Validation }>({
+  data: {
+    title: '',
+    group: '',
+    notes: '',
+    startDate: applyTZOffset(new Date(Date.now())).toISOString().slice(0, -8),
+    endDate: applyTZOffset(add(new Date(Date.now()), { minutes: 5 }))
+      .toISOString()
+      .slice(0, -8),
+    color: 'rgb(38, 203, 255)'
+  },
+  valid: {
+    title: undefined as boolean | undefined,
+    group: undefined as boolean | undefined,
+    startDate: undefined as boolean | undefined,
+    endDate: undefined as boolean | undefined
+  }
 });
 
-const formStateValid = ref({
-  title: undefined as boolean | undefined,
-  group: undefined as boolean | undefined,
-  startDate: undefined as boolean | undefined,
-  endDate: undefined as boolean | undefined
-});
 const formStateNotValid = computed(() => {
-  return Object.values(formStateValid.value).some((v) => !v);
+  return Object.values(formState.value.valid).some((v) => !v);
 });
 
 const newTaskModalOpen = ref(false);
 const onToggleNewTaskModal = () => {
   if (newTaskModalOpen.value) {
-    for (const key of Object.keys(formState.value)) {
-      formState.value[key] = '';
-    }
-    formState.value.color = 'rgb(38, 203, 255)';
-    for (const key of Object.keys(formStateValid.value)) {
-      formStateValid.value[key] = undefined;
+    formState.value.data.title = '';
+    formState.value.data.notes = '';
+    formState.value.data.group = '';
+    formState.value.data.startDate = applyTZOffset(new Date(Date.now()))
+      .toISOString()
+      .slice(0, -8);
+    formState.value.data.endDate = applyTZOffset(
+      add(new Date(Date.now()), { minutes: 5 })
+    )
+      .toISOString()
+      .slice(0, -8);
+    formState.value.data.color = 'rgb(38, 203, 255)';
+
+    for (const key of Object.keys(formState.value.valid)) {
+      formState.value.valid[key] = undefined;
     }
   }
   newTaskModalOpen.value = !newTaskModalOpen.value;
@@ -311,7 +330,7 @@ const colorSelection = [
   'rgb(177, 64, 0)',
   'rgb(86, 26, 0)',
   'rgb(0, 0, 128)',
-  'rgb(0, 22, 218)',
+  'rgb(0, 0, 255)',
   'rgb(38, 203, 255)',
   'rgb(255, 0, 199)',
   'rgb(192, 0, 150)',
@@ -327,151 +346,31 @@ const onToggleSelectColor = () =>
   (selectColorOpen.value = !selectColorOpen.value);
 
 const setSelectedColor = (color: string) => {
-  formState.value.color = color;
+  formState.value.data.color = color;
   selectColorOpen.value = false;
 };
 
-const validateTitle = () => {
-  const isValid = !!formState.value.title;
-  formStateValid.value.title = isValid;
-};
+const onTitleBlur = () => validateTitle(formState);
+const onGroupBlur = () => validateGroup(formState);
+const onStartDateBlur = () => validateStartDate(formState, formattedItems);
+const onEndDateBlur = () => validateDateRange(formState, formattedItems);
 
-const validateGroup = () => {
-  const isValid = !!formState.value.group;
-  formStateValid.value.group = isValid;
-};
-
-const validateStartDate = () => {
-  const newStartDate = new Date(formState.value.startDate);
-  const newStartDateId = getDateId(newStartDate);
-  const startPercentage = timeOfDayToPercentage(newStartDate);
-
-  let isValid = true;
-  for (const id of formattedItems.value[newStartDateId]?.ids.value) {
-    const item = formattedItems.value[newStartDateId]?.items.value[id];
-    if (
-      startPercentage >= item.startPercentage &&
-      startPercentage < item.endPercentage
-    ) {
-      isValid = false;
-      break;
-    }
-  }
-  formStateValid.value.startDate = isValid;
-
-  if (formStateValid.value.endDate !== undefined) {
-    validateEndDate();
-  }
-};
-
-const validateEndDate = () => {
-  const newEndDate = new Date(formState.value.endDate);
-  const newEndDateId = getDateId(newEndDate);
-  const endPercentage = timeOfDayToPercentage(newEndDate);
-  const newStartDate = new Date(formState.value.startDate);
-  const startPercentage = timeOfDayToPercentage(newStartDate);
-
-  let isValid = true;
-  for (const id of formattedItems.value[newEndDateId]?.ids.value) {
-    if (startPercentage >= endPercentage) {
-      isValid = false;
-      break;
-    }
-    const item = formattedItems.value[newEndDateId]?.items.value[id];
-    if (
-      endPercentage > item.startPercentage &&
-      endPercentage < item.endPercentage
-    ) {
-      isValid = false;
-      break;
-    }
-  }
-  formStateValid.value.endDate = isValid;
-};
-
-const validateDateRange = () => {
-  const newStartDate = new Date(formState.value.startDate);
-  const newStartDateId = getDateId(newStartDate);
-  const startPercentage = timeOfDayToPercentage(newStartDate);
-  const newEndDate = new Date(formState.value.endDate);
-  const newEndDateId = getDateId(newEndDate);
-  const endPercentage = timeOfDayToPercentage(newEndDate);
-
-  if (newStartDateId === newEndDateId && startPercentage > endPercentage) {
-    formStateValid.value.endDate = false;
-    return;
-  }
-
-  const ids = [
-    ...new Set([
-      ...formattedItems.value[newStartDateId]?.ids.value,
-      ...formattedItems.value[newEndDateId]?.ids.value
-    ])
-  ];
-  const items = {
-    ...formattedItems.value[newStartDateId]?.items.value,
-    ...formattedItems.value[newStartDateId]?.items.value
-  };
-
-  let isValid = false;
-  for (let i = 1; i < ids.length; i++) {
-    const id = ids[i];
-    const item = items[id];
-
-    const prevId = ids[i - 1];
-    const prevItem = items[prevId];
-
-    if (
-      i === 1 &&
-      startPercentage >= 0 &&
-      endPercentage <= prevItem.startPercentage
-    ) {
-      isValid = true;
-      break;
-    }
-
-    if (
-      startPercentage >= prevItem.endPercentage &&
-      endPercentage <= item.startPercentage
-    ) {
-      isValid = true;
-      break;
-    }
-
-    if (
-      i === ids.length - 1 &&
-      startPercentage >= item.endPercentage &&
-      endPercentage <= 100
-    ) {
-      isValid = true;
-      break;
-    }
-  }
-  formStateValid.value.endDate = isValid;
-};
-
-const onTitleBlur = validateTitle;
-const onGroupBlur = validateGroup;
-const onStartDateBlur = validateStartDate;
-const onEndDateBlur = validateDateRange;
-
-const onAddTask = () => {
-  formState.value.startDate = sub(new Date(), {
-    hours: timeZoneOffset.hours,
-    minutes: timeZoneOffset.minutes
-  })
-    .toISOString()
-    .slice(0, -8);
-  formState.value.endDate = sub(new Date(), {
-    hours: timeZoneOffset.hours,
-    minutes: timeZoneOffset.minutes
-  })
-    .toISOString()
-    .slice(0, -8);
+const onAddTask = async () => {
+  validateTitle(formState);
+  validateGroup(formState);
+  validateStartDate(formState, formattedItems);
+  validateDateRange(formState, formattedItems);
+  if (formStateNotValid.value) return;
 
   selectColorOpen.value = false;
   newTaskModalOpen.value = false;
-  console.log('form-state:', formState.value);
+
+  try {
+    await postItem(formState.value.data);
+    refresh();
+  } catch (e) {
+    console.log('error', e);
+  }
 };
 
 // drag tracker

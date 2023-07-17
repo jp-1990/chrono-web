@@ -51,7 +51,7 @@ import CloseIcon from 'vue-material-design-icons/Close.vue';
 
 defineProps<{
   isOpen: boolean;
-  disableSubmit: boolean;
+  disableSubmit?: boolean;
 }>();
 defineEmits<{
   (e: 'onSubmit', v: MouseEvent): void;

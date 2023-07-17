@@ -28,7 +28,25 @@ export type FormattedItem = Omit<Item, 'percentageTimes'> & {
   isEnd: boolean;
 };
 
+export type FormattedItems = {
+  [key: string]: {
+    ids: Ref<string[]>;
+    items: Ref<Record<Item['id'], FormattedItem>>;
+  };
+};
+
+export type GetItemArgs = { startDate: Date; endDate: Date };
 export type GetItemsRes = Item[];
+
+export type PostItemArgs = {
+  title: string;
+  group: string;
+  notes: string;
+  startDate: string;
+  endDate: string;
+  color: string;
+};
+export type PostItemsRes = Item;
 
 export type Container = {
   left: number;
