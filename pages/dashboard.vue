@@ -217,30 +217,22 @@ const applyTZOffset = (date: Date) =>
 
 const hoursInDay = ref(getAllHoursInDay());
 
-// month year select
+// MONTH YEAR SELECT
 
-const selectedMonth = ref(startOfMonth(now));
-const selectedYear = ref(startOfYear(now));
+const {
+  selectedMonth,
+  selectedYear,
+  startDate,
+  endDate,
+  datesInSelectedMonthYear
+} = useMonthYearSelect();
 
 const onCalendarChange = (month: Date, year: Date) => {
   selectedMonth.value = month;
   selectedYear.value = year;
 };
 
-const startDate = computed(() => {
-  return applyTZOffset(
-    startOfMonth(
-      new Date(selectedYear.value.getFullYear(), selectedMonth.value.getMonth())
-    )
-  );
-});
-const endDate = computed(() => {
-  return applyTZOffset(
-    endOfMonth(
-      new Date(selectedYear.value.getFullYear(), selectedMonth.value.getMonth())
-    )
-  );
-});
+// TASKS
 
 const { data, pending, error, refresh } = await useAsyncData(
   'getItems',
@@ -248,29 +240,18 @@ const { data, pending, error, refresh } = await useAsyncData(
   { watch: [startDate, endDate] }
 );
 
-// row dates
-
-const datesInSelectedMonthYear = computed(() => {
-  return getDatesInMonthYear(
-    selectedMonth.value.getMonth(),
-    selectedYear.value.getFullYear()
-  );
-});
-
-// tasks
-
-const formattedItems = computed(() => {
-  const formattedItems = formatItems(
+const formattedItems = computed(() =>
+  formatItems(
     getDatesInMonthYear(
       selectedMonth.value.getMonth(),
       selectedYear.value.getFullYear()
     ),
-    data.value as any
-  );
-  return formattedItems;
-});
+    data.value
+  )
+);
 
-// add task
+// ADD TASK
+
 const formState = ref<{ data: PostItemArgs; valid: Validation }>({
   data: {
     title: '',
@@ -338,7 +319,7 @@ const colorSelection = [
   'rgb(126, 0, 0)',
   'rgb(75, 0, 111)',
   'rgb(155, 0, 250)',
-  'rgb(0, 94, 115)'
+  'rgb(0, 128, 128)'
 ];
 
 const selectColorOpen = ref(false);
@@ -373,12 +354,6 @@ const onAddTask = async () => {
   }
 };
 
-// drag tracker
-const dragTime = ref<string | undefined>(undefined);
-const setDragTime = (date: Date) => {
-  dragTime.value = format(date, 'HH:mm');
-};
-
 // MOUSE EVENTS
 
 const computedBreakpoint = computed(() => {
@@ -392,138 +367,6 @@ const computedBreakpoint = computed(() => {
   return timeOfDayToPercentage(baseTime);
 });
 
-const initialMouseDown = {
-  handle: undefined as Handles | undefined,
-  startX: 0,
-  pressed: false,
-  container: undefined as Container | undefined,
-  target: undefined as FormattedItem | undefined,
-  min: 0,
-  max: 100,
-  date: undefined as Date | undefined
-};
-const mouseDownState = ref({ ...initialMouseDown });
-const resetMouseDownState = () => {
-  mouseDownState.value = { ...initialMouseDown };
-};
-
-const onMouseDown = (
-  event: MouseEvent,
-  handle: Handles,
-  container: Container,
-  target: FormattedItem,
-  min: number,
-  max: number,
-  date: Date
-) => {
-  if (mouseDownState.value.pressed) return;
-
-  mouseDownState.value.handle = handle;
-  mouseDownState.value.startX = event.pageX;
-  mouseDownState.value.pressed = true;
-  mouseDownState.value.container = container;
-  mouseDownState.value.target = target;
-  mouseDownState.value.min = min;
-  mouseDownState.value.max = max;
-  mouseDownState.value.date = date;
-
-  setDragTime(target[handle]);
-};
-
-const onMouseUp = (event: MouseEvent) => {
-  console.log('mouseup');
-
-  const { handle, startX, target, container, min, max } = mouseDownState.value;
-  if (!handle || !target || !container) return;
-
-  const diff = new Diff(
-    event.pageX,
-    startX,
-    container,
-    handle,
-    target,
-    min,
-    max,
-    computedBreakpoint.value
-  );
-  diff.applyBreakpoint();
-  diff.restrictMinValue();
-  diff.restrictMaxValue();
-
-  const newDate = getItemDate({
-    difference: diff.value,
-    date: target[handle]
-  });
-
-  if (handle === Handles.START) {
-    const width = target.width - diff.value;
-    const startPercentage = timeOfDayToPercentage(newDate);
-    const style = `left: ${startPercentage}%; width: ${width}%;`;
-
-    target.width = width;
-    target.style = style;
-    target.start = roundSeconds(newDate);
-    target.startPercentage = timeOfDayToPercentage(newDate);
-  }
-
-  if (handle === Handles.END) {
-    const width = target.width + diff.value;
-    const style = `left: ${target.startPercentage}%; width: ${width}%;`;
-
-    target.width = width;
-    target.style = style;
-    target.end = newDate;
-    target.endPercentage = timeOfDayToPercentage(newDate);
-  }
-
-  resetMouseDownState();
-};
-
-const onMouseMove = (event: MouseEvent) => {
-  console.log('mousemove');
-  const { handle, target, startX, container, min, max } = mouseDownState.value;
-  if (!handle || !target || !container) return;
-
-  const itemContainerEnd = container?.right || event.pageX;
-  const pageX = Math.min(event.pageX, itemContainerEnd);
-
-  const diff = new Diff(
-    pageX,
-    startX,
-    container,
-    handle,
-    target,
-    min,
-    max,
-    computedBreakpoint.value
-  );
-  diff.restrictMaxValue();
-  diff.restrictMinValue();
-
-  const newDate = getItemDate({
-    difference: diff.value,
-    date: target[handle]
-  });
-
-  if (handle === Handles.START) {
-    const width = target.width - diff.value;
-    const startPercentage = timeOfDayToPercentage(newDate);
-    const style = `left: ${startPercentage}%; width: ${width}%;`;
-    target.style = style;
-  }
-
-  if (handle === Handles.END) {
-    const width = target.width + diff.value;
-    const style = `left: ${target.startPercentage}%; width: ${width}%;`;
-    target.style = style;
-  }
-
-  diff.applyBreakpoint();
-  setDragTime(
-    getItemDate({
-      difference: diff.value,
-      date: target[handle]
-    })
-  );
-};
+const { onMouseDown, onMouseMove, onMouseUp, dragTime, mouseDownState } =
+  useStartEndDrag(computedBreakpoint.value);
 </script>

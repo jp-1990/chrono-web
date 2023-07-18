@@ -9,7 +9,7 @@ export const getTestData = () => {
 
 export const formatItems = (
   dates: Date[],
-  items?: GetItemsRes
+  items: GetItemsRes | null
 ): FormattedItems => {
   const structure = {};
   for (const date of dates) {

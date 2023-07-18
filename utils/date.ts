@@ -5,7 +5,8 @@ import {
   endOfMonth,
   endOfYear,
   startOfMonth,
-  startOfYear
+  startOfYear,
+  sub
 } from 'date-fns';
 
 export const timeOfDayToPercentage = (date: Date) => {
@@ -87,3 +88,7 @@ export const getAllMonthsInYear = (year: number) => {
 
   return months;
 };
+
+const timeZoneOffset = minutesToHoursAndMinutes(new Date().getTimezoneOffset());
+export const applyTZOffset = (date: Date) =>
+  sub(date, { hours: timeZoneOffset.hours, minutes: timeZoneOffset.minutes });
