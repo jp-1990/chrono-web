@@ -101,6 +101,7 @@
       <input
         @blur="onTitleBlur"
         id="title"
+        ref="titleRef"
         :class="[formState.valid.title === false ? 'border-red-600' : '']"
         class="border px-1"
         placeholder="Title"
@@ -181,14 +182,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  add,
-  sub,
-  format,
-  startOfMonth,
-  startOfYear,
-  endOfMonth
-} from 'date-fns';
+import { add, sub, format } from 'date-fns';
 import { ref, computed } from 'vue';
 import AddIcon from 'vue-material-design-icons/Plus.vue';
 import {
@@ -196,12 +190,11 @@ import {
   getAllHoursInDay,
   getDateId,
   minutesToHoursAndMinutes,
-  timeOfDayToPercentage,
-  roundSeconds
+  timeOfDayToPercentage
 } from '~~/utils/date';
-import { Handles, Container, FormattedItem, PostItemArgs } from '~/types/item';
+import { PostItemArgs } from '~/types/item';
 import { Validation } from '~/types/form';
-import { Diff, formatItems, getItemDate } from '~/utils/item';
+import { formatItems } from '~/utils/item';
 import { getItems } from '~/utils/api';
 import {
   validateDateRange,
@@ -252,6 +245,8 @@ const formattedItems = computed(() =>
 
 // ADD TASK
 
+const titleRef = ref<HTMLElement | null>(null);
+
 const formState = ref<{ data: PostItemArgs; valid: Validation }>({
   data: {
     title: '',
@@ -294,6 +289,7 @@ const onToggleNewTaskModal = () => {
     for (const key of Object.keys(formState.value.valid)) {
       formState.value.valid[key] = undefined;
     }
+    selectColorOpen.value = false;
   }
   newTaskModalOpen.value = !newTaskModalOpen.value;
 };
@@ -369,4 +365,14 @@ const computedBreakpoint = computed(() => {
 
 const { onMouseDown, onMouseMove, onMouseUp, dragTime, mouseDownState } =
   useStartEndDrag(computedBreakpoint.value);
+
+onMounted(() => {
+  window?.addEventListener('keydown', (e) => {
+    if (e.key === 'i' && !newTaskModalOpen.value) {
+      e.preventDefault();
+      onToggleNewTaskModal();
+      titleRef.value!.focus();
+    }
+  });
+});
 </script>

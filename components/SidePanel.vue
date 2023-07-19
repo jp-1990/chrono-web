@@ -1,5 +1,7 @@
 <template>
   <div
+    @keyup.escape="isOpen && $emit('onClose', $event)"
+    tabindex="0"
     :class="[isOpen ? 'border-l' : 'translate-x-96 border-none']"
     class="fixed z-30 w-96 p-2 top-0 right-0 flex flex-col h-screen overflow-hidden bg-white border-l-slate-200 duration-200"
   >
