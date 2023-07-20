@@ -2,20 +2,19 @@
   <label for="color" class="text-xs mt-2 mb-1">Color</label>
   <div
     id="color"
-    :style="`background-color:${formState.data.color}`"
-    @click="onToggleSelectColor"
-    @keyup.enter="onToggleSelectColor"
+    :style="`background-color:${selectedColor}`"
+    @click="onToggleColorSelect"
+    @keyup.enter="onToggleColorSelect"
     role="button"
     tabindex="0"
     class="h-8 w-12 m-px mb-1 rounded-sm"
-    ref="colorBox"
+    ref="selectedColorEl"
     name="color"
   ></div>
 
   <div
     class="flex flex-col overflow-hidden"
-    :class="[selectColorOpen ? 'h-auto' : 'h-0']"
-    tabindex="-1"
+    :class="[colorSelectOpen ? 'h-auto' : 'h-0']"
     @keyup.k="onFocus('up', cursor[0], cursor[1])"
     @keyup.j="onFocus('down', cursor[0], cursor[1])"
     @keyup.h="onFocus('left', cursor[0], cursor[1])"
@@ -27,9 +26,9 @@
         :style="`background-color:${color}`"
         :ref="colorRefs[rowIndex][colorIndex]"
         :id="color"
+        :tabindex="colorSelectOpen ? 0 : -1"
         @click="setSelectedColor(color)"
         @keyup.enter="setSelectedColor(color)"
-        tabindex="0"
         role="button"
         class="h-8 w-12 m-px rounded-sm focus:outline-slate-900 focus:outline-2"
       ></div>
@@ -38,31 +37,35 @@
 </template>
 
 <script lang="ts" setup>
-const selectColorOpen = ref(false);
-const onToggleSelectColor = () => {
-  selectColorOpen.value = !selectColorOpen.value;
+const props = defineProps<{
+  forceClosed: boolean;
+}>();
+const emit = defineEmits<{
+  (e: 'onChange', color: string): void;
+}>();
+
+const colorSelectOpen = ref(false);
+const onToggleColorSelect = () => {
+  colorSelectOpen.value = !colorSelectOpen.value;
 };
 
-watch(selectColorOpen, (open) => {
+watch(colorSelectOpen, (open) => {
   if (open) {
     colorRefs[cursor.value[0]][cursor.value[1]].value![0].focus();
   } else {
-    colorBox.value!.focus();
+    selectedColorEl.value!.focus();
   }
 });
 
+const selectedColor = ref<string>('rgb(38, 203, 255)');
 const setSelectedColor = (color: string) => {
-  formState.value.data.color = color;
-  selectColorOpen.value = false;
+  selectedColor.value = color;
+  colorSelectOpen.value = false;
+  emit('onChange', color);
 };
 
-const formState = ref({
-  data: {
-    color: 'rgb(38, 203, 255)'
-  }
-});
 const cursor = ref([0, 0]);
-const colorBox = ref<HTMLElement | null>(null);
+const selectedColorEl = ref<HTMLElement | null>(null);
 
 const onFocus = (
   direction: 'up' | 'down' | 'left' | 'right',
@@ -125,5 +128,13 @@ const colorMatrix = [
 
 const colorRefs = colorMatrix.map((row) => {
   return row.map(() => ref<HTMLElement | null>(null));
+});
+
+onUpdated(() => {
+  if (props.forceClosed && colorSelectOpen) {
+    colorSelectOpen.value = false;
+    selectedColor.value = 'rgb(38, 203, 255)';
+    cursor.value = [0, 0];
+  }
 });
 </script>

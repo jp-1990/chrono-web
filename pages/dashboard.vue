@@ -151,29 +151,7 @@
         v-model="formState.data.endDate"
       />
 
-      <label for="color" class="text-xs mt-2 mb-1">Color</label>
-      <div
-        id="color"
-        :style="`background-color:${formState.data.color}`"
-        @click="onToggleSelectColor"
-        @keyup.enter="onToggleSelectColor"
-        role="button"
-        tabindex="0"
-        class="h-8 w-12 m-px mb-1 rounded-sm"
-        name="color"
-      ></div>
-
-      <div v-if="selectColorOpen" class="flex flex-wrap">
-        <div
-          v-for="color in colorSelection"
-          :style="`background-color:${color}`"
-          @click="setSelectedColor(color)"
-          @keyup.enter="setSelectedColor(color)"
-          tabindex="0"
-          role="button"
-          class="h-8 w-12 m-px rounded-sm"
-        ></div>
-      </div>
+      <color-select @on-change="setColor" :force-closed="!newTaskModalOpen" />
 
       <div>{{ JSON.stringify(formState.valid) }}</div>
     </template>
@@ -265,6 +243,7 @@ const formState = ref<{ data: PostItemArgs; valid: Validation }>({
     endDate: undefined as boolean | undefined
   }
 });
+const setColor = (color: string) => (formState.value.data.color = color);
 
 const formStateNotValid = computed(() => {
   return Object.values(formState.value.valid).some((v) => !v);
@@ -289,42 +268,8 @@ const onToggleNewTaskModal = () => {
     for (const key of Object.keys(formState.value.valid)) {
       formState.value.valid[key] = undefined;
     }
-    selectColorOpen.value = false;
   }
   newTaskModalOpen.value = !newTaskModalOpen.value;
-};
-
-const colorSelection = [
-  'rgb(229, 229, 229)',
-  'rgb(126, 126, 126)',
-  'rgb(50, 50, 50)',
-  'rgb(0, 0, 0)',
-  'rgb(0, 63, 6)',
-  'rgb(0, 118, 19)',
-  'rgb(4, 218, 0)',
-  'rgb(255, 214, 0)',
-  'rgb(255, 86, 0)',
-  'rgb(177, 64, 0)',
-  'rgb(86, 26, 0)',
-  'rgb(0, 0, 128)',
-  'rgb(0, 0, 255)',
-  'rgb(38, 203, 255)',
-  'rgb(255, 0, 199)',
-  'rgb(192, 0, 150)',
-  'rgb(234, 0, 0)',
-  'rgb(126, 0, 0)',
-  'rgb(75, 0, 111)',
-  'rgb(155, 0, 250)',
-  'rgb(0, 128, 128)'
-];
-
-const selectColorOpen = ref(false);
-const onToggleSelectColor = () =>
-  (selectColorOpen.value = !selectColorOpen.value);
-
-const setSelectedColor = (color: string) => {
-  formState.value.data.color = color;
-  selectColorOpen.value = false;
 };
 
 const onTitleBlur = () => validateTitle(formState);
@@ -339,7 +284,6 @@ const onAddTask = async () => {
   validateDateRange(formState, formattedItems);
   if (formStateNotValid.value) return;
 
-  selectColorOpen.value = false;
   newTaskModalOpen.value = false;
 
   try {
