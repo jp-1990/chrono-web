@@ -7,14 +7,14 @@
     @keyup.enter="onToggleColorSelect"
     role="button"
     tabindex="0"
-    class="h-8 w-12 m-px mb-1 rounded-sm"
+    class="h-8 w-12 m-px mb-1 rounded-sm focus:outline-none focus:border focus:border-slate-700"
     ref="selectedColorEl"
     name="color"
   ></div>
 
   <div
-    class="flex flex-col overflow-hidden"
-    :class="[colorSelectOpen ? 'h-auto' : 'h-0']"
+    class="flex flex-col"
+    :class="[colorSelectOpen ? 'h-auto' : 'h-0 overflow-hidden']"
     @keyup.k="onFocus('up', cursor[0], cursor[1])"
     @keyup.j="onFocus('down', cursor[0], cursor[1])"
     @keyup.h="onFocus('left', cursor[0], cursor[1])"
@@ -30,7 +30,7 @@
         @click="setSelectedColor(color)"
         @keyup.enter="setSelectedColor(color)"
         role="button"
-        class="h-8 w-12 m-px rounded-sm focus:outline-slate-900 focus:outline-2"
+        class="h-8 w-12 m-px rounded-sm focus:outline-1 focus:outline-slate-700"
       ></div>
     </div>
   </div>

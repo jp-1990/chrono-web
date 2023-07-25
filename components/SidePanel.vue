@@ -30,7 +30,7 @@
       :disabled="disableSubmit"
       type="submit"
       :class="[disableSubmit ? 'bg-slate-400' : 'bg-slate-700']"
-      class="h-14 rounded-sm text-lg text-slate-200"
+      class="h-14 rounded-sm text-lg text-slate-200 focus:outline-none focus:border-2 focus:border-slate-400"
     >
       <slot name="submit-text">Submit</slot>
     </button>

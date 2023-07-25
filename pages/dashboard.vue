@@ -103,7 +103,7 @@
         id="title"
         ref="titleRef"
         :class="[formState.valid.title === false ? 'border-red-600' : '']"
-        class="border px-1"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Title"
         name="title"
         v-model="formState.data.title"
@@ -114,7 +114,7 @@
         @blur="onGroupBlur"
         id="group"
         :class="[formState.valid.group === false ? 'border-red-600' : '']"
-        class="border px-1"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Group"
         name="group"
         v-model="formState.data.group"
@@ -123,7 +123,7 @@
       <label for="notes" class="text-xs mt-2 mb-1">Notes</label>
       <input
         id="notes"
-        class="border px-1"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Notes"
         name="notes"
         v-model="formState.data.notes"
@@ -135,7 +135,7 @@
         type="datetime-local"
         id="start"
         :class="[formState.valid.startDate === false ? 'border-red-600' : '']"
-        class="border px-1"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         name="start"
         v-model="formState.data.startDate"
       />
@@ -146,14 +146,12 @@
         type="datetime-local"
         id="end"
         :class="[formState.valid.endDate === false ? 'border-red-600' : '']"
-        class="border px-1"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         name="end"
         v-model="formState.data.endDate"
       />
 
       <color-select @on-change="setColor" :force-closed="!newTaskModalOpen" />
-
-      <div>{{ JSON.stringify(formState.valid) }}</div>
     </template>
     <template v-slot:submit-text>Create Task</template>
   </side-panel>
@@ -275,6 +273,7 @@ const onToggleNewTaskModal = () => {
 const onTitleBlur = () => validateTitle(formState);
 const onGroupBlur = () => validateGroup(formState);
 const onStartDateBlur = () => validateStartDate(formState, formattedItems);
+// TODO; validation bug: 7:40 - 7:50 same day was invalid for some reason
 const onEndDateBlur = () => validateDateRange(formState, formattedItems);
 
 const onAddTask = async () => {
@@ -288,7 +287,17 @@ const onAddTask = async () => {
 
   try {
     await postItem(formState.value.data);
-    refresh();
+    await refresh();
+
+    formState.value.data.title = '';
+    formState.value.data.notes = '';
+    formState.value.data.group = '';
+    formState.value.data.startDate = formState.value.data.endDate;
+    formState.value.data.endDate = applyTZOffset(
+      add(new Date(formState.value.data.endDate), { minutes: 5 })
+    )
+      .toISOString()
+      .slice(0, -8);
   } catch (e) {
     console.log('error', e);
   }
