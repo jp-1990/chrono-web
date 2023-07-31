@@ -28,7 +28,12 @@
       <!-- table rows -->
       <section
         v-on="{
-          mouseup: mouseDownState.pressed ? onMouseUp : null,
+          mouseup: mouseDownState.pressed
+            ? ($event) => {
+                const target = onMouseUp($event);
+                onOpenUpdateTaskModal(target);
+              }
+            : null,
           mousemove: mouseDownState.pressed ? onMouseMove : null
         }"
         class="flex flex-1 cursor-default"
@@ -62,6 +67,10 @@
               <item-row
                 @change-item-start-time="onMouseDown"
                 @change-item-end-time="onMouseDown"
+                @item-click="
+                  (_$event, target) =>
+                    !mouseDownState.pressed && onOpenUpdateTaskModal(target)
+                "
                 :date="date"
                 :ids="formattedItems[getDateId(date)]?.ids"
                 :items="formattedItems[getDateId(date)]?.items"
@@ -83,7 +92,7 @@
 
   <!-- add button -->
   <div
-    @click="onToggleNewTaskModal"
+    @click="onOpenCreateTaskModal"
     role="button"
     class="fixed bottom-4 right-8 h-14 w-14 flex items-center justify-center bg-slate-800 rounded-xl"
   >
@@ -91,8 +100,8 @@
   </div>
 
   <side-panel
-    :is-open="newTaskModalOpen"
-    @on-close="onToggleNewTaskModal"
+    :is-open="taskModal.open === 'create'"
+    @on-close="onCloseCreateTaskModal"
     @on-submit="onAddTask"
   >
     <template v-slot:title-text>Add Task</template>
@@ -101,7 +110,7 @@
       <input
         @blur="onTitleBlur"
         id="title"
-        ref="titleRef"
+        ref="titleRefCreate"
         :class="[formState.valid.title === false ? 'border-red-600' : '']"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Title"
@@ -151,14 +160,87 @@
         v-model="formState.data.endDate"
       />
 
-      <color-select @on-change="setColor" :force-closed="!newTaskModalOpen" />
+      <color-select
+        @on-change="setColor"
+        :force-closed="taskModal.open !== 'create'"
+      />
     </template>
     <template v-slot:submit-text>Create Task</template>
+  </side-panel>
+
+  <side-panel
+    :is-open="taskModal.open === 'update'"
+    @on-close="onCloseUpdateTaskModal"
+    @on-submit="onUpdateTask"
+  >
+    <template v-slot:title-text>Update Task</template>
+    <template v-slot:content>
+      <label for="title" class="text-xs mt-2 mb-1">Title*</label>
+      <input
+        @blur="onTitleBlur"
+        id="title"
+        ref="titleRefUpdate"
+        :class="[formState.valid.title === false ? 'border-red-600' : '']"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+        placeholder="Title"
+        name="title"
+        v-model="formState.data.title"
+      />
+
+      <label for="group" class="text-xs mt-2 mb-1">Group*</label>
+      <input
+        @blur="onGroupBlur"
+        id="group"
+        :class="[formState.valid.group === false ? 'border-red-600' : '']"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+        placeholder="Group"
+        name="group"
+        v-model="formState.data.group"
+      />
+
+      <label for="notes" class="text-xs mt-2 mb-1">Notes</label>
+      <input
+        id="notes"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+        placeholder="Notes"
+        name="notes"
+        v-model="formState.data.notes"
+      />
+
+      <label for="start" class="text-xs mt-2 mb-1">Start*</label>
+      <input
+        @blur="onStartDateBlur"
+        type="datetime-local"
+        id="start"
+        :class="[formState.valid.startDate === false ? 'border-red-600' : '']"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+        name="start"
+        v-model="formState.data.startDate"
+      />
+
+      <label for="end" class="text-xs mt-2 mb-1">End*</label>
+      <input
+        @blur="onEndDateBlur"
+        type="datetime-local"
+        id="end"
+        :class="[formState.valid.endDate === false ? 'border-red-600' : '']"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+        name="end"
+        v-model="formState.data.endDate"
+      />
+
+      <color-select
+        @on-change="setColor"
+        :value="formState.data.color"
+        :force-closed="taskModal.open !== 'update'"
+      />
+    </template>
+    <template v-slot:submit-text>Update Task</template>
   </side-panel>
 </template>
 
 <script setup lang="ts">
-import { add, sub, format } from 'date-fns';
+import { add, sub, format, startOfDay, endOfDay } from 'date-fns';
 import { ref, computed } from 'vue';
 import AddIcon from 'vue-material-design-icons/Plus.vue';
 import {
@@ -168,10 +250,10 @@ import {
   minutesToHoursAndMinutes,
   timeOfDayToPercentage
 } from '~~/utils/date';
-import { PostItemArgs } from '~/types/item';
+import { FormattedItem, PostItemArgs, PatchItemArgs } from '~/types/item';
 import { Validation } from '~/types/form';
 import { formatItems } from '~/utils/item';
-import { getItems } from '~/utils/api';
+import { getItems, postItem, patchItem } from '~/utils/api';
 import {
   validateDateRange,
   validateGroup,
@@ -219,11 +301,13 @@ const formattedItems = computed(() =>
   )
 );
 
-// ADD TASK
+// MODAL
 
-const titleRef = ref<HTMLElement | null>(null);
+const titleRefCreate = ref<HTMLElement | null>(null);
+const titleRefUpdate = ref<HTMLElement | null>(null);
 
-const formState = ref<{ data: PostItemArgs; valid: Validation }>({
+const formState = ref<{ id: string; data: PostItemArgs; valid: Validation }>({
+  id: '',
   data: {
     title: '',
     group: '',
@@ -241,33 +325,139 @@ const formState = ref<{ data: PostItemArgs; valid: Validation }>({
     endDate: undefined as boolean | undefined
   }
 });
-const setColor = (color: string) => (formState.value.data.color = color);
+
+const resetFormState = () => {
+  formState.value.id = '';
+  formState.value.data.title = '';
+  formState.value.data.notes = '';
+  formState.value.data.group = '';
+  formState.value.data.startDate = applyTZOffset(new Date(Date.now()))
+    .toISOString()
+    .slice(0, -8);
+  formState.value.data.endDate = applyTZOffset(
+    add(new Date(Date.now()), { minutes: 5 })
+  )
+    .toISOString()
+    .slice(0, -8);
+  formState.value.data.color = 'rgb(38, 203, 255)';
+
+  formState.value.valid.title = undefined;
+  formState.value.valid.group = undefined;
+  formState.value.valid.startDate = undefined;
+  formState.value.valid.endDate = undefined;
+};
 
 const formStateNotValid = computed(() => {
   return Object.values(formState.value.valid).some((v) => !v);
 });
 
-const newTaskModalOpen = ref(false);
-const onToggleNewTaskModal = () => {
-  if (newTaskModalOpen.value) {
-    formState.value.data.title = '';
-    formState.value.data.notes = '';
-    formState.value.data.group = '';
-    formState.value.data.startDate = applyTZOffset(new Date(Date.now()))
-      .toISOString()
-      .slice(0, -8);
-    formState.value.data.endDate = applyTZOffset(
-      add(new Date(Date.now()), { minutes: 5 })
-    )
-      .toISOString()
-      .slice(0, -8);
-    formState.value.data.color = 'rgb(38, 203, 255)';
+const setColor = (color: string) => (formState.value.data.color = color);
 
-    for (const key of Object.keys(formState.value.valid)) {
-      formState.value.valid[key] = undefined;
-    }
+const taskModal = ref<{
+  task: FormattedItem | undefined;
+  open: 'create' | 'update' | undefined;
+}>({
+  task: undefined,
+  open: undefined
+});
+
+const onOpenCreateTaskModal = () => {
+  taskModal.value.open = 'create';
+};
+
+const onCloseCreateTaskModal = () => {
+  console.log('on-close');
+
+  resetFormState();
+  taskModal.value.open = undefined;
+};
+
+const onOpenUpdateTaskModal = (task: FormattedItem | undefined) => {
+  const taskData = data.value?.find((t) => t.id === task?.id);
+
+  if (taskData && task) {
+    const end = task.isEnd ? task.end : new Date(+taskData.end);
+    const start = task.isStart ? task.start : new Date(+taskData.start);
+
+    formState.value.id = taskData.id;
+    formState.value.data.title = taskData.title;
+    formState.value.data.notes = taskData.description;
+    formState.value.data.group = taskData.group;
+    formState.value.data.color = taskData.colour;
+    formState.value.data.startDate = applyTZOffset(start)
+      .toISOString()
+      .slice(0, -8);
+    formState.value.data.endDate = applyTZOffset(end)
+      .toISOString()
+      .slice(0, -8);
+
+    taskModal.value.open = 'update';
+    taskModal.value.task = task;
+
+    titleRefUpdate.value!.focus();
   }
-  newTaskModalOpen.value = !newTaskModalOpen.value;
+};
+
+const onCloseUpdateTaskModal = () => {
+  const taskData = data.value?.find((t) => t.id === taskModal.value.task?.id);
+
+  if (taskData && taskModal.value.task) {
+    let start;
+    let end;
+    let width;
+    let style;
+    let startPercentage;
+    let endPercentage;
+
+    // isStart && isEnd
+    if (taskModal.value.task.isStart && taskModal.value.task.isEnd) {
+      start = new Date(+taskData.start);
+      end = new Date(+taskData.end);
+      startPercentage = timeOfDayToPercentage(start);
+      endPercentage = timeOfDayToPercentage(end);
+      width = endPercentage - startPercentage;
+    }
+
+    // isStart && !isEnd
+    if (taskModal.value.task.isStart && !taskModal.value.task.isEnd) {
+      start = new Date(+taskData.start);
+      end = endOfDay(taskModal.value.task.end);
+      startPercentage = timeOfDayToPercentage(start);
+      endPercentage = 100;
+      width = endPercentage - startPercentage;
+    }
+
+    // !isStart && isEnd
+    if (!taskModal.value.task.isStart && taskModal.value.task.isEnd) {
+      start = startOfDay(taskModal.value.task.start);
+      end = new Date(+taskData.end);
+      startPercentage = 0;
+      endPercentage = timeOfDayToPercentage(end);
+      width = endPercentage;
+    }
+
+    // !isStart && !isEnd
+    if (!taskModal.value.task.isStart && !taskModal.value.task.isEnd) {
+      start = startOfDay(taskModal.value.task.start);
+      end = endOfDay(taskModal.value.task.end);
+      startPercentage = 0;
+      endPercentage = 100;
+      width = 100;
+    }
+
+    style = `left: ${startPercentage}%; width: ${width}%;`;
+
+    taskModal.value.task.start = start;
+    taskModal.value.task.end = end;
+    taskModal.value.task.width = width;
+    taskModal.value.task.style = style;
+    taskModal.value.task.startPercentage = startPercentage;
+    taskModal.value.task.endPercentage = endPercentage;
+
+    taskModal.value.open = undefined;
+    taskModal.value.task = undefined;
+    resetFormState();
+  }
 };
 
 const onTitleBlur = () => validateTitle(formState);
@@ -276,6 +466,8 @@ const onStartDateBlur = () => validateStartDate(formState, formattedItems);
 // TODO; validation bug: 7:40 - 7:50 same day was invalid for some reason
 const onEndDateBlur = () => validateDateRange(formState, formattedItems);
 
+// ADD TASK
+
 const onAddTask = async () => {
   validateTitle(formState);
   validateGroup(formState);
@@ -283,7 +475,7 @@ const onAddTask = async () => {
   validateDateRange(formState, formattedItems);
   if (formStateNotValid.value) return;
 
-  newTaskModalOpen.value = false;
+  taskModal.value.open = undefined;
 
   try {
     await postItem(formState.value.data);
@@ -298,6 +490,29 @@ const onAddTask = async () => {
     )
       .toISOString()
       .slice(0, -8);
+  } catch (e) {
+    console.log('error', e);
+  }
+};
+
+// UPDATE TASK
+
+const onUpdateTask = async () => {
+  validateTitle(formState);
+  validateGroup(formState);
+  validateStartDate(formState, formattedItems);
+  validateDateRange(formState, formattedItems);
+  if (formStateNotValid.value) return;
+
+  taskModal.value.open = undefined;
+
+  try {
+    const patchArgs: PatchItemArgs = formState.value.data as any;
+    patchArgs.id = formState.value.id;
+    await patchItem(patchArgs);
+    await refresh();
+
+    resetFormState();
   } catch (e) {
     console.log('error', e);
   }
@@ -321,10 +536,10 @@ const { onMouseDown, onMouseMove, onMouseUp, dragTime, mouseDownState } =
 
 onMounted(() => {
   window?.addEventListener('keydown', (e) => {
-    if (e.key === 'i' && !newTaskModalOpen.value) {
+    if (e.key === 'i' && taskModal.value.open === undefined) {
       e.preventDefault();
-      onToggleNewTaskModal();
-      titleRef.value!.focus();
+      onOpenCreateTaskModal();
+      titleRefCreate.value!.focus();
     }
   });
 });

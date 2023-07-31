@@ -39,6 +39,7 @@
 <script lang="ts" setup>
 const props = defineProps<{
   forceClosed: boolean;
+  value?: string;
 }>();
 const emit = defineEmits<{
   (e: 'onChange', color: string): void;
@@ -54,6 +55,12 @@ watch(colorSelectOpen, (open) => {
     colorRefs[cursor.value[0]][cursor.value[1]].value![0].focus();
   } else {
     selectedColorEl.value!.focus();
+  }
+});
+
+watch(props, ({ value }) => {
+  if (value) {
+    selectedColor.value = value;
   }
 });
 

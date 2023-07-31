@@ -3,7 +3,7 @@ export type Item = {
   title: string;
   group: string;
   description: string;
-  color: string;
+  colour: string;
   start: Date;
   end: Date;
   createdAt: Date;
@@ -47,6 +47,15 @@ export type PostItemArgs = {
   color: string;
 };
 export type PostItemsRes = Item;
+
+export type PatchItemArgs = {
+  id: string;
+  title: string;
+  notes: string;
+  startDate: string;
+  endDate: string;
+};
+export type PatchItemsRes = Item;
 
 export type Container = {
   left: number;

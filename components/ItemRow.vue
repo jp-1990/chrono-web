@@ -13,6 +13,7 @@
     <div
       v-if="ids"
       v-for="(id, index) in ids?.value || []"
+      v-on:mouseup="$emit('itemClick', $event, items?.value[id])"
       :key="id"
       :style="`${items?.value[id].style} background-color:${items?.value[id].colour}`"
       :id="`${items?.value[id].id}-${index}-${id}-container`"
@@ -81,6 +82,7 @@ const props = defineProps<{
   items?: Ref<{ [key: number]: FormattedItem }>;
 }>();
 defineEmits<{
+  (e: 'itemClick', v: MouseEvent, target?: FormattedItem): void;
   (
     e: 'changeItemStartTime',
     v: MouseEvent,

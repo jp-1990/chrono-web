@@ -92,6 +92,7 @@ export const useStartEndDrag = (breakpoint: number) => {
     }
 
     resetMouseDownState();
+    return target;
   };
 
   const onMouseMove = (event: MouseEvent) => {

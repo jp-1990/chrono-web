@@ -16,7 +16,11 @@ export const validateGroup = (
 };
 
 export const validateStartDate = (
-  formState: Ref<{ data: PostItemArgs; valid: Validation }>,
+  formState: Ref<{
+    id: string | undefined;
+    data: PostItemArgs;
+    valid: Validation;
+  }>,
   formattedItems: Ref<FormattedItems>
 ) => {
   const newStartDate = new Date(formState.value.data.startDate);
@@ -25,6 +29,7 @@ export const validateStartDate = (
 
   let isValid = true;
   for (const id of formattedItems.value[newStartDateId]?.ids.value) {
+    if (id === formState.value.id) continue;
     const item = formattedItems.value[newStartDateId]?.items.value[id];
     if (
       startPercentage >= item.startPercentage &&
@@ -42,7 +47,11 @@ export const validateStartDate = (
 };
 
 const validateEndDate = (
-  formState: Ref<{ data: PostItemArgs; valid: Validation }>,
+  formState: Ref<{
+    id: string | undefined;
+    data: PostItemArgs;
+    valid: Validation;
+  }>,
   formattedItems: Ref<FormattedItems>
 ) => {
   const newEndDate = new Date(formState.value.data.endDate);
@@ -53,6 +62,7 @@ const validateEndDate = (
 
   let isValid = true;
   for (const id of formattedItems.value[newEndDateId]?.ids.value) {
+    if (id === formState.value.id) continue;
     if (startPercentage >= endPercentage) {
       isValid = false;
       break;
@@ -70,7 +80,11 @@ const validateEndDate = (
 };
 
 export const validateDateRange = (
-  formState: Ref<{ data: PostItemArgs; valid: Validation }>,
+  formState: Ref<{
+    id: string | undefined;
+    data: PostItemArgs;
+    valid: Validation;
+  }>,
   formattedItems: Ref<FormattedItems>
 ) => {
   const newStartDate = new Date(formState.value.data.startDate);
@@ -81,6 +95,8 @@ export const validateDateRange = (
   const endPercentage = timeOfDayToPercentage(newEndDate);
 
   if (newStartDateId === newEndDateId && startPercentage > endPercentage) {
+    console.log('bullshit');
+
     formState.value.valid.endDate = false;
     return;
   }
@@ -93,7 +109,7 @@ export const validateDateRange = (
   ];
   const items = {
     ...formattedItems.value[newStartDateId]?.items.value,
-    ...formattedItems.value[newStartDateId]?.items.value
+    ...formattedItems.value[newEndDateId]?.items.value
   };
 
   let isValid = false;
@@ -103,6 +119,9 @@ export const validateDateRange = (
 
     const prevId = ids[i - 1];
     const prevItem = items[prevId];
+
+    const nextId = ids[i + 1] as string | undefined;
+    const nextItem = nextId && items[nextId];
 
     if (
       i === 1 &&
@@ -114,17 +133,20 @@ export const validateDateRange = (
     }
 
     if (
-      startPercentage >= prevItem.endPercentage &&
-      endPercentage <= item.startPercentage
+      i === ids.length - 1 &&
+      startPercentage >= item.endPercentage &&
+      endPercentage <= 100
     ) {
       isValid = true;
       break;
     }
 
     if (
-      i === ids.length - 1 &&
-      startPercentage >= item.endPercentage &&
-      endPercentage <= 100
+      startPercentage >= prevItem.endPercentage &&
+      endPercentage >= item.startPercentage &&
+      nextItem
+        ? endPercentage <= nextItem.startPercentage
+        : true
     ) {
       isValid = true;
       break;
