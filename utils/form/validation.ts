@@ -1,5 +1,12 @@
-import { FormattedItems, PostItemArgs } from '~/types/item';
+import {
+  FormattedItem,
+  FormattedItems,
+  Item,
+  PostItemArgs
+} from '~/types/item';
 import { Validation } from '~/types/form';
+import { getDateId } from '../date';
+import { add } from 'date-fns';
 
 export const validateTitle = (
   formState: Ref<{ data: PostItemArgs; valid: Validation }>
@@ -15,7 +22,9 @@ export const validateGroup = (
   formState.value.valid.group = isValid;
 };
 
-export const validateStartDate = (
+// todo; something is broken in here - TypeError: (intermediate value) is not iterable
+// todo; currently only works for create, not update
+export const validateDate = (
   formState: Ref<{
     id: string | undefined;
     data: PostItemArgs;
@@ -25,132 +34,72 @@ export const validateStartDate = (
 ) => {
   const newStartDate = new Date(formState.value.data.startDate);
   const newStartDateId = getDateId(newStartDate);
-  const startPercentage = timeOfDayToPercentage(newStartDate);
-
-  let isValid = true;
-  for (const id of formattedItems.value[newStartDateId]?.ids.value) {
-    if (id === formState.value.id) continue;
-    const item = formattedItems.value[newStartDateId]?.items.value[id];
-    if (
-      startPercentage >= item.startPercentage &&
-      startPercentage < item.endPercentage
-    ) {
-      isValid = false;
-      break;
-    }
-  }
-  formState.value.valid.startDate = isValid;
-
-  if (formState.value.valid.endDate !== undefined) {
-    validateEndDate(formState, formattedItems);
-  }
-};
-
-const validateEndDate = (
-  formState: Ref<{
-    id: string | undefined;
-    data: PostItemArgs;
-    valid: Validation;
-  }>,
-  formattedItems: Ref<FormattedItems>
-) => {
   const newEndDate = new Date(formState.value.data.endDate);
   const newEndDateId = getDateId(newEndDate);
-  const endPercentage = timeOfDayToPercentage(newEndDate);
-  const newStartDate = new Date(formState.value.data.startDate);
-  const startPercentage = timeOfDayToPercentage(newStartDate);
 
-  let isValid = true;
-  for (const id of formattedItems.value[newEndDateId]?.ids.value) {
-    if (id === formState.value.id) continue;
-    if (startPercentage >= endPercentage) {
-      isValid = false;
-      break;
-    }
-    const item = formattedItems.value[newEndDateId]?.items.value[id];
-    if (
-      endPercentage > item.startPercentage &&
-      endPercentage < item.endPercentage
-    ) {
-      isValid = false;
-      break;
-    }
-  }
-  formState.value.valid.endDate = isValid;
-};
-
-export const validateDateRange = (
-  formState: Ref<{
-    id: string | undefined;
-    data: PostItemArgs;
-    valid: Validation;
-  }>,
-  formattedItems: Ref<FormattedItems>
-) => {
-  const newStartDate = new Date(formState.value.data.startDate);
-  const newStartDateId = getDateId(newStartDate);
-  const startPercentage = timeOfDayToPercentage(newStartDate);
-  const newEndDate = new Date(formState.value.data.endDate);
-  const newEndDateId = getDateId(newEndDate);
-  const endPercentage = timeOfDayToPercentage(newEndDate);
-
-  if (newStartDateId === newEndDateId && startPercentage > endPercentage) {
-    console.log('bullshit');
-
+  // start cannot be after end
+  if (newEndDate && newEndDate.getTime() - newStartDate.getTime() < 0) {
+    formState.value.valid.startDate = false;
     formState.value.valid.endDate = false;
     return;
   }
 
-  const ids = [
-    ...new Set([
-      ...formattedItems.value[newStartDateId]?.ids.value,
-      ...formattedItems.value[newEndDateId]?.ids.value
-    ])
-  ];
-  const items = {
-    ...formattedItems.value[newStartDateId]?.items.value,
-    ...formattedItems.value[newEndDateId]?.items.value
-  };
+  // get all items which fall either on the start or end date, or between them
+  const affectedDateIds: string[] = [newStartDateId];
+  let datePointer = newStartDate;
+  let maxGuard = 0;
+  while (getDateId(datePointer) !== newEndDateId && maxGuard < 1000) {
+    datePointer = add(datePointer, { days: 1 });
+    affectedDateIds.push(getDateId(datePointer));
+    maxGuard++;
+  }
 
-  let isValid = false;
-  for (let i = 1; i < ids.length; i++) {
-    const id = ids[i];
-    const item = items[id];
+  let ids: string[] = [];
+  let items: Record<Item['id'], FormattedItem> = {};
+  for (const dateId of affectedDateIds) {
+    const idsForDate = formattedItems.value[dateId]?.ids.value;
+    ids.push(...idsForDate);
 
-    const prevId = ids[i - 1];
-    const prevItem = items[prevId];
-
-    const nextId = ids[i + 1] as string | undefined;
-    const nextItem = nextId && items[nextId];
-
-    if (
-      i === 1 &&
-      startPercentage >= 0 &&
-      endPercentage <= prevItem.startPercentage
-    ) {
-      isValid = true;
-      break;
-    }
-
-    if (
-      i === ids.length - 1 &&
-      startPercentage >= item.endPercentage &&
-      endPercentage <= 100
-    ) {
-      isValid = true;
-      break;
-    }
-
-    if (
-      startPercentage >= prevItem.endPercentage &&
-      endPercentage >= item.startPercentage &&
-      nextItem
-        ? endPercentage <= nextItem.startPercentage
-        : true
-    ) {
-      isValid = true;
-      break;
+    for (const id of idsForDate) {
+      items[id] = formattedItems.value[dateId]?.items.value[id];
     }
   }
-  formState.value.valid.endDate = isValid;
+  ids = [...new Set(ids)];
+
+  let isStartValid = true;
+  let isEndValid = true;
+  for (const id of ids) {
+    // if we're updating an existing item, don't validate against that id
+    if (id === formState.value.id) continue;
+
+    const item = items[id];
+
+    // start date must not be within an existing item
+    if (
+      newStartDate.getTime() >= item.start.getTime() &&
+      newStartDate.getTime() < item.end.getTime()
+    ) {
+      isStartValid = false;
+      if (!isEndValid) break;
+    }
+
+    // end date must not be within an existing item
+    if (
+      newEndDate.getTime() > item.start.getTime() &&
+      newEndDate.getTime() <= item.end.getTime()
+    ) {
+      isEndValid = false;
+    }
+
+    // check if any existing items are between the new start and end dates
+    if (
+      newStartDate.getTime() <= item.start.getTime() &&
+      newEndDate.getTime() >= item.end.getTime()
+    ) {
+      isEndValid = false;
+    }
+  }
+
+  formState.value.valid.startDate = isStartValid;
+  formState.value.valid.endDate = isEndValid;
 };

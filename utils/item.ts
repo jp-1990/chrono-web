@@ -1,16 +1,16 @@
-import { FormattedItem, FormattedItems, GetItemsRes, Item } from '~/types/item';
 import { ref } from 'vue';
-import { add, set } from 'date-fns';
-import data from '~/assets/tasks.json';
-
-export const getTestData = () => {
-  return data.slice(-100);
-};
+import { add, differenceInDays, set, startOfDay, sub } from 'date-fns';
+import { FormattedItem, FormattedItems, GetItemsRes, Item } from '~/types/item';
+import { getDateId } from './date';
+import { timeOfDayToPercentage } from './date';
 
 export const formatItems = (
   dates: Date[],
   items: GetItemsRes | null
 ): FormattedItems => {
+  dates.unshift(sub(dates[0], { days: 1 }));
+  dates.push(add(dates[dates.length - 1], { days: 1 }));
+
   const structure = {};
   for (const date of dates) {
     structure[getDateId(date)] = {
@@ -27,7 +27,10 @@ export const formatItems = (
     const localStart = new Date(+item.start);
     const localEnd = new Date(+item.end);
 
-    const dateRange = localEnd.getDate() - localStart.getDate();
+    const dateRange = differenceInDays(
+      startOfDay(localEnd),
+      startOfDay(localStart)
+    );
 
     if (dateRange === 0) {
       const dateId = getDateId(localStart);

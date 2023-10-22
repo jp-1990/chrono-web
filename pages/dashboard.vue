@@ -247,24 +247,18 @@ import {
   getDatesInMonthYear,
   getAllHoursInDay,
   getDateId,
-  minutesToHoursAndMinutes,
-  timeOfDayToPercentage
+  timeOfDayToPercentage,
+  applyTZOffset
 } from '~~/utils/date';
 import { FormattedItem, PostItemArgs, PatchItemArgs } from '~/types/item';
 import { Validation } from '~/types/form';
 import { formatItems } from '~/utils/item';
 import { getItems, postItem, patchItem } from '~/utils/api';
 import {
-  validateDateRange,
+  validateDate,
   validateGroup,
-  validateStartDate,
   validateTitle
 } from '~/utils/form/validation';
-
-const now = new Date();
-const timeZoneOffset = minutesToHoursAndMinutes(now.getTimezoneOffset());
-const applyTZOffset = (date: Date) =>
-  sub(date, { hours: timeZoneOffset.hours, minutes: timeZoneOffset.minutes });
 
 const hoursInDay = ref(getAllHoursInDay());
 
@@ -287,7 +281,11 @@ const onCalendarChange = (month: Date, year: Date) => {
 
 const { data, pending, error, refresh } = await useAsyncData(
   'getItems',
-  async () => getItems({ startDate: startDate.value, endDate: endDate.value }),
+  async () =>
+    getItems({
+      startDate: sub(startDate.value, { days: 1 }),
+      endDate: add(endDate.value, { days: 1 })
+    }),
   { watch: [startDate, endDate] }
 );
 
@@ -366,8 +364,6 @@ const onOpenCreateTaskModal = () => {
 };
 
 const onCloseCreateTaskModal = () => {
-  console.log('on-close');
-
   resetFormState();
   taskModal.value.open = undefined;
 };
@@ -462,17 +458,16 @@ const onCloseUpdateTaskModal = () => {
 
 const onTitleBlur = () => validateTitle(formState);
 const onGroupBlur = () => validateGroup(formState);
-const onStartDateBlur = () => validateStartDate(formState, formattedItems);
+const onStartDateBlur = () => validateDate(formState, formattedItems);
 // TODO; validation bug: 7:40 - 7:50 same day was invalid for some reason
-const onEndDateBlur = () => validateDateRange(formState, formattedItems);
+const onEndDateBlur = () => validateDate(formState, formattedItems);
 
 // ADD TASK
 
 const onAddTask = async () => {
   validateTitle(formState);
   validateGroup(formState);
-  validateStartDate(formState, formattedItems);
-  validateDateRange(formState, formattedItems);
+  validateDate(formState, formattedItems);
   if (formStateNotValid.value) return;
 
   taskModal.value.open = undefined;
@@ -500,8 +495,7 @@ const onAddTask = async () => {
 const onUpdateTask = async () => {
   validateTitle(formState);
   validateGroup(formState);
-  validateStartDate(formState, formattedItems);
-  validateDateRange(formState, formattedItems);
+  validateDate(formState, formattedItems);
   if (formStateNotValid.value) return;
 
   taskModal.value.open = undefined;
