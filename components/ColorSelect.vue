@@ -1,5 +1,5 @@
 <template>
-  <label for="color" class="text-xs mt-2 mb-1">Color</label>
+  <span class="text-xs mt-2 mb-1">Color</span>
   <div
     id="color"
     :style="`background-color:${selectedColor}`"
@@ -37,6 +37,8 @@
 </template>
 
 <script lang="ts" setup>
+import { DEFAULT_COLOR } from '~~/constants/colors';
+
 const props = defineProps<{
   forceClosed: boolean;
   value?: string;
@@ -64,7 +66,7 @@ watch(props, ({ value }) => {
   }
 });
 
-const selectedColor = ref<string>('rgb(38, 203, 255)');
+const selectedColor = ref<string>(DEFAULT_COLOR);
 const setSelectedColor = (color: string) => {
   selectedColor.value = color;
   colorSelectOpen.value = false;
@@ -105,7 +107,7 @@ const onFocus = (
 
 const colorMatrix = [
   [
-    'rgb(229, 229, 229)',
+    DEFAULT_COLOR,
     'rgb(126, 126, 126)',
     'rgb(50, 50, 50)',
     'rgb(0, 0, 0)',
@@ -140,7 +142,7 @@ const colorRefs = colorMatrix.map((row) => {
 onUpdated(() => {
   if (props.forceClosed && colorSelectOpen) {
     colorSelectOpen.value = false;
-    selectedColor.value = 'rgb(38, 203, 255)';
+    selectedColor.value = DEFAULT_COLOR;
     cursor.value = [0, 0];
   }
 });

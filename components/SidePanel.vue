@@ -24,16 +24,19 @@
     <div class="flex flex-1"></div>
 
     <!-- submit -->
-    <button
-      id="side-panel-submit"
-      @click="$emit('onSubmit', $event)"
-      :disabled="disableSubmit"
-      type="submit"
-      :class="[disableSubmit ? 'bg-slate-400' : 'bg-slate-700']"
-      class="h-14 rounded-sm text-lg text-slate-200 focus:outline-none focus:border-2 focus:border-slate-400"
-    >
-      <slot name="submit-text">Submit</slot>
-    </button>
+    <div class="w-full flex">
+      <button
+        id="side-panel-submit"
+        @click="$emit('onSubmit', $event)"
+        :disabled="disableSubmit"
+        type="submit"
+        :class="[disableSubmit ? 'bg-slate-400' : 'bg-slate-700']"
+        class="flex-1 h-14 rounded-sm text-lg text-slate-200 focus:outline-none focus:border-2 focus:border-slate-400"
+      >
+        <slot name="submit-text">Submit</slot>
+      </button>
+      <slot name="extra-button"></slot>
+    </div>
   </div>
 
   <!-- modal backgrounds -->
@@ -57,6 +60,6 @@ defineProps<{
 }>();
 defineEmits<{
   (e: 'onSubmit', v: MouseEvent): void;
-  (e: 'onClose', v: MouseEvent): void;
+  (e: 'onClose', v: MouseEvent | KeyboardEvent): void;
 }>();
 </script>

@@ -5,6 +5,7 @@
       class="flex relative bg-white cursor-pointer border border-slate-300 rounded-sm"
     >
       <input
+        id="month-year-select"
         inputmode="none"
         autocomplete="off"
         readonly
@@ -97,6 +98,7 @@ const decrementYear = () => {
 };
 const selectMonth = (date: Date) => {
   selectedMonth.value = date;
+  toggleModal();
   emit('onChange', selectedMonth.value, selectedYear.value);
 };
 </script>

@@ -1,4 +1,6 @@
 import {
+  DeleteItemArgs,
+  DeleteItemsRes,
   GetItemArgs,
   GetItemsRes,
   PatchItemArgs,
@@ -16,7 +18,7 @@ export const getItems = async ({
     headers: {
       'Content-Type': 'application/json',
       authorization:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2ODg1NDA1NzAsImV4cCI6MTY5NjMxNjU3MH0.-1iY37vLRQiUTY1YyDtIj9E1cdJFEADR5yYeFb2JQKI'
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
     },
     body: JSON.stringify({
       query: `
@@ -54,7 +56,7 @@ export const postItem = async (item: PostItemArgs): Promise<PostItemsRes> => {
     headers: {
       'Content-Type': 'application/json',
       authorization:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2ODg1NDA1NzAsImV4cCI6MTY5NjMxNjU3MH0.-1iY37vLRQiUTY1YyDtIj9E1cdJFEADR5yYeFb2JQKI'
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
     },
     body: JSON.stringify({
       query: `
@@ -95,13 +97,15 @@ export const postItem = async (item: PostItemArgs): Promise<PostItemsRes> => {
 
 export const patchItem = async (
   item: PatchItemArgs
-): Promise<PatchItemsRes> => {
-  const response = await fetch('http://localhost:4000/graphql', {
+): Promise<PatchItemsRes[]> => {
+  let result: any[] = [];
+
+  const singleUpdateResponse = await fetch('http://localhost:4000/graphql', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       authorization:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2ODg1NDA1NzAsImV4cCI6MTY5NjMxNjU3MH0.-1iY37vLRQiUTY1YyDtIj9E1cdJFEADR5yYeFb2JQKI'
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
     },
     body: JSON.stringify({
       query: `
@@ -135,8 +139,83 @@ export const patchItem = async (
         `
     })
   });
-  const { data } = await response.json();
-  console.log('data', data);
 
-  return data.updateTask;
+  const { data } = await singleUpdateResponse.json();
+  result = [data.updateTask];
+
+  if (item.title && (item.group !== undefined || item.color !== undefined)) {
+    const multiColorAndGroupUpdateResponse = await fetch(
+      'http://localhost:4000/graphql',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          authorization:
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
+        },
+        body: JSON.stringify({
+          query: `
+          mutation {
+            updateTaskColourAndGroup (
+              title: "${item.title}",
+              ${typeof item.group === 'string' ? `group: "${item.group}",` : ''}
+              ${
+                typeof item.color === 'string' ? `colour: "${item.color}",` : ''
+              }
+              ) {
+                id
+                title
+                group
+                description
+                colour
+                start
+                end
+                createdAt
+                percentageTimes {
+                  startPercentage
+                  endPercentage
+                }
+                luminance
+                user {
+                  id
+                  name
+                }
+            }
+          }
+        `
+        })
+      }
+    );
+    const { data } = await multiColorAndGroupUpdateResponse.json();
+    result = data.updateTaskColourAndGroup;
+  }
+
+  return result;
+};
+
+export const deleteItem = async (
+  item: DeleteItemArgs
+): Promise<DeleteItemsRes> => {
+  const response = await fetch('http://localhost:4000/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      authorization:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
+    },
+    body: JSON.stringify({
+      query: `
+          mutation {
+            deleteTask (
+              id: "${item.id}",
+              ) {
+                id
+            }
+          }
+        `
+    })
+  });
+
+  const { data } = await response.json();
+  return data.deleteTask;
 };

@@ -45,6 +45,13 @@ export const minutesToHoursAndMinutes = (minutes: number) => {
   };
 };
 
+export const millisecondsToHoursAndMinutes = (milliseconds) => {
+  const hours = Math.floor(milliseconds / (1000 * 60 * 60));
+  const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+
+  return { hours, minutes };
+};
+
 export const getDateId = (date: Date) => {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 };
@@ -92,3 +99,12 @@ export const getAllMonthsInYear = (year: number) => {
 const timeZoneOffset = minutesToHoursAndMinutes(new Date().getTimezoneOffset());
 export const applyTZOffset = (date: Date) =>
   sub(date, { hours: timeZoneOffset.hours, minutes: timeZoneOffset.minutes });
+
+export const isToday = (date: Date) => {
+  const today = new Date();
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  );
+};

@@ -1,15 +1,5 @@
 <template>
-  <!-- v-on:drop="
-      isReady ? $emit('insertNewItem', $event, date, containerRect) : null
-    " -->
-  <div
-    ref="container"
-    id="shift-row"
-    class="flex h-14 w-full relative"
-    :class="[!isReady ? 'bg-transparent' : 'bg-transparent']"
-    @dragenter.prevent
-    @dragover.prevent
-  >
+  <div ref="container" id="shift-row" class="flex h-14 w-full relative">
     <div
       v-if="ids"
       v-for="(id, index) in ids?.value || []"
@@ -17,7 +7,7 @@
       :key="id"
       :style="`${items?.value[id].style} background-color:${items?.value[id].colour}`"
       :id="`${items?.value[id].id}-${index}-${id}-container`"
-      class="h-full py-0.5 rounded-sm flex overflow-hidden absolute"
+      class="h-full py-0.5 rounded-sm flex overflow-hidden absolute animate-fade-in"
     >
       <div
         v-if="items?.value[id].isStart"
@@ -90,8 +80,7 @@ defineEmits<{
     container: Container,
     target: FormattedItem,
     min: number,
-    max: number,
-    date: Date
+    max: number
   ): void;
   (
     e: 'changeItemEndTime',
@@ -100,10 +89,8 @@ defineEmits<{
     container: Container,
     target: FormattedItem,
     min: number,
-    max: number,
-    date: Date
+    max: number
   ): void;
-  // (e: 'insertNewItem', v: DragEvent, date: Date, container: Container): void;
 }>();
 
 const container = ref<null | HTMLElement>(null);
@@ -128,16 +115,12 @@ const getNextStart = (index: number) => {
 const isReady = ref(false);
 const setReady = () => setTimeout(() => (isReady.value = true), 500);
 
-const getOpacity = (luminance: number) => {
-  if (luminance > 0.6) return 0.03;
-  if (luminance > 0.4) return 0.04;
-  if (luminance > 0.3) return 0.2;
-  if (luminance > 0.2) return 0.2;
-  if (luminance > 0.1) return 0.4;
-  return 0.5;
-};
-
-onMounted(setReady);
+onMounted(() => {
+  setReady();
+  if (container.value && isToday(props.date)) {
+    container.value.scrollIntoView({ block: 'center' });
+  }
+});
 onUpdated(() => {
   if (container.value) {
     const rect = container.value.getBoundingClientRect();

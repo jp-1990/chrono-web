@@ -36,7 +36,10 @@ export type FormattedItems = {
 };
 
 export type GetItemArgs = { startDate: Date; endDate: Date };
-export type GetItemsRes = Item[];
+export type GetItemsRes = (Omit<Item, 'start' | 'end'> & {
+  start: string;
+  end: string;
+})[];
 
 export type PostItemArgs = {
   title: string;
@@ -51,11 +54,18 @@ export type PostItemsRes = Item;
 export type PatchItemArgs = {
   id: string;
   title: string;
+  group?: string;
   notes: string;
   startDate: string;
   endDate: string;
+  color?: string;
 };
 export type PatchItemsRes = Item;
+
+export type DeleteItemArgs = {
+  id: string;
+};
+export type DeleteItemsRes = { id: string };
 
 export type Container = {
   left: number;

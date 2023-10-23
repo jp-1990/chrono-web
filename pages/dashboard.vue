@@ -82,6 +82,34 @@
     </section>
   </div>
 
+  <!-- key -->
+  <div
+    v-if="Object.keys(itemsKey).length"
+    class="flex flex-col justify-center fixed bottom-4 left-4 w-56 p-1 bg-slate-100 rounded-sm"
+  >
+    <ul class="flex flex-col">
+      <li
+        v-for="(value, key) in itemsKey"
+        class="flex items-center text-slate-500"
+      >
+        <div :style="`background-color: ${value[1]}`" class="w-6 h-6 m-1"></div>
+        <div class="ml-1 mr-1 flex items-center flex-1 justify-between">
+          <p>
+            {{ key }}
+          </p>
+          <div class="flex font-mono font-light text-slate-400">
+            <p class="mr-0.5">
+              {{ millisecondsToHoursAndMinutes(value[0]).hours }}h
+            </p>
+            <p class="w-8 flex justify-end">
+              {{ millisecondsToHoursAndMinutes(value[0]).minutes }}m
+            </p>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </div>
+
   <!-- drag tracker -->
   <div
     v-if="mouseDownState.pressed"
@@ -99,6 +127,7 @@
     <add-icon :size="30" class="text-slate-200" />
   </div>
 
+  <!-- create panel -->
   <side-panel
     :is-open="taskModal.open === 'create'"
     @on-close="onCloseCreateTaskModal"
@@ -106,68 +135,70 @@
   >
     <template v-slot:title-text>Add Task</template>
     <template v-slot:content>
-      <label for="title" class="text-xs mt-2 mb-1">Title*</label>
+      <label for="create-title" class="text-xs mt-2 mb-1">Title*</label>
       <input
         @blur="onTitleBlur"
-        id="title"
+        id="create-title"
         ref="titleRefCreate"
         :class="[formState.valid.title === false ? 'border-red-600' : '']"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Title"
-        name="title"
+        name="create-title"
         v-model="formState.data.title"
       />
 
-      <label for="group" class="text-xs mt-2 mb-1">Group*</label>
+      <label for="create-group" class="text-xs mt-2 mb-1">Group*</label>
       <input
         @blur="onGroupBlur"
-        id="group"
+        id="create-group"
         :class="[formState.valid.group === false ? 'border-red-600' : '']"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Group"
-        name="group"
+        name="create-group"
         v-model="formState.data.group"
       />
 
-      <label for="notes" class="text-xs mt-2 mb-1">Notes</label>
+      <label for="create-notes" class="text-xs mt-2 mb-1">Notes</label>
       <input
-        id="notes"
+        id="create-notes"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Notes"
-        name="notes"
+        name="create-notes"
         v-model="formState.data.notes"
       />
 
-      <label for="start" class="text-xs mt-2 mb-1">Start*</label>
+      <label for="create-start" class="text-xs mt-2 mb-1">Start*</label>
       <input
         @blur="onStartDateBlur"
         type="datetime-local"
-        id="start"
+        id="create-start"
         :class="[formState.valid.startDate === false ? 'border-red-600' : '']"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        name="start"
+        name="create-start"
         v-model="formState.data.startDate"
       />
 
-      <label for="end" class="text-xs mt-2 mb-1">End*</label>
+      <label for="create-end" class="text-xs mt-2 mb-1">End*</label>
       <input
         @blur="onEndDateBlur"
         type="datetime-local"
-        id="end"
+        id="create-end"
         :class="[formState.valid.endDate === false ? 'border-red-600' : '']"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        name="end"
+        name="create-end"
         v-model="formState.data.endDate"
       />
 
       <color-select
         @on-change="setColor"
+        :value="formState.data.color"
         :force-closed="taskModal.open !== 'create'"
       />
     </template>
     <template v-slot:submit-text>Create Task</template>
   </side-panel>
 
+  <!-- update panel -->
   <side-panel
     :is-open="taskModal.open === 'update'"
     @on-close="onCloseUpdateTaskModal"
@@ -175,57 +206,57 @@
   >
     <template v-slot:title-text>Update Task</template>
     <template v-slot:content>
-      <label for="title" class="text-xs mt-2 mb-1">Title*</label>
+      <label for="update-title" class="text-xs mt-2 mb-1">Title*</label>
       <input
         @blur="onTitleBlur"
-        id="title"
+        id="update-title"
         ref="titleRefUpdate"
         :class="[formState.valid.title === false ? 'border-red-600' : '']"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Title"
-        name="title"
+        name="update-title"
         v-model="formState.data.title"
       />
 
-      <label for="group" class="text-xs mt-2 mb-1">Group*</label>
+      <label for="update-group" class="text-xs mt-2 mb-1">Group*</label>
       <input
         @blur="onGroupBlur"
-        id="group"
+        id="update-group"
         :class="[formState.valid.group === false ? 'border-red-600' : '']"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Group"
-        name="group"
+        name="update-group"
         v-model="formState.data.group"
       />
 
-      <label for="notes" class="text-xs mt-2 mb-1">Notes</label>
+      <label for="update-notes" class="text-xs mt-2 mb-1">Notes</label>
       <input
-        id="notes"
+        id="update-notes"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
         placeholder="Notes"
-        name="notes"
+        name="update-notes"
         v-model="formState.data.notes"
       />
 
-      <label for="start" class="text-xs mt-2 mb-1">Start*</label>
+      <label for="update-start" class="text-xs mt-2 mb-1">Start*</label>
       <input
         @blur="onStartDateBlur"
         type="datetime-local"
-        id="start"
+        id="update-start"
         :class="[formState.valid.startDate === false ? 'border-red-600' : '']"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        name="start"
+        name="update-start"
         v-model="formState.data.startDate"
       />
 
-      <label for="end" class="text-xs mt-2 mb-1">End*</label>
+      <label for="update-end" class="text-xs mt-2 mb-1">End*</label>
       <input
         @blur="onEndDateBlur"
         type="datetime-local"
-        id="end"
+        id="update-end"
         :class="[formState.valid.endDate === false ? 'border-red-600' : '']"
         class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        name="end"
+        name="update-end"
         v-model="formState.data.endDate"
       />
 
@@ -236,11 +267,29 @@
       />
     </template>
     <template v-slot:submit-text>Update Task</template>
+    <template v-slot:extra-button>
+      <div class="w-2"></div>
+      <button
+        id="side-panel-delete"
+        @click="onDeleteTask"
+        class="flex-1 h-14 rounded-sm text-lg bg-red-600 text-slate-200 focus:outline-none focus:border-2 focus:border-slate-400"
+      >
+        Delete
+      </button>
+    </template>
   </side-panel>
 </template>
 
 <script setup lang="ts">
-import { add, sub, format, startOfDay, endOfDay } from 'date-fns';
+import {
+  add,
+  sub,
+  format,
+  startOfDay,
+  endOfDay,
+  startOfMonth,
+  endOfMonth
+} from 'date-fns';
 import { ref, computed } from 'vue';
 import AddIcon from 'vue-material-design-icons/Plus.vue';
 import {
@@ -250,15 +299,21 @@ import {
   timeOfDayToPercentage,
   applyTZOffset
 } from '~~/utils/date';
-import { FormattedItem, PostItemArgs, PatchItemArgs } from '~/types/item';
+import {
+  FormattedItem,
+  PostItemArgs,
+  PatchItemArgs,
+  DeleteItemArgs
+} from '~/types/item';
 import { Validation } from '~/types/form';
 import { formatItems } from '~/utils/item';
-import { getItems, postItem, patchItem } from '~/utils/api';
+import { getItems, postItem, patchItem, deleteItem } from '~/utils/api';
 import {
   validateDate,
   validateGroup,
   validateTitle
 } from '~/utils/form/validation';
+import { DEFAULT_COLOR } from '~/constants/colors';
 
 const hoursInDay = ref(getAllHoursInDay());
 
@@ -277,7 +332,7 @@ const onCalendarChange = (month: Date, year: Date) => {
   selectedYear.value = year;
 };
 
-// TASKS
+// ITEMS
 
 const { data, pending, error, refresh } = await useAsyncData(
   'getItems',
@@ -299,6 +354,25 @@ const formattedItems = computed(() =>
   )
 );
 
+const itemsKey = computed(() => {
+  const key: Record<string, [number, string]> = {};
+
+  const startMonthMs = startOfMonth(selectedMonth.value).getTime();
+  const endMonthMs = endOfMonth(selectedMonth.value).getTime();
+
+  for (const item of data.value ?? []) {
+    if (+item.end <= startMonthMs) continue;
+    if (+item.start >= endMonthMs) continue;
+
+    const itemStart = +item.start < startMonthMs ? startMonthMs : +item.start;
+    const itemEnd = +item.end > endMonthMs ? endMonthMs : +item.end;
+
+    const duration = itemEnd - itemStart;
+    key[item.title] = [duration + (key[item.title]?.[0] ?? 0), item.colour];
+  }
+  return key;
+});
+
 // MODAL
 
 const titleRefCreate = ref<HTMLElement | null>(null);
@@ -314,7 +388,7 @@ const formState = ref<{ id: string; data: PostItemArgs; valid: Validation }>({
     endDate: applyTZOffset(add(new Date(Date.now()), { minutes: 5 }))
       .toISOString()
       .slice(0, -8),
-    color: 'rgb(38, 203, 255)'
+    color: DEFAULT_COLOR
   },
   valid: {
     title: undefined as boolean | undefined,
@@ -337,7 +411,7 @@ const resetFormState = () => {
   )
     .toISOString()
     .slice(0, -8);
-  formState.value.data.color = 'rgb(38, 203, 255)';
+  formState.value.data.color = DEFAULT_COLOR;
 
   formState.value.valid.title = undefined;
   formState.value.valid.group = undefined;
@@ -456,7 +530,12 @@ const onCloseUpdateTaskModal = () => {
   }
 };
 
-const onTitleBlur = () => validateTitle(formState);
+const onTitleBlur = () => {
+  if (itemsKey.value[formState.value.data.title]) {
+    formState.value.data.color = itemsKey.value[formState.value.data.title][1];
+  }
+  return validateTitle(formState);
+};
 const onGroupBlur = () => validateGroup(formState);
 const onStartDateBlur = () => validateDate(formState, formattedItems);
 // TODO; validation bug: 7:40 - 7:50 same day was invalid for some reason
@@ -503,7 +582,30 @@ const onUpdateTask = async () => {
   try {
     const patchArgs: PatchItemArgs = formState.value.data as any;
     patchArgs.id = formState.value.id;
+
+    if (patchArgs.group === taskModal.value.task?.group)
+      patchArgs.group = undefined;
+    if (patchArgs.color === taskModal.value.task?.colour)
+      patchArgs.color = undefined;
+
     await patchItem(patchArgs);
+    await refresh();
+
+    resetFormState();
+  } catch (e) {
+    console.log('error', e);
+  }
+};
+
+// DELETE TASK
+
+const onDeleteTask = async () => {
+  taskModal.value.open = undefined;
+
+  try {
+    const deleteArgs: DeleteItemArgs = { id: formState.value.id };
+
+    await deleteItem(deleteArgs);
     await refresh();
 
     resetFormState();

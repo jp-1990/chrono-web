@@ -61,7 +61,7 @@ export const formatItems = (
           if (!structure[dateId]) continue;
 
           // first day
-          const endDate = set(localEnd, {
+          const endDate = set(localStart, {
             hours: 23,
             minutes: 59,
             seconds: 59,

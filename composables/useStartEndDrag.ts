@@ -29,8 +29,7 @@ export const useStartEndDrag = (breakpoint: number) => {
     container: Container,
     target: FormattedItem,
     min: number,
-    max: number,
-    date: Date
+    max: number
   ) => {
     if (mouseDownState.value.pressed) return;
 
@@ -41,7 +40,6 @@ export const useStartEndDrag = (breakpoint: number) => {
     mouseDownState.value.target = target;
     mouseDownState.value.min = min;
     mouseDownState.value.max = max;
-    mouseDownState.value.date = date;
 
     setDragTime(target[handle]);
   };
