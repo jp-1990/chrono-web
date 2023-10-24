@@ -307,7 +307,7 @@ import {
 } from '~/types/item';
 import { Validation } from '~/types/form';
 import { formatItems } from '~/utils/item';
-import { getItems, postItem, patchItem, deleteItem } from '~/utils/api';
+import { getItems, postItem, patchItem, deleteItem } from '~/utils/api-item';
 import {
   validateDate,
   validateGroup,
@@ -341,7 +341,7 @@ const { data, pending, error, refresh } = await useAsyncData(
       startDate: sub(startDate.value, { days: 1 }),
       endDate: add(endDate.value, { days: 1 })
     }),
-  { watch: [startDate, endDate] }
+  { watch: [startDate, endDate], server: false }
 );
 
 const formattedItems = computed(() =>
@@ -538,7 +538,6 @@ const onTitleBlur = () => {
 };
 const onGroupBlur = () => validateGroup(formState);
 const onStartDateBlur = () => validateDate(formState, formattedItems);
-// TODO; validation bug: 7:40 - 7:50 same day was invalid for some reason
 const onEndDateBlur = () => validateDate(formState, formattedItems);
 
 // ADD TASK

@@ -17,8 +17,7 @@ export const getItems = async ({
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      authorization:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
+      authorization: `${window.localStorage.getItem('token')}`
     },
     body: JSON.stringify({
       query: `
@@ -55,8 +54,7 @@ export const postItem = async (item: PostItemArgs): Promise<PostItemsRes> => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      authorization:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
+      authorization: `${window.localStorage.getItem('token')}`
     },
     body: JSON.stringify({
       query: `
@@ -104,8 +102,7 @@ export const patchItem = async (
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      authorization:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
+      authorization: `${window.localStorage.getItem('token')}`
     },
     body: JSON.stringify({
       query: `
@@ -139,7 +136,6 @@ export const patchItem = async (
         `
     })
   });
-
   const { data } = await singleUpdateResponse.json();
   result = [data.updateTask];
 
@@ -150,8 +146,7 @@ export const patchItem = async (
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          authorization:
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
+          authorization: `${window.localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           query: `
@@ -215,7 +210,6 @@ export const deleteItem = async (
         `
     })
   });
-
   const { data } = await response.json();
   return data.deleteTask;
 };

@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex">
     <div class="flex flex-col h-screen">
-      <NuxtLink to="/dashboard">
+      <NuxtLink to="/">
         <div class="flex items-center h-14 bg-slate-800">
           <span class="text-slate-100 font-bold text-lg pl-4"> LOGO </span>
           <span class="text-slate-100 pl-2"> name </span>
@@ -52,10 +52,10 @@ const currentRoute = useRoute();
 const routes = [
   {
     id: 0,
-    url: '/dashboard',
-    text: 'Dashboard',
+    url: '/timeline',
+    text: 'Timeline',
     icon: Dashboard
-  },
+  }
   // {
   //   id: 1,
   //   url: `/company`,
@@ -82,12 +82,12 @@ const routes = [
   //     }
   //   ]
   // },
-  {
-    id: 1,
-    url: '/settings',
-    text: 'Settings',
-    icon: Settings
-  }
+  // {
+  //   id: 2,
+  //   url: '/settings',
+  //   text: 'Settings',
+  //   icon: Settings
+  // }
 ];
 
 const openList = ref<number | undefined>(

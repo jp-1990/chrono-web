@@ -30,19 +30,23 @@
             label-class="text-slate-700 font-normal"
           />
           <FormKit
-            type="text"
+            type="password"
             name="password"
             id="password"
             label="Password"
-            placeholder="testing"
+            placeholder="********"
             label-class="text-slate-700 font-normal"
           />
+          <div :class="[errors.length ? 'h-1' : 'h-8']"></div>
           <FormKit
             type="submit"
             :disabled="disabled"
             label="Sign in"
-            outer-class="m-8 mt-12"
             input-class="w-full py-2 justify-center bg-slate-700 text-xl"
+            outer-class="mx-8"
+            message-class="mb-2 !text-sm text-center"
+            messages-class="!mt-0"
+            :errors="errors"
           />
         </FormKit>
       </section>
@@ -71,13 +75,31 @@
 </template>
 
 <script setup lang="ts">
+import { login } from '~/utils/api-user';
 definePageMeta({
   layout: false
 });
+
 const router = useRouter();
 
-const onSubmit = (fields: { email: string; password: string }) => {
-  console.log(fields);
-  router.push('/dashboard');
+const errors = ref<string[]>([]);
+
+const onSubmit = async (fields: { email: string; password: string }) => {
+  errors.value = [];
+  const response = await login(fields);
+
+  if (!response) {
+    errors.value = ['Incorrect email or password'];
+    return;
+  }
+
+  if (response) {
+    console.log(response);
+
+    window?.localStorage.setItem('token', response.token);
+    window?.localStorage.setItem('tokenExpires', response.tokenExpires);
+
+    router.push('/');
+  }
 };
 </script>
