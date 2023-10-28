@@ -54,11 +54,7 @@
             <li class="ml-2">Settings</li>
           </NuxtLink>
           <span class="h-px mx-1 my-1 bg-slate-100"></span>
-          <NuxtLink
-            @click="toggleUserMenu"
-            to="/login"
-            class="flex items-center my-1"
-          >
+          <NuxtLink @click="logout" to="/login" class="flex items-center my-1">
             <component :size="20" :is="Logout" />
             <li class="ml-2">Logout</li>
           </NuxtLink>
@@ -133,6 +129,12 @@ const toggleOpenList = (id: number) => {
 
 const userMenu = ref(false);
 const toggleUserMenu = () => (userMenu.value = !userMenu.value);
+
+const logout = () => {
+  userMenu.value = false;
+  window.localStorage.removeItem('token');
+  window.localStorage.removeItem('tokenExpires');
+};
 
 const userMenuEl = ref(null);
 const userMenuButtonEl = ref(null);

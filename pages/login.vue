@@ -64,7 +64,7 @@
           important tasks!
         </p>
         <NuxtLink
-          to="/login"
+          to="/create-account"
           class="bg-slate-100 px-14 py-3 rounded text-xl text-slate-700"
         >
           Learn more
@@ -94,8 +94,6 @@ const onSubmit = async (fields: { email: string; password: string }) => {
   }
 
   if (response) {
-    console.log(response);
-
     window?.localStorage.setItem('token', response.token);
     window?.localStorage.setItem('tokenExpires', response.tokenExpires);
 
