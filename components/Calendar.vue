@@ -1,6 +1,7 @@
 <template>
   <div class="flex flex-col w-36 px-2 py-2">
     <div
+      ref="calendarButtonEl"
       @click="toggleModal"
       class="flex relative bg-white cursor-pointer border border-slate-300 rounded-sm"
     >
@@ -20,10 +21,10 @@
         class="absolute mt-px top-1/2 -translate-y-1/2 left-1.5 text-slate-500"
       />
     </div>
-    <div class="relative">
+    <div ref="calendarEl" class="relative">
       <div
         v-if="modalOpen"
-        class="absolute top-0.5 z-30 flex flex-col bg-white border border-slate-300 w-48 pb-0.5 rounded-sm"
+        class="absolute top-0.5 z-20 flex flex-col bg-white border border-slate-300 w-48 pb-0.5 rounded-sm"
       >
         <div class="flex justify-center items-center">
           <div class="flex items-center font-mono text-slate-400 text-xl my-1">
@@ -55,12 +56,6 @@
       </div>
     </div>
   </div>
-
-  <div
-    v-if="modalOpen"
-    @click="toggleModal"
-    class="fixed z-20 h-full w-full bg-transparent"
-  ></div>
 </template>
 
 <script setup lang="ts">
@@ -101,4 +96,18 @@ const selectMonth = (date: Date) => {
   toggleModal();
   emit('onChange', selectedMonth.value, selectedYear.value);
 };
+
+const calendarEl = ref(null);
+const calendarButtonEl = ref(null);
+
+const closeUserMenuListener = (event) => {
+  if (
+    !(calendarEl.value as any)?.contains(event.target) &&
+    !(calendarButtonEl.value as any)?.contains(event.target)
+  ) {
+    if (modalOpen.value) modalOpen.value = false;
+  }
+};
+
+useEventListener('click', closeUserMenuListener);
 </script>

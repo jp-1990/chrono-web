@@ -1,5 +1,5 @@
 <template>
-  <div class="w-12 h-12 bg-transparent mr-1 mb-0.5 p-0.5 cursor-pointer">
+  <div class="w-12 h-12 bg-transparent mr-1 cursor-pointer">
     <div
       class="bg-slate-50 rounded-lg flex justify-center items-center h-full w-full"
     >

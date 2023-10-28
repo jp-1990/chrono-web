@@ -195,8 +195,7 @@ export const deleteItem = async (
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      authorization:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1ZjI1YTE3YjgxZmFkOTQ0MzA4MjBmMzgiLCJpYXQiOjE2OTY0NTA4MjQsImV4cCI6MTcwNDIyNjgyNH0.FX-d0qeb8aFZ7WBZiFhtH_TDFpf7MPeURgrJi8S4oiw'
+      authorization: `${window.localStorage.getItem('token')}`
     },
     body: JSON.stringify({
       query: `

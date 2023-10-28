@@ -315,6 +315,7 @@ import {
 } from '~/utils/form/validation';
 import { DEFAULT_COLOR } from '~/constants/colors';
 
+useAuthCheck();
 const hoursInDay = ref(getAllHoursInDay());
 
 // MONTH YEAR SELECT
@@ -629,13 +630,13 @@ const computedBreakpoint = computed(() => {
 const { onMouseDown, onMouseMove, onMouseUp, dragTime, mouseDownState } =
   useStartEndDrag(computedBreakpoint.value);
 
-onMounted(() => {
-  window?.addEventListener('keydown', (e) => {
-    if (e.key === 'i' && taskModal.value.open === undefined) {
-      e.preventDefault();
-      onOpenCreateTaskModal();
-      titleRefCreate.value!.focus();
-    }
-  });
-});
+const openCreateTaskModalListener = (e) => {
+  if (e.key === 'i' && taskModal.value.open === undefined) {
+    e.preventDefault();
+    onOpenCreateTaskModal();
+    titleRefCreate.value!.focus();
+  }
+};
+
+useEventListener('keydown', openCreateTaskModalListener);
 </script>

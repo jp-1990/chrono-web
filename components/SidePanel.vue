@@ -3,7 +3,7 @@
     @keyup.escape="isOpen && $emit('onClose', $event)"
     tabindex="0"
     :class="[isOpen ? 'border-l' : 'translate-x-96 border-none']"
-    class="fixed z-30 w-96 p-2 top-0 right-0 flex flex-col h-screen overflow-hidden bg-white border-l-slate-200 duration-200"
+    class="fixed z-40 w-96 p-2 top-0 right-0 flex flex-col h-screen overflow-hidden bg-white border-l-slate-200 duration-200"
   >
     <!-- title -->
     <header
@@ -47,7 +47,7 @@
         ? 'w-full opacity-20 [transition:opacity_0.2s_cubic-bezier(0.4,0,0.2,1)_0s]'
         : 'w-0 opacity-0 [transition:width,_0s,_linear,_1s,opacity_0.2s_cubic-bezier(0.4,0,0.2,1)_0s]'
     ]"
-    class="fixed z-20 h-full bg-black"
+    class="fixed z-30 h-full bg-black"
   ></div>
 </template>
 

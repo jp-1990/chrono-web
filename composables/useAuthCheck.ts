@@ -1,10 +1,8 @@
 import { AUTH_ROUTES } from '~/constants/routes';
 
-export default defineNuxtRouteMiddleware((to, from) => {
-  // skip middleware on server
-  if (process.server) return;
-
-  if (AUTH_ROUTES.includes(to.path)) return;
+const authCheck = () => {
+  const router = useRouter();
+  const route = useRoute();
 
   const token = window.localStorage.getItem('token');
   const tokenExpires = window.localStorage.getItem('tokenExpires');
@@ -16,7 +14,13 @@ export default defineNuxtRouteMiddleware((to, from) => {
     window.localStorage.removeItem('token');
     window.localStorage.removeItem('tokenExpires');
 
-    if (AUTH_ROUTES.includes(from.path)) return abortNavigation();
-    return navigateTo('/login');
+    if (AUTH_ROUTES.includes(route.path ?? '')) return;
+    router.push({ path: '/login' });
   }
-});
+};
+
+export const useAuthCheck = () => {
+  onUpdated(() => {
+    authCheck();
+  });
+};
