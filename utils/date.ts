@@ -96,9 +96,13 @@ export const getAllMonthsInYear = (year: number) => {
   return months;
 };
 
-const timeZoneOffset = minutesToHoursAndMinutes(new Date().getTimezoneOffset());
-export const applyTZOffset = (date: Date) =>
-  sub(date, { hours: timeZoneOffset.hours, minutes: timeZoneOffset.minutes });
+const getTimeZoneOffset = (date: Date) =>
+  minutesToHoursAndMinutes(date.getTimezoneOffset());
+
+export const applyTZOffset = (date: Date) => {
+  const tzOffset = getTimeZoneOffset(date);
+  return sub(date, { hours: tzOffset.hours, minutes: tzOffset.minutes });
+};
 
 export const isToday = (date: Date) => {
   const today = new Date();
