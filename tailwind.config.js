@@ -9,13 +9,20 @@ module.exports = {
   theme: {
     extend: {
       animation: {
-        'fade-in': 'fade-in 0.2s'
+        'fade-in': 'fade-in 0.1s'
       },
       keyframes: {
         'fade-in': {
           '0%': { opacity: 0, filter: 'grayscale(100%) contrast(0)' },
           '100%': { opacity: 1, filter: 'grayscale(0%) contrast(1)' }
         }
+      },
+      colors: {
+        'primary-blue': '#1fbcfe',
+        'secondary-blue': '#5484CB',
+        'primary-gray': '#454851',
+        'secondary-gray': '#818CA0',
+        'primary-brown': '#705E57'
       }
     }
   }

@@ -10,11 +10,18 @@
       id="side-panel-header"
       class="flex justify-between items-start mb-2"
     >
-      <h1 class="text-2xl ml-2 mt-1 font-bold">
+      <h1 class="text-2xl ml-2 mt-1 font-bold text-slate-900">
         <slot name="title-text">Title</slot>
       </h1>
-      <close-icon @click="$emit('onClose', $event)" :size="30" role="button" />
+      <close-icon
+        class="text-slate-700"
+        @click="$emit('onClose', $event)"
+        :size="30"
+        role="button"
+      />
     </header>
+
+    <slot name="description-text"></slot>
 
     <!-- content -->
     <section id="side-panel-content" class="flex flex-col mx-2">
@@ -30,8 +37,8 @@
         @click="$emit('onSubmit', $event)"
         :disabled="disableSubmit"
         type="submit"
-        :class="[disableSubmit ? 'bg-slate-400' : 'bg-slate-700']"
-        class="flex-1 h-14 rounded-sm text-lg text-slate-200 focus:outline-none focus:border-2 focus:border-slate-400"
+        :class="[disableSubmit ? 'bg-slate-400' : 'bg-primary-blue']"
+        class="flex-1 h-14 rounded-sm text-lg text-slate-50 focus:outline-slate-700"
       >
         <slot name="submit-text">Submit</slot>
       </button>

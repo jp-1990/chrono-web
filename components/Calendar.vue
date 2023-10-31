@@ -1,25 +1,23 @@
 <template>
-  <div class="flex flex-col w-36 px-2 py-2">
+  <div class="flex flex-col w-32 min-w-[128px]">
     <div
       ref="calendarButtonEl"
       @click="toggleModal"
-      class="flex relative bg-white cursor-pointer border border-slate-300 rounded-sm"
+      class="flex justify-between items-center relative bg-white cursor-pointer border border-slate-300 rounded-sm"
     >
+      <month-calendar-icon :size="18" class="ml-2 mt-0.5 text-slate-500" />
       <input
         id="month-year-select"
         inputmode="none"
         autocomplete="off"
         readonly
-        class="w-full h-8 ml-9 cursor-pointer font-mono font-light text-slate-500 bg-transparent outline-none"
+        class="h-8 max-w-[72px] cursor-pointer font-mono font-light text-slate-500 bg-transparent outline-none"
         :value="`${format(selectedMonth, 'MMM').toUpperCase()} ${format(
           selectedYear,
           'yyyy'
         )}`"
       />
-      <month-calendar-icon
-        :size="18"
-        class="absolute mt-px top-1/2 -translate-y-1/2 left-1.5 text-slate-500"
-      />
+      <div class="mr-1"></div>
     </div>
     <div ref="calendarEl" class="relative">
       <div
@@ -27,15 +25,22 @@
         class="absolute top-0.5 z-20 flex flex-col bg-white border border-slate-300 w-48 pb-0.5 rounded-sm"
       >
         <div class="flex justify-center items-center">
-          <div class="flex items-center font-mono text-slate-400 text-xl my-1">
-            <div @click="decrementYear" class="cursor-pointer">
-              <left-icon :size="18" />
+          <div class="flex items-center font-mono text-slate-100 text-xl my-1">
+            <div
+              @click="decrementYear"
+              class="cursor-pointer bg-primary-blue rounded-sm p-0.5 pr-1"
+            >
+              <left-icon :size="16" />
             </div>
-            <span class="px-7 mx-3 border text-slate-500">{{
-              format(selectedYear, 'yyyy')
-            }}</span>
-            <div @click="incrementYear" class="cursor-pointer">
-              <right-icon :size="18" />
+            <span
+              class="px-7 mx-2.5 border border-slate-300 rounded-sm text-slate-500"
+              >{{ format(selectedYear, 'yyyy') }}</span
+            >
+            <div
+              @click="incrementYear"
+              class="cursor-pointer bg-primary-blue rounded-sm p-0.5 pl-1"
+            >
+              <right-icon :size="16" />
             </div>
           </div>
         </div>
@@ -45,10 +50,10 @@
             @click="selectMonth(month)"
             :class="[
               month.valueOf() === selectedMonth.valueOf()
-                ? 'bg-slate-500 text-slate-200'
-                : 'bg-slate-200 text-slate-500'
+                ? 'bg-primary-blue text-slate-100'
+                : 'bg-white text-slate-500'
             ]"
-            class="flex items-center h-8 m-0.5 px-4 font-mono font-light cursor-pointer"
+            class="flex items-center h-8 m-0.5 px-4 font-mono font-light cursor-pointer rounded-sm"
           >
             <span>{{ format(month, 'MMM').toUpperCase() }}</span>
           </div>
@@ -93,7 +98,6 @@ const decrementYear = () => {
 };
 const selectMonth = (date: Date) => {
   selectedMonth.value = date;
-  toggleModal();
   emit('onChange', selectedMonth.value, selectedYear.value);
 };
 

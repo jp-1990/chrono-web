@@ -3,8 +3,10 @@
     <div class="flex flex-col h-screen">
       <NuxtLink to="/">
         <div class="flex items-center h-14 bg-slate-800">
-          <span class="text-slate-100 font-bold text-lg pl-4"> LOGO </span>
-          <span class="text-slate-100 pl-2"> name </span>
+          <span class="text-slate-100 font-bold text-lg pl-4">
+            <component :size="22" :is="Logo" />
+          </span>
+          <span class="text-slate-100 text-lg pl-2"> CHRONO </span>
         </div>
       </NuxtLink>
 
@@ -28,13 +30,13 @@
       class="relative flex flex-col w-full h-screen overflow-y-auto overflow-x-hidden"
     >
       <nav
-        class="relative flex items-center justify-between h-14 w-full bg-slate-50 border-b border-slate-300"
+        class="relative flex items-center justify-between h-14 w-full bg-slate-800 border-b border-slate-800"
       >
         <ul class="flex pl-6 text-slate-500 tracking-wide"></ul>
         <ul
           ref="userMenuButtonEl"
           @click="toggleUserMenu"
-          class="flex h-14 items-center"
+          class="flex h-14 items-center mr-1"
         >
           <user-icon />
         </ul>
@@ -44,7 +46,7 @@
         v-if="userMenu"
         class="absolute right-0 top-14 z-20 mt-0.5 py-2 px-3 w-32 bg-white border border-slate-300 border-r-0 rounded-r-none rounded-sm"
       >
-        <ul class="flex flex-col text-slate-500">
+        <ul class="flex flex-col text-slate-800">
           <NuxtLink
             @click="toggleUserMenu"
             to="/settings"
@@ -73,6 +75,7 @@ import Groups from 'vue-material-design-icons/FormatListGroup.vue';
 import Templates from 'vue-material-design-icons/FileTableBox.vue';
 import Settings from 'vue-material-design-icons/Cog.vue';
 import Logout from 'vue-material-design-icons/Logout.vue';
+import Logo from 'vue-material-design-icons/TimerCheckOutline.vue';
 const currentRoute = useRoute();
 
 const routes = [

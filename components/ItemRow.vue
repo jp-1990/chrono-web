@@ -1,5 +1,5 @@
 <template>
-  <div ref="container" id="shift-row" class="flex h-14 w-full relative">
+  <div ref="container" id="item-row" class="flex h-14 w-full relative">
     <div
       v-if="ids"
       v-for="(id, index) in ids?.value || []"

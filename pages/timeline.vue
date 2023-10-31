@@ -1,24 +1,66 @@
 <template>
-  <div class="relative flex flex-col flex-1 bg-slate-200">
+  <div class="relative flex flex-col flex-1 bg-white">
     <!-- header -->
-    <section class="flex justify-between items-center mx-2 mt-2">
-      <calendar
-        :selected-month="selectedMonth"
-        :selected-year="selectedYear"
-        @on-change="onCalendarChange"
-      />
+    <section class="flex justify-between items-start mx-4 mt-3 min-h-[48px]">
+      <div class="mt-1">
+        <calendar
+          :selected-month="selectedMonth"
+          :selected-year="selectedYear"
+          @on-change="onCalendarChange"
+        />
+      </div>
+
+      <!-- key -->
+      <div
+        v-if="Object.keys(itemsKey).length"
+        class="flex justify-center ml-2 mr-2 p-1.5 rounded-sm"
+      >
+        <ul class="flex flex-wrap">
+          <li
+            v-for="(value, key) in itemsKey"
+            class="flex items-center mr-5 last:mr-2"
+          >
+            <div
+              :style="`background-color: ${value[1]}`"
+              class="w-7 h-7 m-1 rounded-sm"
+            ></div>
+            <div class="ml-1 flex flex-col text-xs leading-3 text-slate-600">
+              <p class="ml-px">
+                {{ key }}
+              </p>
+              <div
+                class="flex font-mono tracking-tight font-light text-xs text-slate-400"
+              >
+                [<span class="mr-0.5"
+                  >{{ millisecondsToHoursAndMinutes(value[0]).hours }}h</span
+                >{{ millisecondsToHoursAndMinutes(value[0]).minutes }}m]
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- create button -->
+      <button
+        id="create-item"
+        @click="onOpenCreateTaskModal"
+        class="flex justify-center items-center mt-0.5 h-10 py-2 pl-3 pr-4 rounded-sm text-slate-50 bg-primary-blue focus:outline-slate-700"
+      >
+        <add-icon :size="22" class="text-slate-50 mr-1" />
+        <span class="min-w-fit"> Create Task </span>
+      </button>
     </section>
 
-    <section class="flex flex-col bg-slate-200 p-4 pt-2">
+    <section class="flex flex-col bg-slate-white p-4 pt-2">
       <!-- times row -->
       <div class="flex cursor-default">
-        <div class="h-6 w-10 mr-1 bg-slate-200"></div>
+        <div class="h-6 w-10 mr-1 bg-white"></div>
         <ul class="flex flex-1 mb-px">
           <li
             v-for="hour in hoursInDay"
-            class="h-5 w-[4.166666666666667%] bg-slate-200 font-mono font-light text-xs text-slate-400 border-l border-slate-300"
+            class="h-5 w-[4.166666666666667%] bg-white font-mono font-light text-xs text-slate-400 border-l border-slate-300"
           >
-            <div class="flex justify-center -translate-x-1/2 bg-slate-200">
+            <div class="flex justify-center -translate-x-1/2 bg-white">
               {{ format(hour, 'HHmm') }}
             </div>
           </li>
@@ -38,7 +80,7 @@
         }"
         class="flex flex-1 cursor-default"
       >
-        <ul class="flex flex-1 flex-col mb-16">
+        <ul class="flex flex-1 flex-col mb-2">
           <li
             v-for="date in datesInSelectedMonthYear"
             :key="date.toDateString()"
@@ -47,10 +89,10 @@
           >
             <!-- day date -->
             <div
-              class="w-10 h-14 mr-1 flex justify-center bg-slate-100 rounded-sm"
+              class="w-10 h-14 mr-1 flex justify-center border border-slate-200 rounded-sm"
             >
               <div
-                class="flex flex-col justify-center font-mono text-slate-400"
+                class="flex flex-col justify-center font-mono text-slate-500"
               >
                 <span class="font-light text-sm leading-none">
                   {{ format(date, 'E').toUpperCase() }}
@@ -62,7 +104,7 @@
             </div>
 
             <!-- tasks -->
-            <div class="h-14 flex flex-1 bg-slate-50 mb-0.5 rounded-sm">
+            <div class="h-14 flex flex-1 bg-white mb-0.5 rounded-sm">
               <!-- @insert-new-shift="onInsertNewShift" -->
               <item-row
                 @change-item-start-time="onMouseDown"
@@ -82,49 +124,12 @@
     </section>
   </div>
 
-  <!-- key -->
-  <div
-    v-if="Object.keys(itemsKey).length"
-    class="flex flex-col justify-center fixed bottom-4 left-4 w-56 p-1 bg-slate-100 rounded-sm"
-  >
-    <ul class="flex flex-col">
-      <li
-        v-for="(value, key) in itemsKey"
-        class="flex items-center text-slate-500"
-      >
-        <div :style="`background-color: ${value[1]}`" class="w-6 h-6 m-1"></div>
-        <div class="ml-1 mr-1 flex items-center flex-1 justify-between">
-          <p>
-            {{ key }}
-          </p>
-          <div class="flex font-mono font-light text-slate-400">
-            <p class="mr-0.5">
-              {{ millisecondsToHoursAndMinutes(value[0]).hours }}h
-            </p>
-            <p class="w-8 flex justify-end">
-              {{ millisecondsToHoursAndMinutes(value[0]).minutes }}m
-            </p>
-          </div>
-        </div>
-      </li>
-    </ul>
-  </div>
-
   <!-- drag tracker -->
   <div
     v-if="mouseDownState.pressed"
-    class="flex flex-col justify-center fixed bottom-2 left-64 h-8 w-16 ml-2 pl-2 bg-slate-900 text-slate-50 font-mono rounded-sm"
+    class="flex flex-col justify-center fixed bottom-2 left-64 h-8 w-16 ml-2 pl-2 bg-slate-800 text-slate-50 font-mono rounded-sm"
   >
     <span>{{ dragTime }}</span>
-  </div>
-
-  <!-- add button -->
-  <div
-    @click="onOpenCreateTaskModal"
-    role="button"
-    class="fixed bottom-4 right-8 h-14 w-14 flex items-center justify-center bg-slate-800 rounded-xl"
-  >
-    <add-icon :size="30" class="text-slate-200" />
   </div>
 
   <!-- create panel -->
@@ -272,7 +277,7 @@
       <button
         id="side-panel-delete"
         @click="onDeleteTask"
-        class="flex-1 h-14 rounded-sm text-lg bg-red-600 text-slate-200 focus:outline-none focus:border-2 focus:border-slate-400"
+        class="flex-1 h-14 rounded-sm text-lg bg-red-600 text-slate-200 focus:outline-slate-700"
       >
         Delete
       </button>
@@ -436,6 +441,7 @@ const taskModal = ref<{
 
 const onOpenCreateTaskModal = () => {
   taskModal.value.open = 'create';
+  titleRefCreate.value!.focus();
 };
 
 const onCloseCreateTaskModal = () => {
@@ -634,7 +640,6 @@ const openCreateTaskModalListener = (e) => {
   if (e.key === 'i' && taskModal.value.open === undefined) {
     e.preventDefault();
     onOpenCreateTaskModal();
-    titleRefCreate.value!.focus();
   }
 };
 
