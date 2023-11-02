@@ -163,6 +163,39 @@
         v-model="formState.data.group"
       />
 
+      <!-- weights -->
+      <label for="create-exercise" class="text-xs mt-2 mb-1">Exercise</label>
+      <input
+        id="create-exercise"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+        name="create-exercise"
+      />
+      <div class="flex items-center ml-4">
+        <div class="flex items-center my-2 mr-4">
+          <label for="create-exercise-reps" class="text-xs mr-2">Reps</label>
+          <input
+            id="create-exercise-reps"
+            class="border py-1 px-2 w-10 h-6 rounded-sm focus:outline-none focus:border-slate-700"
+            name="create-exercise"
+          />
+        </div>
+        <div class="flex items-center my-2 mr-4">
+          <label for="create-exercise-set" class="text-xs mr-2">Weight</label>
+          <input
+            id="create-exercise-sets"
+            class="border py-1 px-2 w-10 h-6 rounded-sm focus:outline-none focus:border-slate-700"
+            name="create-exercise"
+          /><span class="text-xs text-slate-400 ml-px">kg</span>
+        </div>
+        <button
+          class="flex items-center px-2 font-bold text-xs text-primary-blue"
+        >
+          <add-icon :size="18" class="text-primary-blue mr-px" />
+          <span>Set</span>
+        </button>
+      </div>
+      <!-- <button>Add another exercise</button> -->
+
       <label for="create-notes" class="text-xs mt-2 mb-1">Notes</label>
       <input
         id="create-notes"
@@ -383,6 +416,10 @@ const itemsKey = computed(() => {
 
 const titleRefCreate = ref<HTMLElement | null>(null);
 const titleRefUpdate = ref<HTMLElement | null>(null);
+
+const exerciseState = ref([{ name: '', data: [] }]);
+const addExercise = (exercise: string) => {};
+const addRepsSets = () => {};
 
 const formState = ref<{ id: string; data: PostItemArgs; valid: Validation }>({
   id: '',
