@@ -62,7 +62,7 @@ export const postItem = async (item: PostItemArgs): Promise<PostItemsRes> => {
             createTask (
               title: "${item.title}",
               group: "${item.group}",
-              description: "${item.notes}",
+              description: "${item.notes.replaceAll('"', '\\"')}",
               start: "${item.startDate}",
               end: "${item.endDate}",
               colour: "${item.color}"
@@ -110,7 +110,7 @@ export const patchItem = async (
             updateTask (
               id: "${item.id}",
               title: "${item.title}",
-              description: "${item.notes}",
+              description: "${item.notes.replaceAll('"', '\\"')}",
               start: "${item.startDate}",
               end: "${item.endDate}",
               ) {

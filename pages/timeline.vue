@@ -164,46 +164,106 @@
       />
 
       <!-- weights -->
-      <label for="create-exercise" class="text-xs mt-2 mb-1">Exercise</label>
-      <input
-        id="create-exercise"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        name="create-exercise"
-      />
-      <div class="flex items-center ml-4">
-        <div class="flex items-center my-2 mr-4">
-          <label for="create-exercise-reps" class="text-xs mr-2">Reps</label>
-          <input
-            id="create-exercise-reps"
-            class="border py-1 px-2 w-10 h-6 rounded-sm focus:outline-none focus:border-slate-700"
-            name="create-exercise"
-          />
-        </div>
-        <div class="flex items-center my-2 mr-4">
-          <label for="create-exercise-set" class="text-xs mr-2">Weight</label>
-          <input
-            id="create-exercise-sets"
-            class="border py-1 px-2 w-10 h-6 rounded-sm focus:outline-none focus:border-slate-700"
-            name="create-exercise"
-          /><span class="text-xs text-slate-400 ml-px">kg</span>
-        </div>
-        <button
-          class="flex items-center px-2 font-bold text-xs text-primary-blue"
+      <section v-if="formState.data.title === 'weights'" class="flex flex-col">
+        <div
+          v-for="(exercise, exerciseIndex) in exerciseState"
+          class="flex flex-col"
         >
-          <add-icon :size="18" class="text-primary-blue mr-px" />
-          <span>Set</span>
-        </button>
-      </div>
-      <!-- <button>Add another exercise</button> -->
+          <label for="create-exercise" class="text-xs mt-2 mb-1"
+            >Exercise</label
+          >
+          <div class="flex">
+            <input
+              id="create-exercise"
+              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+              name="create-exercise"
+              v-model="exercise.name"
+            />
+            <button
+              v-if="exerciseIndex > 0"
+              class="flex items-center px-2 font-bold text-xs"
+              @click="removeExercise(exerciseIndex)"
+            >
+              <close-icon :size="18" class="text-red-500 mr-px" />
+            </button>
+          </div>
+          <div
+            v-for="(row, rowIndex) in exercise.data"
+            class="flex items-center ml-4 my-2 last-of-type:mb-0"
+          >
+            <div class="flex items-center mr-4">
+              <label for="create-exercise-reps" class="text-xs mr-2"
+                >Reps</label
+              >
+              <input
+                id="create-exercise-reps"
+                class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
+                name="create-exercise-reps"
+                v-model="row.reps"
+              />
+            </div>
+            <div class="flex items-center mr-4">
+              <label for="create-exercise-set" class="text-xs mr-2"
+                >Weight</label
+              >
+              <input
+                id="create-exercise-weight"
+                class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
+                name="create-exercise-weight"
+                v-model="row.weight"
+              /><span class="text-xs text-slate-400 ml-px">kg</span>
+            </div>
+            <button
+              v-if="rowIndex !== exercise.data.length - 1"
+              class="flex items-center px-2 font-bold text-xs"
+              @click="
+                removeRepsRow({
+                  exerciseIndex,
+                  rowIndex
+                })
+              "
+            >
+              <close-icon :size="18" class="text-red-500 mr-px" />
+            </button>
+            <button
+              v-if="rowIndex === exercise.data.length - 1"
+              class="flex items-center px-2 text-xs text-primary-blue"
+              @click="
+                addRepsRow({
+                  exerciseIndex,
+                  reps: row.reps,
+                  weight: row.weight
+                })
+              "
+            >
+              <add-icon :size="18" class="text-primary-blue mr-px" />
+              <span class="mb-0.5">Add</span>
+            </button>
+          </div>
+          <button
+            v-if="exerciseIndex === exerciseState.length - 1"
+            class="flex items-center self-start ml-3 mt-3 mb-4 pr-2"
+            @click="addExercise"
+          >
+            <add-icon
+              :size="18"
+              class="bg-primary-blue text-slate-50 mr-2 rounded-sm"
+            />
+            <span class="text-sm text-slate-700">Add another exercise</span>
+          </button>
+        </div>
+      </section>
 
-      <label for="create-notes" class="text-xs mt-2 mb-1">Notes</label>
-      <input
-        id="create-notes"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        placeholder="Notes"
-        name="create-notes"
-        v-model="formState.data.notes"
-      />
+      <span v-if="formState.data.title !== 'weights'" class="flex flex-col">
+        <label for="create-notes" class="text-xs mt-2 mb-1">Notes</label>
+        <input
+          id="create-notes"
+          class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+          placeholder="Notes"
+          name="create-notes"
+          v-model="formState.data.notes"
+        />
+      </span>
 
       <label for="create-start" class="text-xs mt-2 mb-1">Start*</label>
       <input
@@ -232,6 +292,8 @@
         :value="formState.data.color"
         :force-closed="taskModal.open !== 'create'"
       />
+
+      <div class="h-4"></div>
     </template>
     <template v-slot:submit-text>Create Task</template>
   </side-panel>
@@ -267,14 +329,107 @@
         v-model="formState.data.group"
       />
 
-      <label for="update-notes" class="text-xs mt-2 mb-1">Notes</label>
-      <input
-        id="update-notes"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        placeholder="Notes"
-        name="update-notes"
-        v-model="formState.data.notes"
-      />
+      <!-- weights -->
+      <section v-if="formState.data.title === 'weights'" class="flex flex-col">
+        <div
+          v-for="(exercise, exerciseIndex) in exerciseState"
+          class="flex flex-col"
+        >
+          <label for="create-exercise" class="text-xs mt-2 mb-1"
+            >Exercise</label
+          >
+          <div class="flex">
+            <input
+              id="update-exercise"
+              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+              name="update-exercise"
+              v-model="exercise.name"
+            />
+            <button
+              v-if="exerciseIndex > 0"
+              class="flex items-center px-2 font-bold text-xs"
+              @click="removeExercise(exerciseIndex)"
+            >
+              <close-icon :size="18" class="text-red-500 mr-px" />
+            </button>
+          </div>
+          <div
+            v-for="(row, rowIndex) in exercise.data"
+            class="flex items-center ml-4 my-2 last-of-type:mb-0"
+          >
+            <div class="flex items-center mr-4">
+              <label for="update-exercise-reps" class="text-xs mr-2"
+                >Reps</label
+              >
+              <input
+                id="update-exercise-reps"
+                class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
+                name="update-exercise-reps"
+                v-model="row.reps"
+              />
+            </div>
+            <div class="flex items-center mr-4">
+              <label for="update-exercise-set" class="text-xs mr-2"
+                >Weight</label
+              >
+              <input
+                id="update-exercise-weight"
+                class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
+                name="update-exercise-weight"
+                v-model="row.weight"
+              /><span class="text-xs text-slate-400 ml-px">kg</span>
+            </div>
+            <button
+              v-if="rowIndex !== exercise.data.length - 1"
+              class="flex items-center px-2 font-bold text-xs"
+              @click="
+                removeRepsRow({
+                  exerciseIndex,
+                  rowIndex
+                })
+              "
+            >
+              <close-icon :size="18" class="text-red-500 mr-px" />
+            </button>
+            <button
+              v-if="rowIndex === exercise.data.length - 1"
+              class="flex items-center px-2 text-xs text-primary-blue"
+              @click="
+                addRepsRow({
+                  exerciseIndex,
+                  reps: row.reps,
+                  weight: row.weight
+                })
+              "
+            >
+              <add-icon :size="18" class="text-primary-blue mr-px" />
+              <span class="mb-0.5">Add</span>
+            </button>
+          </div>
+          <button
+            v-if="exerciseIndex === exerciseState.length - 1"
+            class="flex items-center self-start ml-3 mt-3 mb-4 pr-2"
+            @click="addExercise"
+          >
+            <add-icon
+              :size="18"
+              class="bg-primary-blue text-slate-50 mr-2 rounded-sm"
+            />
+            <span class="text-sm text-slate-700">Add another exercise</span>
+          </button>
+        </div>
+      </section>
+
+      <span v-if="formState.data.title !== 'weights'" class="flex flex-col">
+        <label for="update-notes" class="text-xs mt-2 mb-1">Notes</label>
+        <input
+          id="update-notes"
+          class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+          placeholder="Notes"
+          name="update-notes"
+          v-model="formState.data.notes"
+        />
+      </span>
 
       <label for="update-start" class="text-xs mt-2 mb-1">Start*</label>
       <input
@@ -303,6 +458,7 @@
         :value="formState.data.color"
         :force-closed="taskModal.open !== 'update'"
       />
+      <div class="h-4"></div>
     </template>
     <template v-slot:submit-text>Update Task</template>
     <template v-slot:extra-button>
@@ -330,6 +486,7 @@ import {
 } from 'date-fns';
 import { ref, computed } from 'vue';
 import AddIcon from 'vue-material-design-icons/Plus.vue';
+import CloseIcon from 'vue-material-design-icons/Close.vue';
 import {
   getDatesInMonthYear,
   getAllHoursInDay,
@@ -352,6 +509,7 @@ import {
   validateTitle
 } from '~/utils/form/validation';
 import { DEFAULT_COLOR } from '~/constants/colors';
+import { json } from 'stream/consumers';
 
 useAuthCheck();
 const hoursInDay = ref(getAllHoursInDay());
@@ -417,9 +575,42 @@ const itemsKey = computed(() => {
 const titleRefCreate = ref<HTMLElement | null>(null);
 const titleRefUpdate = ref<HTMLElement | null>(null);
 
-const exerciseState = ref([{ name: '', data: [] }]);
-const addExercise = (exercise: string) => {};
-const addRepsSets = () => {};
+const exerciseState = ref([{ name: '', data: [{ reps: '', weight: '' }] }]);
+const addExercise = () => {
+  exerciseState.value.push({ name: '', data: [{ reps: '', weight: '' }] });
+};
+
+const removeExercise = (index: number) => {
+  exerciseState.value = exerciseState.value.filter((_, i) => i !== index);
+};
+
+const addRepsRow = ({
+  exerciseIndex,
+  reps = '',
+  weight = ''
+}: {
+  exerciseIndex: number;
+  reps?: string;
+  weight?: string;
+}) => {
+  exerciseState.value[exerciseIndex].data.push({ reps, weight });
+};
+
+const removeRepsRow = ({
+  exerciseIndex,
+  rowIndex
+}: {
+  exerciseIndex: number;
+  rowIndex: number;
+}) => {
+  exerciseState.value[exerciseIndex].data = exerciseState.value[
+    exerciseIndex
+  ].data.filter((_, i) => i !== rowIndex);
+};
+
+const formatExerciseState = () => {
+  return JSON.stringify(exerciseState.value);
+};
 
 const formState = ref<{ id: string; data: PostItemArgs; valid: Validation }>({
   id: '',
@@ -460,6 +651,8 @@ const resetFormState = () => {
   formState.value.valid.group = undefined;
   formState.value.valid.startDate = undefined;
   formState.value.valid.endDate = undefined;
+
+  exerciseState.value = [{ name: '', data: [{ reps: '', weight: '' }] }];
 };
 
 const formStateNotValid = computed(() => {
@@ -492,6 +685,30 @@ const onOpenUpdateTaskModal = (task: FormattedItem | undefined) => {
   if (taskData && task) {
     const end = task.isEnd ? task.end : new Date(+taskData.end);
     const start = task.isStart ? task.start : new Date(+taskData.start);
+
+    // parse weights
+    if (taskData.title === 'weights') {
+      console.log('task',taskData.description);
+      
+      try {
+        const exercise = JSON.parse(taskData.description);
+        exerciseState.value = exercise;
+      } catch (_) {
+        const exercise: any[] = [];
+        const exercises = taskData.description.split(',');
+
+        for (const e of exercises) {
+          const [sets, reps, ...name] = e.trim().split(' ');
+          const output = { name: name.join(' ').trim(), data: [] as any[] };
+          for (let i = 0; i < parseInt(sets); i++) {
+            output.data.push({ reps: parseInt(reps.slice(1)), weight: '' });
+          }
+          exercise.push(output);
+        }
+
+        exerciseState.value = exercise;
+      }
+    }
 
     formState.value.id = taskData.id;
     formState.value.data.title = taskData.title;
@@ -594,6 +811,11 @@ const onAddTask = async () => {
 
   taskModal.value.open = undefined;
 
+  if (formState.value.data.title === 'weights') {
+    const notes = formatExerciseState();
+    formState.value.data.notes = notes;
+  }
+
   try {
     await postItem(formState.value.data);
     await refresh();
@@ -621,6 +843,11 @@ const onUpdateTask = async () => {
   if (formStateNotValid.value) return;
 
   taskModal.value.open = undefined;
+
+  if (formState.value.data.title === 'weights') {
+    const notes = formatExerciseState();
+    formState.value.data.notes = notes;
+  }
 
   try {
     const patchArgs: PatchItemArgs = formState.value.data as any;
