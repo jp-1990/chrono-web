@@ -84,6 +84,12 @@ const routes = [
     url: '/timeline',
     text: 'Timeline',
     icon: Dashboard
+  },
+  {
+    id: 1,
+    url: '/test',
+    text: 'Test',
+    icon: Dashboard
   }
   // {
   //   id: 1,

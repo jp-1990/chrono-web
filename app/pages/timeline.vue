@@ -509,7 +509,8 @@ import {
   validateTitle
 } from '~/utils/form/validation';
 import { DEFAULT_COLOR } from '~/constants/colors';
-import { json } from 'stream/consumers';
+import { useAuthCheck } from '~/composables/useAuthCheck';
+import { useMonthYearSelect } from '~/composables/useMonthYearSelect';
 
 useAuthCheck();
 const hoursInDay = ref(getAllHoursInDay());
@@ -688,8 +689,8 @@ const onOpenUpdateTaskModal = (task: FormattedItem | undefined) => {
 
     // parse weights
     if (taskData.title === 'weights') {
-      console.log('task',taskData.description);
-      
+      console.log('task', taskData.description);
+
       try {
         const exercise = JSON.parse(taskData.description);
         exerciseState.value = exercise;
