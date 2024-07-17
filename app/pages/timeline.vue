@@ -3,37 +3,21 @@
     <!-- header -->
     <section class="flex justify-between items-start mx-4 mt-3 min-h-[48px]">
       <div class="mt-1">
-        <calendar
-          :selected-month="selectedMonth"
-          :selected-year="selectedYear"
-          @on-change="onCalendarChange"
-        />
+        <calendar :selected-month="selectedMonth" :selected-year="selectedYear" @on-change="onCalendarChange" />
       </div>
 
       <!-- key -->
-      <div
-        v-if="Object.keys(itemsKey).length"
-        class="flex justify-center ml-2 mr-2 p-1.5 rounded-sm"
-      >
+      <div v-if="Object.keys(itemsKey).length" class="flex justify-center ml-2 mr-2 p-1.5 rounded-sm">
         <ul class="flex flex-wrap">
-          <li
-            v-for="(value, key) in itemsKey"
-            class="flex items-center mr-5 last:mr-2"
-          >
-            <div
-              :style="`background-color: ${value[1]}`"
-              class="w-7 h-7 m-1 rounded-sm"
-            ></div>
+          <li v-for="(value, key) in itemsKey" class="flex items-center mr-5 last:mr-2">
+            <div :style="`background-color: ${value[1]}`" class="w-7 h-7 m-1 rounded-sm"></div>
             <div class="ml-1 flex flex-col text-xs leading-3 text-slate-600">
               <p class="ml-px">
                 {{ key }}
               </p>
-              <div
-                class="flex font-mono tracking-tight font-light text-xs text-slate-400"
-              >
-                [<span class="mr-0.5"
-                  >{{ millisecondsToHoursAndMinutes(value[0]).hours }}h</span
-                >{{ millisecondsToHoursAndMinutes(value[0]).minutes }}m]
+              <div class="flex font-mono tracking-tight font-light text-xs text-slate-400">
+                [<span class="mr-0.5">{{ millisecondsToHoursAndMinutes(value[0]).hours }}h</span>{{
+                  millisecondsToHoursAndMinutes(value[0]).minutes }}m]
               </div>
             </div>
           </li>
@@ -41,11 +25,8 @@
       </div>
 
       <!-- create button -->
-      <button
-        id="create-item"
-        @click="onOpenCreateTaskModal"
-        class="flex justify-center items-center mt-0.5 h-10 py-2 pl-3 pr-4 rounded-sm text-slate-50 bg-primary-blue focus:outline-slate-700"
-      >
+      <button id="create-item" @click="onOpenCreateTaskModal"
+        class="flex justify-center items-center mt-0.5 h-10 py-2 pl-3 pr-4 rounded-sm text-slate-50 bg-primary-blue focus:outline-slate-700">
         <add-icon :size="22" class="text-slate-50 mr-1" />
         <span class="min-w-fit"> Create Task </span>
       </button>
@@ -56,10 +37,8 @@
       <div class="flex cursor-default">
         <div class="h-6 w-10 mr-1 bg-white"></div>
         <ul class="flex flex-1 mb-px">
-          <li
-            v-for="hour in hoursInDay"
-            class="h-5 w-[4.166666666666667%] bg-white font-mono font-light text-xs text-slate-400 border-l border-slate-300"
-          >
+          <li v-for="hour in hoursInDay"
+            class="h-5 w-[4.166666666666667%] bg-white font-mono font-light text-xs text-slate-400 border-l border-slate-300">
             <div class="flex justify-center -translate-x-1/2 bg-white">
               {{ format(hour, 'HHmm') }}
             </div>
@@ -68,32 +47,21 @@
       </div>
 
       <!-- table rows -->
-      <section
-        v-on="{
-          mouseup: mouseDownState.pressed
-            ? ($event) => {
-                const target = onMouseUp($event);
-                onOpenUpdateTaskModal(target);
-              }
-            : null,
-          mousemove: mouseDownState.pressed ? onMouseMove : null
-        }"
-        class="flex flex-1 cursor-default"
-      >
+      <section v-on="{
+        mouseup: mouseDownState.pressed
+          ? ($event) => {
+            const target = onMouseUp($event);
+            onOpenUpdateTaskModal(target);
+          }
+          : null,
+        mousemove: mouseDownState.pressed ? onMouseMove : null
+      }" class="flex flex-1 cursor-default">
         <ul class="flex flex-1 flex-col mb-2">
-          <li
-            v-for="date in datesInSelectedMonthYear"
-            :key="date.toDateString()"
-            :class="['w-full']"
-            class="flex flex-row"
-          >
+          <li v-for="date in datesInSelectedMonthYear" :key="date.toDateString()" :class="['w-full']"
+            class="flex flex-row">
             <!-- day date -->
-            <div
-              class="w-10 h-14 mr-1 flex justify-center border border-slate-200 rounded-sm"
-            >
-              <div
-                class="flex flex-col justify-center font-mono text-slate-500"
-              >
+            <div class="w-10 h-14 mr-1 flex justify-center border border-slate-200 rounded-sm">
+              <div class="flex flex-col justify-center font-mono text-slate-500">
                 <span class="font-light text-sm leading-none">
                   {{ format(date, 'E').toUpperCase() }}
                 </span>
@@ -106,17 +74,10 @@
             <!-- tasks -->
             <div class="h-14 flex flex-1 bg-white mb-0.5 rounded-sm">
               <!-- @insert-new-shift="onInsertNewShift" -->
-              <item-row
-                @change-item-start-time="onMouseDown"
-                @change-item-end-time="onMouseDown"
-                @item-click="
-                  (_$event, target) =>
-                    !mouseDownState.pressed && onOpenUpdateTaskModal(target)
-                "
-                :date="date"
-                :ids="formattedItems[getDateId(date)]?.ids"
-                :items="formattedItems[getDateId(date)]?.items"
-              />
+              <item-row @change-item-start-time="onMouseDown" @change-item-end-time="onMouseDown" @item-click="(_$event, target) =>
+                !mouseDownState.pressed && onOpenUpdateTaskModal(target)
+                " :date="date" :ids="formattedItems[getDateId(date)]?.ids"
+                :items="formattedItems[getDateId(date)]?.items" />
             </div>
           </li>
         </ul>
@@ -125,130 +86,75 @@
   </div>
 
   <!-- drag tracker -->
-  <div
-    v-if="mouseDownState.pressed"
-    class="flex flex-col justify-center fixed bottom-2 left-64 h-8 w-16 ml-2 pl-2 bg-slate-800 text-slate-50 font-mono rounded-sm"
-  >
+  <div v-if="mouseDownState.pressed"
+    class="flex flex-col justify-center fixed bottom-2 left-64 h-8 w-16 ml-2 pl-2 bg-slate-800 text-slate-50 font-mono rounded-sm">
     <span>{{ dragTime }}</span>
   </div>
 
   <!-- create panel -->
-  <side-panel
-    :is-open="taskModal.open === 'create'"
-    @on-close="onCloseCreateTaskModal"
-    @on-submit="onAddTask"
-  >
+  <side-panel :is-open="taskModal.open === 'create'" @on-close="onCloseCreateTaskModal" @on-submit="onAddTask">
     <template v-slot:title-text>Add Task</template>
     <template v-slot:content>
       <label for="create-title" class="text-xs mt-2 mb-1">Title*</label>
-      <input
-        @blur="onTitleBlur"
-        id="create-title"
-        ref="titleRefCreate"
+      <input @blur="onTitleBlur" id="create-title" ref="titleRefCreate"
         :class="[formState.valid.title === false ? 'border-red-600' : '']"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        placeholder="Title"
-        name="create-title"
-        v-model="formState.data.title"
-      />
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" placeholder="Title"
+        name="create-title" v-model="formState.data.title" />
 
       <label for="create-group" class="text-xs mt-2 mb-1">Group*</label>
-      <input
-        @blur="onGroupBlur"
-        id="create-group"
-        :class="[formState.valid.group === false ? 'border-red-600' : '']"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        placeholder="Group"
-        name="create-group"
-        v-model="formState.data.group"
-      />
+      <input @blur="onGroupBlur" id="create-group" :class="[formState.valid.group === false ? 'border-red-600' : '']"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" placeholder="Group"
+        name="create-group" v-model="formState.data.group" />
 
       <!-- weights -->
       <section v-if="formState.data.title === 'weights'" class="flex flex-col">
-        <div
-          v-for="(exercise, exerciseIndex) in exerciseState"
-          class="flex flex-col"
-        >
-          <label for="create-exercise" class="text-xs mt-2 mb-1"
-            >Exercise</label
-          >
+        <div v-for="(exercise, exerciseIndex) in exerciseState" class="flex flex-col">
+          <label for="create-exercise" class="text-xs mt-2 mb-1">Exercise</label>
           <div class="flex">
-            <input
-              id="create-exercise"
-              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-              name="create-exercise"
-              v-model="exercise.name"
-            />
-            <button
-              v-if="exerciseIndex > 0"
-              class="flex items-center px-2 font-bold text-xs"
-              @click="removeExercise(exerciseIndex)"
-            >
+            <input id="create-exercise"
+              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" name="create-exercise"
+              v-model="exercise.name" />
+            <button v-if="exerciseIndex > 0" class="flex items-center px-2 font-bold text-xs"
+              @click="removeExercise(exerciseIndex)">
               <close-icon :size="18" class="text-red-500 mr-px" />
             </button>
           </div>
-          <div
-            v-for="(row, rowIndex) in exercise.data"
-            class="flex items-center ml-4 my-2 last-of-type:mb-0"
-          >
+          <div v-for="(row, rowIndex) in exercise.data" class="flex items-center ml-4 my-2 last-of-type:mb-0">
             <div class="flex items-center mr-4">
-              <label for="create-exercise-reps" class="text-xs mr-2"
-                >Reps</label
-              >
-              <input
-                id="create-exercise-reps"
+              <label for="create-exercise-reps" class="text-xs mr-2">Reps</label>
+              <input id="create-exercise-reps"
                 class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
-                name="create-exercise-reps"
-                v-model="row.reps"
-              />
+                name="create-exercise-reps" v-model="row.reps" />
             </div>
             <div class="flex items-center mr-4">
-              <label for="create-exercise-set" class="text-xs mr-2"
-                >Weight</label
-              >
-              <input
-                id="create-exercise-weight"
+              <label for="create-exercise-set" class="text-xs mr-2">Weight</label>
+              <input id="create-exercise-weight"
                 class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
-                name="create-exercise-weight"
-                v-model="row.weight"
-              /><span class="text-xs text-slate-400 ml-px">kg</span>
+                name="create-exercise-weight" v-model="row.weight" /><span class="text-xs text-slate-400 ml-px">kg</span>
             </div>
-            <button
-              v-if="rowIndex !== exercise.data.length - 1"
-              class="flex items-center px-2 font-bold text-xs"
-              @click="
-                removeRepsRow({
-                  exerciseIndex,
-                  rowIndex
-                })
-              "
-            >
+            <button v-if="rowIndex !== exercise.data.length - 1" class="flex items-center px-2 font-bold text-xs" @click="
+              removeRepsRow({
+                exerciseIndex,
+                rowIndex
+              })
+              ">
               <close-icon :size="18" class="text-red-500 mr-px" />
             </button>
-            <button
-              v-if="rowIndex === exercise.data.length - 1"
-              class="flex items-center px-2 text-xs text-primary-blue"
+            <button v-if="rowIndex === exercise.data.length - 1" class="flex items-center px-2 text-xs text-primary-blue"
               @click="
                 addRepsRow({
                   exerciseIndex,
                   reps: row.reps,
                   weight: row.weight
                 })
-              "
-            >
+                ">
               <add-icon :size="18" class="text-primary-blue mr-px" />
               <span class="mb-0.5">Add</span>
             </button>
           </div>
-          <button
-            v-if="exerciseIndex === exerciseState.length - 1"
-            class="flex items-center self-start ml-3 mt-3 mb-4 pr-2"
-            @click="addExercise"
-          >
-            <add-icon
-              :size="18"
-              class="bg-primary-blue text-slate-50 mr-2 rounded-sm"
-            />
+          <button v-if="exerciseIndex === exerciseState.length - 1"
+            class="flex items-center self-start ml-3 mt-3 mb-4 pr-2" @click="addExercise">
+            <add-icon :size="18" class="bg-primary-blue text-slate-50 mr-2 rounded-sm" />
             <span class="text-sm text-slate-700">Add another exercise</span>
           </button>
         </div>
@@ -256,42 +162,23 @@
 
       <span v-if="formState.data.title !== 'weights'" class="flex flex-col">
         <label for="create-notes" class="text-xs mt-2 mb-1">Notes</label>
-        <input
-          id="create-notes"
-          class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-          placeholder="Notes"
-          name="create-notes"
-          v-model="formState.data.notes"
-        />
+        <input id="create-notes" class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+          placeholder="Notes" name="create-notes" v-model="formState.data.notes" />
       </span>
 
       <label for="create-start" class="text-xs mt-2 mb-1">Start*</label>
-      <input
-        @blur="onStartDateBlur"
-        type="datetime-local"
-        id="create-start"
+      <input @blur="onStartDateBlur" type="datetime-local" id="create-start"
         :class="[formState.valid.startDate === false ? 'border-red-600' : '']"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        name="create-start"
-        v-model="formState.data.startDate"
-      />
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" name="create-start"
+        v-model="formState.data.startDate" />
 
       <label for="create-end" class="text-xs mt-2 mb-1">End*</label>
-      <input
-        @blur="onEndDateBlur"
-        type="datetime-local"
-        id="create-end"
+      <input @blur="onEndDateBlur" type="datetime-local" id="create-end"
         :class="[formState.valid.endDate === false ? 'border-red-600' : '']"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        name="create-end"
-        v-model="formState.data.endDate"
-      />
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" name="create-end"
+        v-model="formState.data.endDate" />
 
-      <color-select
-        @on-change="setColor"
-        :value="formState.data.color"
-        :force-closed="taskModal.open !== 'create'"
-      />
+      <color-select @on-change="setColor" :value="formState.data.color" :force-closed="taskModal.open !== 'create'" />
 
       <div class="h-4"></div>
     </template>
@@ -299,122 +186,69 @@
   </side-panel>
 
   <!-- update panel -->
-  <side-panel
-    :is-open="taskModal.open === 'update'"
-    @on-close="onCloseUpdateTaskModal"
-    @on-submit="onUpdateTask"
-  >
+  <side-panel :is-open="taskModal.open === 'update'" @on-close="onCloseUpdateTaskModal" @on-submit="onUpdateTask">
     <template v-slot:title-text>Update Task</template>
     <template v-slot:content>
       <label for="update-title" class="text-xs mt-2 mb-1">Title*</label>
-      <input
-        @blur="onTitleBlur"
-        id="update-title"
-        ref="titleRefUpdate"
+      <input @blur="onTitleBlur" id="update-title" ref="titleRefUpdate"
         :class="[formState.valid.title === false ? 'border-red-600' : '']"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        placeholder="Title"
-        name="update-title"
-        v-model="formState.data.title"
-      />
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" placeholder="Title"
+        name="update-title" v-model="formState.data.title" />
 
       <label for="update-group" class="text-xs mt-2 mb-1">Group*</label>
-      <input
-        @blur="onGroupBlur"
-        id="update-group"
-        :class="[formState.valid.group === false ? 'border-red-600' : '']"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        placeholder="Group"
-        name="update-group"
-        v-model="formState.data.group"
-      />
+      <input @blur="onGroupBlur" id="update-group" :class="[formState.valid.group === false ? 'border-red-600' : '']"
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" placeholder="Group"
+        name="update-group" v-model="formState.data.group" />
 
       <!-- weights -->
       <section v-if="formState.data.title === 'weights'" class="flex flex-col">
-        <div
-          v-for="(exercise, exerciseIndex) in exerciseState"
-          class="flex flex-col"
-        >
-          <label for="create-exercise" class="text-xs mt-2 mb-1"
-            >Exercise</label
-          >
+        <div v-for="(exercise, exerciseIndex) in exerciseState" class="flex flex-col">
+          <label for="create-exercise" class="text-xs mt-2 mb-1">Exercise</label>
           <div class="flex">
-            <input
-              id="update-exercise"
-              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-              name="update-exercise"
-              v-model="exercise.name"
-            />
-            <button
-              v-if="exerciseIndex > 0"
-              class="flex items-center px-2 font-bold text-xs"
-              @click="removeExercise(exerciseIndex)"
-            >
+            <input id="update-exercise"
+              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" name="update-exercise"
+              v-model="exercise.name" />
+            <button v-if="exerciseIndex > 0" class="flex items-center px-2 font-bold text-xs"
+              @click="removeExercise(exerciseIndex)">
               <close-icon :size="18" class="text-red-500 mr-px" />
             </button>
           </div>
-          <div
-            v-for="(row, rowIndex) in exercise.data"
-            class="flex items-center ml-4 my-2 last-of-type:mb-0"
-          >
+          <div v-for="(row, rowIndex) in exercise.data" class="flex items-center ml-4 my-2 last-of-type:mb-0">
             <div class="flex items-center mr-4">
-              <label for="update-exercise-reps" class="text-xs mr-2"
-                >Reps</label
-              >
-              <input
-                id="update-exercise-reps"
+              <label for="update-exercise-reps" class="text-xs mr-2">Reps</label>
+              <input id="update-exercise-reps"
                 class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
-                name="update-exercise-reps"
-                v-model="row.reps"
-              />
+                name="update-exercise-reps" v-model="row.reps" />
             </div>
             <div class="flex items-center mr-4">
-              <label for="update-exercise-set" class="text-xs mr-2"
-                >Weight</label
-              >
-              <input
-                id="update-exercise-weight"
+              <label for="update-exercise-set" class="text-xs mr-2">Weight</label>
+              <input id="update-exercise-weight"
                 class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
-                name="update-exercise-weight"
-                v-model="row.weight"
-              /><span class="text-xs text-slate-400 ml-px">kg</span>
+                name="update-exercise-weight" v-model="row.weight" /><span class="text-xs text-slate-400 ml-px">kg</span>
             </div>
-            <button
-              v-if="rowIndex !== exercise.data.length - 1"
-              class="flex items-center px-2 font-bold text-xs"
-              @click="
-                removeRepsRow({
-                  exerciseIndex,
-                  rowIndex
-                })
-              "
-            >
+            <button v-if="rowIndex !== exercise.data.length - 1" class="flex items-center px-2 font-bold text-xs" @click="
+              removeRepsRow({
+                exerciseIndex,
+                rowIndex
+              })
+              ">
               <close-icon :size="18" class="text-red-500 mr-px" />
             </button>
-            <button
-              v-if="rowIndex === exercise.data.length - 1"
-              class="flex items-center px-2 text-xs text-primary-blue"
+            <button v-if="rowIndex === exercise.data.length - 1" class="flex items-center px-2 text-xs text-primary-blue"
               @click="
                 addRepsRow({
                   exerciseIndex,
                   reps: row.reps,
                   weight: row.weight
                 })
-              "
-            >
+                ">
               <add-icon :size="18" class="text-primary-blue mr-px" />
               <span class="mb-0.5">Add</span>
             </button>
           </div>
-          <button
-            v-if="exerciseIndex === exerciseState.length - 1"
-            class="flex items-center self-start ml-3 mt-3 mb-4 pr-2"
-            @click="addExercise"
-          >
-            <add-icon
-              :size="18"
-              class="bg-primary-blue text-slate-50 mr-2 rounded-sm"
-            />
+          <button v-if="exerciseIndex === exerciseState.length - 1"
+            class="flex items-center self-start ml-3 mt-3 mb-4 pr-2" @click="addExercise">
+            <add-icon :size="18" class="bg-primary-blue text-slate-50 mr-2 rounded-sm" />
             <span class="text-sm text-slate-700">Add another exercise</span>
           </button>
         </div>
@@ -422,52 +256,30 @@
 
       <span v-if="formState.data.title !== 'weights'" class="flex flex-col">
         <label for="update-notes" class="text-xs mt-2 mb-1">Notes</label>
-        <input
-          id="update-notes"
-          class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-          placeholder="Notes"
-          name="update-notes"
-          v-model="formState.data.notes"
-        />
+        <input id="update-notes" class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+          placeholder="Notes" name="update-notes" v-model="formState.data.notes" />
       </span>
 
       <label for="update-start" class="text-xs mt-2 mb-1">Start*</label>
-      <input
-        @blur="onStartDateBlur"
-        type="datetime-local"
-        id="update-start"
+      <input @blur="onStartDateBlur" type="datetime-local" id="update-start"
         :class="[formState.valid.startDate === false ? 'border-red-600' : '']"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        name="update-start"
-        v-model="formState.data.startDate"
-      />
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" name="update-start"
+        v-model="formState.data.startDate" />
 
       <label for="update-end" class="text-xs mt-2 mb-1">End*</label>
-      <input
-        @blur="onEndDateBlur"
-        type="datetime-local"
-        id="update-end"
+      <input @blur="onEndDateBlur" type="datetime-local" id="update-end"
         :class="[formState.valid.endDate === false ? 'border-red-600' : '']"
-        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
-        name="update-end"
-        v-model="formState.data.endDate"
-      />
+        class="border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" name="update-end"
+        v-model="formState.data.endDate" />
 
-      <color-select
-        @on-change="setColor"
-        :value="formState.data.color"
-        :force-closed="taskModal.open !== 'update'"
-      />
+      <color-select @on-change="setColor" :value="formState.data.color" :force-closed="taskModal.open !== 'update'" />
       <div class="h-4"></div>
     </template>
     <template v-slot:submit-text>Update Task</template>
     <template v-slot:extra-button>
       <div class="w-2"></div>
-      <button
-        id="side-panel-delete"
-        @click="onDeleteTask"
-        class="flex-1 h-14 rounded-sm text-lg bg-red-600 text-slate-200 focus:outline-slate-700"
-      >
+      <button id="side-panel-delete" @click="onDeleteTask"
+        class="flex-1 h-14 rounded-sm text-lg bg-red-600 text-slate-200 focus:outline-slate-700">
         Delete
       </button>
     </template>
@@ -551,6 +363,8 @@ const formattedItems = computed(() =>
     data.value
   )
 );
+
+console.log('formatted items', formattedItems);
 
 const itemsKey = computed(() => {
   const key: Record<string, [number, string]> = {};
