@@ -4,7 +4,7 @@ use crate::{
 };
 use mongodb::{
     bson::{datetime::DateTime, oid::ObjectId},
-    results::InsertOneResult,
+    results::UpdateResult,
 };
 use rocket::{http::Status, serde::json::Json, State};
 
@@ -15,7 +15,7 @@ use rocket::{http::Status, serde::json::Json, State};
 pub fn create_activity(
     db: &State<MongoDatabase>,
     new_activity: Json<NewActivity>,
-) -> Result<Json<InsertOneResult>, Status> {
+) -> Result<Json<UpdateResult>, Status> {
     let user_id = ObjectId::parse_str("5f00b442bab42e04c05f5a9e").unwrap();
     let data = Activity {
         id: None,
@@ -70,17 +70,14 @@ pub fn update_activity(
 
     let response = db.update_activity(&id, &data);
     match response {
-        Ok(update) => {
-            if update.matched_count == 1 {
-                let updated_activity = db.get_activity(&id);
-                return match updated_activity {
-                    Ok(activity) => Ok(Json(activity)),
-                    Err(_) => Err(Status::InternalServerError),
-                };
-            } else {
-                return Err(Status::NotFound);
+        Ok(update) if update.matched_count == 1 => {
+            let updated_activity = db.get_activity(&id);
+            match updated_activity {
+                Ok(activity) => Ok(Json(activity)),
+                Err(_) => Err(Status::InternalServerError),
             }
         }
+        Ok(_update) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
     }
 }
@@ -93,13 +90,8 @@ pub fn delete_activity(db: &State<MongoDatabase>, path: String) -> Result<Json<&
     };
     let response = db.delete_activity(&id);
     match response {
-        Ok(delete) => {
-            if delete.deleted_count == 1 {
-                return Ok(Json("Activity deleted"));
-            } else {
-                return Err(Status::NotFound);
-            }
-        }
+        Ok(delete) if delete.deleted_count == 1 => Ok(Json("Activity deleted")),
+        Ok(_delete) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
     }
 }

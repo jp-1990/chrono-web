@@ -8,6 +8,7 @@ use serde::Serialize;
 mod api;
 mod database;
 mod models;
+mod utils;
 
 #[macro_use]
 extern crate rocket;
