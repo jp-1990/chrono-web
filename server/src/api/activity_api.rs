@@ -25,7 +25,7 @@ pub fn create_activity(
         start: new_activity.start,
         end: new_activity.end,
         timezone: new_activity.timezone,
-        data: ActivityData { exercise: None },
+        data: None,
     };
 
     println!("{:?}", data);

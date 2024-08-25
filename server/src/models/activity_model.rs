@@ -1,7 +1,8 @@
 use mongodb::bson::oid::ObjectId;
+use mongodb::bson::Bson;
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum ActivityVariant {
     Default,
     Exercise,
@@ -23,6 +24,23 @@ impl From<ActivityVariant> for String {
             ActivityVariant::Default => "default".into(),
             ActivityVariant::Exercise => "exercise".into(),
         }
+    }
+}
+
+impl From<Bson> for ActivityVariant {
+    fn from(bson: Bson) -> ActivityVariant {
+        if let Bson::String(s) = bson {
+            s.as_str().into()
+        } else {
+            panic!("expected Bson::String")
+        }
+    }
+}
+
+impl Into<Bson> for ActivityVariant {
+    fn into(self) -> Bson {
+        let s: String = self.into();
+        Bson::String(s)
     }
 }
 
@@ -136,7 +154,7 @@ pub struct PostActivityBody<'a> {
     pub start: mongodb::bson::DateTime,
     pub end: mongodb::bson::DateTime,
     pub timezone: i8,
-    pub data: ActivityData,
+    pub data: Option<ActivityData>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -175,7 +193,7 @@ pub struct PostActivityPayload<'a> {
     pub start: mongodb::bson::DateTime,
     pub end: mongodb::bson::DateTime,
     pub timezone: i8,
-    pub data: ActivityData,
+    pub data: Option<ActivityData>,
 }
 
 #[derive(Debug, Serialize)]
@@ -209,9 +227,9 @@ pub struct Activity {
     pub notes: String,
     pub start: mongodb::bson::DateTime,
     pub end: mongodb::bson::DateTime,
-    pub duration: i64,
     pub timezone: i8,
-    pub data: ActivityData,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<ActivityData>,
     #[serde(rename = "createdAt")]
     pub created_at: mongodb::bson::DateTime,
     pub user: ObjectId,
@@ -228,19 +246,9 @@ impl Activity {
         start: mongodb::bson::DateTime,
         end: mongodb::bson::DateTime,
         timezone: i8,
-        data: ActivityData,
+        data: Option<ActivityData>,
         user: String,
     ) -> Self {
-        let start = chrono::DateTime::from_timestamp_millis(start.timestamp_millis())
-            .expect("failed timestamp converstion");
-        let end = chrono::DateTime::from_timestamp_millis(end.timestamp_millis())
-            .expect("failed timestamp converstion");
-
-        let duration = end.signed_duration_since(start).num_minutes();
-
-        let start = mongodb::bson::DateTime::from_millis(start.timestamp_millis());
-        let end = mongodb::bson::DateTime::from_millis(end.timestamp_millis());
-
         Self {
             id: ObjectId::new(),
             variant,
@@ -249,7 +257,6 @@ impl Activity {
             notes,
             start,
             end,
-            duration,
             timezone,
             data,
             created_at: mongodb::bson::DateTime::now(),
