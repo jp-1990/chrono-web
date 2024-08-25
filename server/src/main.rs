@@ -16,10 +16,6 @@ mod utils;
 #[macro_use]
 extern crate rocket;
 
-use api::activity_api::{
-    create_activity, // delete_activity, get_activities, get_activity, update_activity,
-};
-
 #[derive(Serialize)]
 struct Test {
     text: &'static str,
@@ -88,7 +84,7 @@ async fn rocket() -> _ {
             index,
             // get_activity,
             // get_activities,
-            create_activity,
+            // create_activity,
             // update_activity,
             // delete_activity
         ],

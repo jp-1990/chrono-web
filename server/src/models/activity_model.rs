@@ -143,23 +143,14 @@ pub struct ActivityData {
     pub exercise: Option<Vec<Exercise>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PostActivityBody<'a> {
-    pub title: &'a str,
-    pub variant: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub group: Option<&'a str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub notes: Option<&'a str>,
-    pub start: mongodb::bson::DateTime,
-    pub end: mongodb::bson::DateTime,
-    pub timezone: i8,
-    pub data: Option<ActivityData>,
+#[derive(Debug, Serialize)]
+pub struct GetActivityPayload<'a> {
+    #[serde(rename = "_id")]
+    pub id: &'a str,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PatchActivityBody<'a> {
-    pub id: &'a str,
+#[derive(Debug, Serialize)]
+pub struct GetActivitiesPayload<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub variant: Option<ActivityVariant>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -167,21 +158,9 @@ pub struct PatchActivityBody<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub notes: Option<&'a str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub start: Option<mongodb::bson::DateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end: Option<mongodb::bson::DateTime>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<i8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<ActivityData>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct GetActivityPayload<'a> {
-    #[serde(rename = "_id")]
-    pub id: &'a str,
 }
 
 #[derive(Debug, Serialize)]

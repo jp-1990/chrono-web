@@ -1,20 +1,19 @@
-use mongodb::bson::{self};
-use mongodb::bson::{doc, oid::ObjectId, Document};
-use mongodb::results::{DeleteResult, InsertOneResult, UpdateResult};
-use mongodb::{error::Error, Client, Collection};
+use futures::TryStreamExt;
+use mongodb::{
+    bson::{doc, oid::ObjectId, Document},
+    error::Error,
+    results::{DeleteResult, InsertOneResult, UpdateResult},
+    Client, Collection,
+};
 use rocket::fairing::Result;
 
-use crate::models::activity_model::{
-    Activity, GetActivityPayload, PatchActivityPayload, PostActivityPayload,
+use crate::{
+    models::activity_model::{
+        Activity, DeleteActivityPayload, GetActivitiesPayload, GetActivityPayload,
+        PatchActivityPayload, PostActivityPayload,
+    },
+    utils::utils::insert_optional,
 };
-
-fn insert_optional<T: serde::Serialize>(doc: &mut Document, key: &str, value: Option<T>) {
-    if let Some(v) = value {
-        if let Ok(bson_value) = bson::to_bson(&v) {
-            doc.insert(key, bson_value);
-        }
-    }
-}
 
 pub struct MongoDatabase {
     activities: Collection<Activity>,
@@ -87,11 +86,11 @@ impl MongoDatabase {
 
     pub async fn delete_activity_by_id(
         &self,
-        id: String,
+        payload: DeleteActivityPayload<'_>,
         user_id: String,
     ) -> Result<DeleteResult, Error> {
         let filter = doc! {
-            "_id": ObjectId::parse_str(id).expect("failed to parse string to ObjectId"),
+            "_id": ObjectId::parse_str(payload.id).expect("failed to parse string to ObjectId"),
             "user": ObjectId::parse_str(user_id).expect("failed to parse string to ObjectId")
         };
 
@@ -101,11 +100,11 @@ impl MongoDatabase {
 
     pub async fn get_activity_by_id(
         &self,
-        id: String,
+        payload: GetActivityPayload<'_>,
         user_id: String,
     ) -> Result<Option<Activity>, Error> {
         let filter = doc! {
-            "_id": ObjectId::parse_str(id).expect("failed to parse string to ObjectId"),
+            "_id": ObjectId::parse_str(payload.id).expect("failed to parse string to ObjectId"),
             "user": ObjectId::parse_str(user_id).expect("failed to parse string to ObjectId")
         };
 
@@ -113,16 +112,30 @@ impl MongoDatabase {
         Ok(res)
     }
 
-    // pub fn get_all_activities(&self) -> Result<Vec<Activity>, Error> {
-    //     let cursors = self
-    //         .activities
-    //         .find(None, None)
-    //         .ok()
-    //         .expect("Error getting all activities");
-    //
-    //     let activities = cursors.map(|doc| doc.unwrap()).collect();
-    //     Ok(activities)
-    // }
+    pub async fn get_activities(
+        &self,
+        payload: GetActivitiesPayload<'_>,
+        user_id: String,
+    ) -> Result<Vec<Activity>, Error> {
+        let mut filter = doc! {
+            "user": ObjectId::parse_str(user_id).expect("failed to parse string to ObjectId"),
+        };
+        insert_optional(&mut filter, "title", payload.title);
+        insert_optional(&mut filter, "group", payload.group);
+        insert_optional(&mut filter, "variant", payload.variant);
+
+        if let Some(start) = payload.start {
+            filter.insert("start", doc! { "$gte": start });
+        };
+
+        if let Some(end) = payload.end {
+            filter.insert("end", doc! { "$lte": end });
+        };
+
+        let cursor = self.activities.find(filter).await?;
+        let res = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
+        Ok(res)
+    }
 }
 
 #[cfg(test)]
@@ -181,7 +194,8 @@ mod tests {
     }
 
     async fn delete_test_activity(db: &MongoDatabase, id: String, user_id: String) {
-        let _ = db.delete_activity_by_id(id, user_id).await;
+        let payload = DeleteActivityPayload { id: &id };
+        let _ = db.delete_activity_by_id(payload, user_id).await;
     }
 
     #[tokio::test]
@@ -241,13 +255,120 @@ mod tests {
         let db = init_db().await;
         let (new_id, user_id) = create_test_activity(&db).await;
 
-        let activity = db
-            .get_activity_by_id(new_id.to_hex(), user_id.clone())
-            .await;
+        let payload = GetActivityPayload {
+            id: &new_id.to_hex(),
+        };
+
+        let activity = db.get_activity_by_id(payload, user_id.clone()).await;
         assert!(activity.is_ok());
         assert!(activity.unwrap().is_some());
 
         delete_test_activity(&db, new_id.to_hex(), user_id).await;
+    }
+
+    #[tokio::test]
+    async fn get_many() {
+        let db = init_db().await;
+
+        let user_id = String::from("5f00b442bab42e04c05f5a9e");
+        let dates: Vec<(DateTime, DateTime)> = vec![
+            (
+                DateTime::parse_rfc3339_str("2000-01-01T09:00:00.000Z").unwrap(),
+                DateTime::parse_rfc3339_str("2000-01-01T09:30:00.000Z").unwrap(),
+            ),
+            (
+                DateTime::parse_rfc3339_str("2000-01-02T09:00:00.000Z").unwrap(),
+                DateTime::parse_rfc3339_str("2000-01-02T09:30:00.000Z").unwrap(),
+            ),
+            (
+                DateTime::parse_rfc3339_str("2000-01-03T09:00:00.000Z").unwrap(),
+                DateTime::parse_rfc3339_str("2000-01-03T09:30:00.000Z").unwrap(),
+            ),
+            (
+                DateTime::parse_rfc3339_str("2000-01-04T09:00:00.000Z").unwrap(),
+                DateTime::parse_rfc3339_str("2000-01-04T09:30:00.000Z").unwrap(),
+            ),
+            (
+                DateTime::parse_rfc3339_str("2000-01-05T09:00:00.000Z").unwrap(),
+                DateTime::parse_rfc3339_str("2000-01-05T09:30:00.000Z").unwrap(),
+            ),
+        ];
+
+        let results_futures = dates.iter().map(|x| {
+            let data = PostActivityPayload {
+                title: "get many",
+                variant: "default".into(),
+                group: None,
+                notes: None,
+                start: x.0,
+                end: x.1,
+                timezone: 0,
+                data: None,
+            };
+            db.create_activity(data, user_id.clone())
+        });
+
+        let mut inserted_ids = vec![];
+        for res in results_futures {
+            let id = match res.await {
+                Ok(v) => match v.inserted_id {
+                    Bson::ObjectId(oid) => oid.to_hex(),
+                    _ => panic!("failed to retrieve objectid"),
+                },
+                _ => panic!("failed to create activity"),
+            };
+
+            inserted_ids.push(id);
+        }
+
+        let filters = GetActivitiesPayload {
+            variant: None,
+            title: Some("get many"),
+            group: None,
+            start: Some(DateTime::parse_rfc3339_str("2000-01-01T00:00:00.000Z").unwrap()),
+            end: Some(DateTime::parse_rfc3339_str("2000-01-01T23:59:59.999Z").unwrap()),
+        };
+
+        let activities = match db.get_activities(filters, user_id.clone()).await {
+            Ok(v) => v,
+            Err(_) => vec![],
+        };
+
+        assert!(activities.len() == 1);
+
+        let filters = GetActivitiesPayload {
+            variant: None,
+            title: Some("get many"),
+            group: None,
+            start: Some(DateTime::parse_rfc3339_str("2000-01-01T00:00:00.000Z").unwrap()),
+            end: Some(DateTime::parse_rfc3339_str("2000-01-03T23:59:59.999Z").unwrap()),
+        };
+
+        let activities = match db.get_activities(filters, user_id.clone()).await {
+            Ok(v) => v,
+            Err(_) => vec![],
+        };
+
+        assert!(activities.len() == 3);
+
+        let filters = GetActivitiesPayload {
+            variant: None,
+            title: Some("get many"),
+            group: None,
+            start: None,
+            end: None,
+        };
+
+        let activities = match db.get_activities(filters, user_id.clone()).await {
+            Ok(v) => v,
+            Err(_) => vec![],
+        };
+
+        assert!(activities.len() == 5);
+
+        for id in inserted_ids {
+            delete_test_activity(&db, id, user_id.clone()).await;
+        }
     }
 
     #[tokio::test]
@@ -281,10 +402,11 @@ mod tests {
         assert!(updated_activity.matched_count == 1);
         assert!(updated_activity.modified_count == 1);
 
-        let activity = match db
-            .get_activity_by_id(new_id.to_hex(), user_id.clone())
-            .await
-        {
+        let payload = GetActivityPayload {
+            id: &new_id.to_hex(),
+        };
+
+        let activity = match db.get_activity_by_id(payload, user_id.clone()).await {
             Ok(v) => match v {
                 Some(v) => v,
                 None => panic!("failed to get actvitiy"),
@@ -327,10 +449,11 @@ mod tests {
         assert!(updated_activity.matched_count == 1);
         assert!(updated_activity.modified_count == 1);
 
-        let activity = match db
-            .get_activity_by_id(new_id.to_hex(), user_id.clone())
-            .await
-        {
+        let payload = GetActivityPayload {
+            id: &new_id.to_hex(),
+        };
+
+        let activity = match db.get_activity_by_id(payload, user_id.clone()).await {
             Ok(v) => match v {
                 Some(v) => v,
                 None => panic!("failed to get actvitiy"),
@@ -391,10 +514,11 @@ mod tests {
         assert!(updated_activity.matched_count == 1);
         assert!(updated_activity.modified_count == 1);
 
-        let activity = match db
-            .get_activity_by_id(new_id.to_hex(), user_id.clone())
-            .await
-        {
+        let payload = GetActivityPayload {
+            id: &new_id.to_hex(),
+        };
+
+        let activity = match db.get_activity_by_id(payload, user_id.clone()).await {
             Ok(v) => match v {
                 Some(v) => v,
                 None => panic!("failed to get actvitiy"),
@@ -442,10 +566,11 @@ mod tests {
         assert!(updated_activity.matched_count == 1);
         assert!(updated_activity.modified_count == 1);
 
-        let activity = match db
-            .get_activity_by_id(new_id.to_hex(), user_id.clone())
-            .await
-        {
+        let payload = GetActivityPayload {
+            id: &new_id.to_hex(),
+        };
+
+        let activity = match db.get_activity_by_id(payload, user_id.clone()).await {
             Ok(v) => match v {
                 Some(v) => v,
                 None => panic!("failed to get actvitiy"),
@@ -464,7 +589,11 @@ mod tests {
         let db = init_db().await;
         let (new_id, user_id) = create_test_activity(&db).await;
 
-        let deleted_activity = db.delete_activity_by_id(new_id.to_hex(), user_id).await;
+        let payload = DeleteActivityPayload {
+            id: &new_id.to_hex(),
+        };
+
+        let deleted_activity = db.delete_activity_by_id(payload, user_id).await;
         assert!(deleted_activity.is_ok());
         assert!(deleted_activity.unwrap().deleted_count == 1);
     }
