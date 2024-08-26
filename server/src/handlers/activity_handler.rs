@@ -6,12 +6,11 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use mongodb::results::{DeleteResult, InsertOneResult, UpdateResult};
 
 use crate::{
     models::activity_model::{
-        ActivityResponse, DeleteActivityPayload, GetActivitiesPayload, GetActivityPayload,
-        PatchActivityBody, PatchActivityPayload, PostActivityPayload,
+        ActivityDeleteResponse, ActivityResponse, DeleteActivityPayload, GetActivitiesPayload,
+        GetActivityPayload, PatchActivityBody, PatchActivityPayload, PostActivityPayload,
     },
     AppState,
 };
@@ -32,13 +31,19 @@ use crate::{
 pub async fn create_activity_handler(
     State(app_state): State<Arc<AppState>>,
     Json(body): Json<PostActivityPayload>,
-) -> (StatusCode, Json<InsertOneResult>) {
+) -> (StatusCode, Json<Option<ActivityResponse>>) {
     match app_state
         .db
         .create_activity(body, app_state.user_id.clone())
         .await
     {
-        Ok(res) => (StatusCode::CREATED, Json(res)),
+        Ok(res) => match res {
+            Some(activity) => (
+                StatusCode::CREATED,
+                Json(Some(ActivityResponse::from(activity))),
+            ),
+            None => (StatusCode::CREATED, Json(None)),
+        },
         Err(_) => panic!("failed to create activity"),
     }
 }
@@ -108,7 +113,7 @@ pub async fn update_activity_handler(
     Path(id): Path<String>,
     State(app_state): State<Arc<AppState>>,
     Json(body): Json<PatchActivityBody>,
-) -> (StatusCode, Json<UpdateResult>) {
+) -> (StatusCode, Json<ActivityResponse>) {
     let payload = PatchActivityPayload {
         id,
         variant: body.variant,
@@ -125,11 +130,11 @@ pub async fn update_activity_handler(
         .update_activity_by_id(payload, app_state.user_id.clone())
         .await
     {
-        Some(v) => match v {
-            Ok(res) => (StatusCode::OK, Json(res)),
-            Err(_) => panic!("failed to update activity"),
+        Ok(v) => match v {
+            Some(res) => (StatusCode::OK, Json(ActivityResponse::from(res))),
+            None => panic!("failed to update activity"),
         },
-        _ => panic!("failed to update activity"),
+        Err(_) => panic!("failed to update activity"),
     }
 }
 
@@ -141,14 +146,14 @@ pub async fn update_activity_handler(
 pub async fn delete_activity_handler(
     Path(id): Path<String>,
     State(app_state): State<Arc<AppState>>,
-) -> (StatusCode, Json<DeleteResult>) {
+) -> (StatusCode, Json<ActivityDeleteResponse>) {
     let payload = DeleteActivityPayload { id };
     match app_state
         .db
         .delete_activity_by_id(payload, app_state.user_id.clone())
         .await
     {
-        Ok(res) => (StatusCode::OK, Json(res)),
+        Ok(res) => (StatusCode::OK, Json(ActivityDeleteResponse::from(res))),
         Err(_) => panic!("failed to delete activity"),
     }
 }

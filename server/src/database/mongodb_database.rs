@@ -1,14 +1,13 @@
 use futures::TryStreamExt;
 use mongodb::{
-    bson::{doc, oid::ObjectId, Document},
+    bson::{doc, oid::ObjectId, Bson, Document},
     error::Error,
-    results::{DeleteResult, InsertOneResult, UpdateResult},
     Client, Collection,
 };
 
 use crate::{
     models::activity_model::{
-        Activity, DeleteActivityPayload, GetActivitiesPayload, GetActivityPayload,
+        Activity, ActivityDelete, DeleteActivityPayload, GetActivitiesPayload, GetActivityPayload,
         PatchActivityPayload, PostActivityPayload,
     },
     utils::utils::insert_optional,
@@ -29,11 +28,22 @@ impl MongoDatabase {
         Ok::<Self, Error>(Self { activities })
     }
 
+    async fn get_doc(&self, id: ObjectId, user_id: String) -> Result<Option<Activity>, Error> {
+        let filter = doc! {
+            "_id": id,
+            "user": ObjectId::parse_str(user_id).expect("failed to parse string to ObjectId")
+        };
+
+        let res = self.activities.find_one(filter).await?;
+
+        Ok(res)
+    }
+
     pub async fn create_activity(
         &self,
         payload: PostActivityPayload,
         user_id: String,
-    ) -> Result<InsertOneResult, Error> {
+    ) -> Result<Option<Activity>, Error> {
         let activity = Activity::new(
             payload.variant,
             payload.title.to_string(),
@@ -43,21 +53,28 @@ impl MongoDatabase {
             payload.end,
             payload.timezone,
             payload.data,
-            user_id,
+            user_id.clone(),
         );
 
-        let res = self.activities.insert_one(activity).await?;
-        Ok(res)
+        let new_id = match self.activities.insert_one(activity).await {
+            Ok(res) => match res.inserted_id {
+                Bson::ObjectId(oid) => oid,
+                _ => panic!("failed to retrieve objectid"),
+            },
+            Err(e) => return Err(e),
+        };
+
+        self.get_doc(new_id, user_id).await
     }
 
     pub async fn update_activity_by_id(
         &self,
         payload: PatchActivityPayload,
         user_id: String,
-    ) -> Option<Result<UpdateResult, Error>> {
+    ) -> Result<Option<Activity>, Error> {
         let filter = doc! {
-            "_id": ObjectId::parse_str(payload.id).expect("failed to parse string to ObjectId"),
-            "user": ObjectId::parse_str(user_id).expect("failed to parse string to ObjectId")
+            "_id": ObjectId::parse_str(payload.id.clone()).expect("failed to parse string to ObjectId"),
+            "user": ObjectId::parse_str(user_id.clone()).expect("failed to parse string to ObjectId")
         };
 
         let mut update_doc = Document::new();
@@ -89,21 +106,28 @@ impl MongoDatabase {
             Some(self.activities.update_one(filter, update).await)
         } else {
             None
-        }
+        };
+
+        self.get_doc(ObjectId::parse_str(payload.id).unwrap(), user_id)
+            .await
     }
 
     pub async fn delete_activity_by_id(
         &self,
         payload: DeleteActivityPayload,
         user_id: String,
-    ) -> Result<DeleteResult, Error> {
+    ) -> Result<ActivityDelete, Error> {
         let filter = doc! {
-            "_id": ObjectId::parse_str(payload.id).expect("failed to parse string to ObjectId"),
+            "_id": ObjectId::parse_str(payload.id.clone()).expect("failed to parse string to ObjectId"),
             "user": ObjectId::parse_str(user_id).expect("failed to parse string to ObjectId")
         };
 
-        let res = self.activities.delete_one(filter).await?;
-        Ok(res)
+        self.activities.delete_one(filter).await?;
+        let deleted_activity = ActivityDelete {
+            id: ObjectId::parse_str(payload.id).unwrap(),
+        };
+
+        Ok(deleted_activity)
     }
 
     pub async fn get_activity_by_id(
@@ -182,7 +206,7 @@ mod tests {
 
     async fn create_test_activity(db: &MongoDatabase) -> (ObjectId, String) {
         let user_id = String::from("5f00b442bab42e04c05f5a9e");
-        let data = PostActivityPayload {
+        let payload = PostActivityPayload {
             title: "test get".to_string(),
             variant: "default".into(),
             group: Some("test group".to_string()),
@@ -193,13 +217,26 @@ mod tests {
             data: None,
         };
 
-        let res = db.create_activity(data, user_id.clone()).await;
+        let activity = Activity::new(
+            payload.variant,
+            payload.title.to_string(),
+            payload.group.unwrap_or(String::from("")).into(),
+            payload.notes.unwrap_or(String::from("")).into(),
+            payload.start,
+            payload.end,
+            payload.timezone,
+            payload.data,
+            user_id.clone(),
+        );
 
-        let new_id = res.unwrap().inserted_id;
-        let new_id = match new_id {
-            Bson::ObjectId(oid) => oid,
-            _ => panic!("failed to retrieve objectid"),
+        let new_id = match db.activities.insert_one(activity).await {
+            Ok(res) => match res.inserted_id {
+                Bson::ObjectId(oid) => oid,
+                _ => panic!("failed to retrieve objectid"),
+            },
+            Err(_) => panic!("failed to create activity"),
         };
+
         (new_id, user_id.clone())
     }
 
@@ -255,12 +292,7 @@ mod tests {
         let inserted_activity = db.create_activity(data, user_id.clone()).await;
         assert!(inserted_activity.is_ok());
 
-        let new_id = inserted_activity.unwrap().inserted_id;
-        let new_id = match new_id {
-            Bson::ObjectId(oid) => oid,
-            _ => panic!("failed to retrieve objectid"),
-        };
-
+        let new_id = inserted_activity.unwrap().unwrap().id;
         delete_test_activity(&db, new_id.to_hex(), user_id).await;
     }
 
@@ -325,10 +357,7 @@ mod tests {
         let mut inserted_ids = vec![];
         for res in results_futures {
             let id = match res.await {
-                Ok(v) => match v.inserted_id {
-                    Bson::ObjectId(oid) => oid.to_hex(),
-                    _ => panic!("failed to retrieve objectid"),
-                },
+                Ok(v) => v.unwrap().id,
                 _ => panic!("failed to create activity"),
             };
 
@@ -381,7 +410,7 @@ mod tests {
         assert!(activities.len() == 5);
 
         for id in inserted_ids {
-            delete_test_activity(&db, id, user_id.clone()).await;
+            delete_test_activity(&db, id.to_hex(), user_id.clone()).await;
         }
     }
 
@@ -402,19 +431,10 @@ mod tests {
             data: None,
         };
 
-        let updated_activity = match db
+        let updated_activity = db
             .update_activity_by_id(update_payload, user_id.clone())
-            .await
-        {
-            Some(v) => match v {
-                Ok(v) => v,
-                Err(_) => panic!("failed to update"),
-            },
-            None => panic!("failed to update"),
-        };
-        assert!(updated_activity.upserted_id.is_none());
-        assert!(updated_activity.matched_count == 1);
-        assert!(updated_activity.modified_count == 1);
+            .await;
+        assert!(updated_activity.is_ok());
 
         let payload = GetActivityPayload {
             id: new_id.to_hex(),
@@ -449,19 +469,10 @@ mod tests {
             }),
         };
 
-        let updated_activity = match db
+        let updated_activity = db
             .update_activity_by_id(update_payload, user_id.clone())
-            .await
-        {
-            Some(v) => match v {
-                Ok(v) => v,
-                Err(_) => panic!("failed to update"),
-            },
-            None => panic!("failed to update"),
-        };
-        assert!(updated_activity.upserted_id.is_none());
-        assert!(updated_activity.matched_count == 1);
-        assert!(updated_activity.modified_count == 1);
+            .await;
+        assert!(updated_activity.is_ok());
 
         let payload = GetActivityPayload {
             id: new_id.to_hex(),
@@ -518,19 +529,10 @@ mod tests {
             }),
         };
 
-        let updated_activity = match db
+        let updated_activity = db
             .update_activity_by_id(update_payload, user_id.clone())
-            .await
-        {
-            Some(v) => match v {
-                Ok(v) => v,
-                Err(_) => panic!("failed to update"),
-            },
-            None => panic!("failed to update"),
-        };
-        assert!(updated_activity.upserted_id.is_none());
-        assert!(updated_activity.matched_count == 1);
-        assert!(updated_activity.modified_count == 1);
+            .await;
+        assert!(updated_activity.is_ok());
 
         let payload = GetActivityPayload {
             id: new_id.to_hex(),
@@ -570,19 +572,10 @@ mod tests {
             }),
         };
 
-        let updated_activity = match db
+        let updated_activity = db
             .update_activity_by_id(update_payload, user_id.clone())
-            .await
-        {
-            Some(v) => match v {
-                Ok(v) => v,
-                Err(_) => panic!("failed to update"),
-            },
-            None => panic!("failed to update"),
-        };
-        assert!(updated_activity.upserted_id.is_none());
-        assert!(updated_activity.matched_count == 1);
-        assert!(updated_activity.modified_count == 1);
+            .await;
+        assert!(updated_activity.is_ok());
 
         let payload = GetActivityPayload {
             id: new_id.to_hex(),
@@ -613,6 +606,6 @@ mod tests {
 
         let deleted_activity = db.delete_activity_by_id(payload, user_id).await;
         assert!(deleted_activity.is_ok());
-        assert!(deleted_activity.unwrap().deleted_count == 1);
+        assert!(deleted_activity.unwrap().id == new_id);
     }
 }

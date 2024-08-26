@@ -301,3 +301,27 @@ impl From<&Activity> for ActivityResponse {
         }
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ActivityDelete {
+    #[serde(rename = "_id")]
+    pub id: ObjectId,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ActivityDeleteResponse {
+    #[serde(rename = "_id", serialize_with = "serialize_object_id_as_hex_string")]
+    pub id: ObjectId,
+}
+
+impl From<ActivityDelete> for ActivityDeleteResponse {
+    fn from(activity: ActivityDelete) -> ActivityDeleteResponse {
+        ActivityDeleteResponse { id: activity.id }
+    }
+}
+
+impl From<&ActivityDelete> for ActivityDeleteResponse {
+    fn from(activity: &ActivityDelete) -> ActivityDeleteResponse {
+        ActivityDeleteResponse { id: activity.id }
+    }
+}
