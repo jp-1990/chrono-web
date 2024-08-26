@@ -1,92 +1,97 @@
+use std::env;
+use std::sync::Arc;
+
+use axum::{
+    http::{
+        header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
+        HeaderValue, Method,
+    },
+    routing::{get, post},
+    Json, Router,
+};
 use database::mongodb_database::MongoDatabase;
 use dotenv::dotenv;
-use rocket::fairing::{Fairing, Info, Kind};
-use rocket::http::{Header, Method, Status};
-use rocket::serde::json::Json;
-use rocket::{Request, Response};
-use serde::Serialize;
-use std::env;
-extern crate dotenv;
+use serde_json::Value;
+use tower_http::cors::CorsLayer;
 
-mod api;
+use self::handlers::activity_handler::{
+    create_activity_handler, delete_activity_handler, get_activities_handler, get_activity_handler,
+    update_activity_handler,
+};
+
 mod database;
+mod handlers;
 mod models;
 mod utils;
 
-#[macro_use]
-extern crate rocket;
-
-#[derive(Serialize)]
-struct Test {
-    text: &'static str,
+pub struct AppState {
+    db: MongoDatabase,
+    user_id: String,
 }
 
-#[get("/")]
-fn index() -> Json<Test> {
-    let test = Test {
-        text: "hello, world!",
-    };
-    Json(test)
+async fn health_check_handler() -> Json<Value> {
+    let json_response = serde_json::json!({
+        "status": "success",
+    });
+
+    Json(json_response)
 }
 
-pub struct CORS;
+//todo:: error handling
 
-#[rocket::async_trait]
-impl Fairing for CORS {
-    fn info(&self) -> Info {
-        Info {
-            name: "Add CORS headers to responses",
-            kind: Kind::Response,
-        }
-    }
-    // TODO: scope headers?
-    async fn on_response<'r>(&self, request: &'r Request<'_>, response: &mut Response<'r>) {
-        response.set_header(Header::new("Access-Control-Allow-Origin", "*"));
-        response.set_header(Header::new(
-            "Access-Control-Allow-Methods",
-            "POST, GET, PATCH, PUT, OPTIONS",
-        ));
-        response.set_header(Header::new("Access-Control-Allow-Headers", "*"));
-        response.set_header(Header::new("Access-Control-Allow-Credentials", "true"));
-
-        if request.method() == Method::Options {
-            response.set_status(Status::NoContent);
-            response.set_header(Header::new(
-                "Access-Control-Allow-Methods",
-                "POST, PATCH, GET, DELETE",
-            ));
-            response.set_header(Header::new(
-                "Access-Control-Allow-Headers",
-                "content-type, authorization",
-            ));
-        }
-    }
-}
-
-#[launch]
-async fn rocket() -> _ {
+#[tokio::main]
+async fn main() {
     dotenv().ok();
 
     let uri = match env::var("CLUSTER") {
         Ok(v) => v,
-        Err(_) => String::from("Error loading env variable"),
+        Err(_) => panic!("Error loading CLUSTER. Ensure CLUSTER env var is set"),
     };
     let db_name = "task-tracker-testing";
 
     let db = match MongoDatabase::init(&uri, db_name).await {
-        Ok(v) => v,
+        Ok(v) => {
+            println!("Database connected");
+            v
+        }
         Err(_) => panic!("database connection failed to initialize"),
     };
 
-    rocket::build().manage(db).attach(CORS).mount(
-        "/api/v1/",
-        routes![
-            index,
-            // get_activity,
-            // get_activities,
-            // create_activity,
-            // update_activity,
-            // delete_activity
-        ],
-    )
+    let app_state = Arc::new(AppState {
+        db: db.clone(),
+        user_id: String::from("5f00b442bab42e04c05f5a9e"),
+    });
+
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_credentials(true)
+        .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE]);
+
+    let app = Router::new()
+        .route("/api/health-check", get(health_check_handler))
+        .route("/api/v1/activity", get(get_activities_handler))
+        .route("/api/v1/activity", post(create_activity_handler))
+        .route(
+            "/api/v1/activity/:id",
+            get(get_activity_handler)
+                .patch(update_activity_handler)
+                .delete(delete_activity_handler),
+        )
+        .with_state(app_state)
+        .layer(cors);
+
+    let port = match env::var("PORT") {
+        Ok(v) => v,
+        Err(_) => panic!("Error loading PORT. Ensure PORT env var is set"),
+    };
+
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
+        .await
+        .unwrap();
+
+    println!("Server started successfully");
+    println!("Server running on port: {}...", port);
+
+    axum::serve(listener, app).await.unwrap()
 }

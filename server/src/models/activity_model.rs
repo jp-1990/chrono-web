@@ -1,4 +1,7 @@
 use mongodb::bson::oid::ObjectId;
+use mongodb::bson::serde_helpers::{
+    serialize_bson_datetime_as_rfc3339_string, serialize_object_id_as_hex_string,
+};
 use mongodb::bson::Bson;
 use serde::{Deserialize, Serialize};
 
@@ -72,7 +75,7 @@ impl From<ExerciseVariant> for String {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Set {
     pub idx: u8,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -85,51 +88,26 @@ pub struct Set {
     pub duration: Option<u32>,
 }
 
-#[non_exhaustive]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StrengthExercise {
-    title: String,
-    sets: Vec<Set>,
+    pub title: String,
+    pub sets: Vec<Set>,
 }
 
-impl StrengthExercise {
-    pub fn new(title: String, sets: Vec<Set>) -> StrengthExercise {
-        Self { title, sets }
-    }
-}
-
-#[non_exhaustive]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MobilityExercise {
-    title: String,
-    sets: Vec<Set>,
+    pub title: String,
+    pub sets: Vec<Set>,
 }
 
-impl MobilityExercise {
-    pub fn new(title: String, sets: Vec<Set>) -> MobilityExercise {
-        Self { title, sets }
-    }
-}
-
-#[non_exhaustive]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CardioExercise {
-    title: String,
-    duration: u32,
-    distance: u32,
+    pub title: String,
+    pub duration: u32,
+    pub distance: u32,
 }
 
-impl CardioExercise {
-    pub fn new(title: String, duration: u32, distance: u32) -> CardioExercise {
-        Self {
-            title,
-            duration,
-            distance,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "variant")]
 pub enum Exercise {
     Strength(StrengthExercise),
@@ -137,62 +115,74 @@ pub enum Exercise {
     Cardio(CardioExercise),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ActivityData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exercise: Option<Vec<Exercise>>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct GetActivityPayload<'a> {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetActivityPayload {
     #[serde(rename = "_id")]
-    pub id: &'a str,
+    pub id: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct GetActivitiesPayload<'a> {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetActivitiesPayload {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub variant: Option<ActivityVariant>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<&'a str>,
+    pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub group: Option<&'a str>,
+    pub group: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub start: Option<mongodb::bson::DateTime>,
+    pub start: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub end: Option<mongodb::bson::DateTime>,
+    pub end: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct PostActivityPayload<'a> {
-    pub title: &'a str,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PostActivityPayload {
+    pub title: String,
     pub variant: ActivityVariant,
-    pub group: Option<&'a str>,
-    pub notes: Option<&'a str>,
-    pub start: mongodb::bson::DateTime,
-    pub end: mongodb::bson::DateTime,
+    pub group: Option<String>,
+    pub notes: Option<String>,
+    pub start: String,
+    pub end: String,
     pub timezone: i8,
     pub data: Option<ActivityData>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct PatchActivityPayload<'a> {
-    #[serde(rename = "_id")]
-    pub id: &'a str,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PatchActivityBody {
     pub variant: Option<ActivityVariant>,
-    pub title: Option<&'a str>,
-    pub group: Option<&'a str>,
-    pub notes: Option<&'a str>,
-    pub start: Option<mongodb::bson::DateTime>,
-    pub end: Option<mongodb::bson::DateTime>,
+    pub title: Option<String>,
+    pub group: Option<String>,
+    pub notes: Option<String>,
+    pub start: Option<String>,
+    pub end: Option<String>,
     pub timezone: Option<i8>,
     pub data: Option<ActivityData>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct DeleteActivityPayload<'a> {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PatchActivityPayload {
     #[serde(rename = "_id")]
-    pub id: &'a str,
+    pub id: String,
+    pub variant: Option<ActivityVariant>,
+    pub title: Option<String>,
+    pub group: Option<String>,
+    pub notes: Option<String>,
+    pub start: Option<String>,
+    pub end: Option<String>,
+    pub timezone: Option<i8>,
+    pub data: Option<ActivityData>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeleteActivityPayload {
+    #[serde(rename = "_id")]
+    pub id: String,
 }
 
 #[non_exhaustive]
@@ -222,12 +212,15 @@ impl Activity {
         title: String,
         group: String,
         notes: String,
-        start: mongodb::bson::DateTime,
-        end: mongodb::bson::DateTime,
+        start: String,
+        end: String,
         timezone: i8,
         data: Option<ActivityData>,
         user: String,
     ) -> Self {
+        let start = mongodb::bson::DateTime::parse_rfc3339_str(start).unwrap();
+        let end = mongodb::bson::DateTime::parse_rfc3339_str(end).unwrap();
+
         Self {
             id: ObjectId::new(),
             variant,
@@ -241,6 +234,70 @@ impl Activity {
             created_at: mongodb::bson::DateTime::now(),
             user: ObjectId::parse_str(user).expect("failed to parse string to ObjectId"),
             v: 1,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ActivityResponse {
+    #[serde(rename = "_id", serialize_with = "serialize_object_id_as_hex_string")]
+    pub id: ObjectId,
+    pub variant: ActivityVariant,
+    pub title: String,
+    pub group: String,
+    pub notes: String,
+    #[serde(serialize_with = "serialize_bson_datetime_as_rfc3339_string")]
+    pub start: mongodb::bson::DateTime,
+    #[serde(serialize_with = "serialize_bson_datetime_as_rfc3339_string")]
+    pub end: mongodb::bson::DateTime,
+    pub timezone: i8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<ActivityData>,
+    #[serde(
+        rename = "createdAt",
+        serialize_with = "serialize_bson_datetime_as_rfc3339_string"
+    )]
+    pub created_at: mongodb::bson::DateTime,
+    #[serde(serialize_with = "serialize_object_id_as_hex_string")]
+    pub user: ObjectId,
+    #[serde(rename = "__v")]
+    pub v: u32,
+}
+
+impl From<Activity> for ActivityResponse {
+    fn from(activity: Activity) -> ActivityResponse {
+        ActivityResponse {
+            id: activity.id,
+            variant: activity.variant,
+            title: activity.title,
+            group: activity.group,
+            notes: activity.notes,
+            start: activity.start,
+            end: activity.end,
+            timezone: activity.timezone,
+            data: activity.data,
+            created_at: activity.created_at,
+            user: activity.user,
+            v: activity.v,
+        }
+    }
+}
+
+impl From<&Activity> for ActivityResponse {
+    fn from(activity: &Activity) -> ActivityResponse {
+        ActivityResponse {
+            id: activity.id,
+            variant: activity.variant,
+            title: activity.title.clone(),
+            group: activity.group.clone(),
+            notes: activity.notes.clone(),
+            start: activity.start,
+            end: activity.end,
+            timezone: activity.timezone,
+            data: activity.data.clone(),
+            created_at: activity.created_at,
+            user: activity.user,
+            v: activity.v,
         }
     }
 }

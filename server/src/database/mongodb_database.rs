@@ -5,7 +5,6 @@ use mongodb::{
     results::{DeleteResult, InsertOneResult, UpdateResult},
     Client, Collection,
 };
-use rocket::fairing::Result;
 
 use crate::{
     models::activity_model::{
@@ -15,6 +14,7 @@ use crate::{
     utils::utils::insert_optional,
 };
 
+#[derive(Clone, Debug)]
 pub struct MongoDatabase {
     activities: Collection<Activity>,
 }
@@ -26,21 +26,21 @@ impl MongoDatabase {
         let db = client.database(db_name);
         let activities: Collection<Activity> = db.collection("activities");
 
-        Ok::<MongoDatabase, Error>(MongoDatabase { activities })
+        Ok::<Self, Error>(Self { activities })
     }
 
     pub async fn create_activity(
         &self,
-        payload: PostActivityPayload<'_>,
+        payload: PostActivityPayload,
         user_id: String,
     ) -> Result<InsertOneResult, Error> {
         let activity = Activity::new(
             payload.variant,
             payload.title.to_string(),
-            payload.group.unwrap_or("").into(),
-            payload.notes.unwrap_or("").into(),
-            payload.start.into(),
-            payload.end.into(),
+            payload.group.unwrap_or(String::from("")).into(),
+            payload.notes.unwrap_or(String::from("")).into(),
+            payload.start,
+            payload.end,
             payload.timezone,
             payload.data,
             user_id,
@@ -52,7 +52,7 @@ impl MongoDatabase {
 
     pub async fn update_activity_by_id(
         &self,
-        payload: PatchActivityPayload<'_>,
+        payload: PatchActivityPayload,
         user_id: String,
     ) -> Option<Result<UpdateResult, Error>> {
         let filter = doc! {
@@ -62,12 +62,20 @@ impl MongoDatabase {
 
         let mut update_doc = Document::new();
 
+        if let Some(start) = payload.start {
+            let start = mongodb::bson::DateTime::parse_rfc3339_str(start).unwrap();
+            update_doc.insert("start", start);
+        };
+
+        if let Some(end) = payload.end {
+            let end = mongodb::bson::DateTime::parse_rfc3339_str(end).unwrap();
+            update_doc.insert("end", end);
+        };
+
         insert_optional(&mut update_doc, "variant", payload.variant);
         insert_optional(&mut update_doc, "title", payload.title);
         insert_optional(&mut update_doc, "group", payload.group);
         insert_optional(&mut update_doc, "notes", payload.notes);
-        insert_optional(&mut update_doc, "start", payload.start);
-        insert_optional(&mut update_doc, "end", payload.end);
         insert_optional(&mut update_doc, "timezone", payload.timezone);
 
         if let Some(data) = payload.data {
@@ -86,7 +94,7 @@ impl MongoDatabase {
 
     pub async fn delete_activity_by_id(
         &self,
-        payload: DeleteActivityPayload<'_>,
+        payload: DeleteActivityPayload,
         user_id: String,
     ) -> Result<DeleteResult, Error> {
         let filter = doc! {
@@ -100,7 +108,7 @@ impl MongoDatabase {
 
     pub async fn get_activity_by_id(
         &self,
-        payload: GetActivityPayload<'_>,
+        payload: GetActivityPayload,
         user_id: String,
     ) -> Result<Option<Activity>, Error> {
         let filter = doc! {
@@ -114,7 +122,7 @@ impl MongoDatabase {
 
     pub async fn get_activities(
         &self,
-        payload: GetActivitiesPayload<'_>,
+        payload: GetActivitiesPayload,
         user_id: String,
     ) -> Result<Vec<Activity>, Error> {
         let mut filter = doc! {
@@ -125,10 +133,12 @@ impl MongoDatabase {
         insert_optional(&mut filter, "variant", payload.variant);
 
         if let Some(start) = payload.start {
+            let start = mongodb::bson::DateTime::parse_rfc3339_str(start).unwrap();
             filter.insert("start", doc! { "$gte": start });
         };
 
         if let Some(end) = payload.end {
+            let end = mongodb::bson::DateTime::parse_rfc3339_str(end).unwrap();
             filter.insert("end", doc! { "$lte": end });
         };
 
@@ -173,12 +183,12 @@ mod tests {
     async fn create_test_activity(db: &MongoDatabase) -> (ObjectId, String) {
         let user_id = String::from("5f00b442bab42e04c05f5a9e");
         let data = PostActivityPayload {
-            title: "test get",
+            title: "test get".to_string(),
             variant: "default".into(),
-            group: Some("test group"),
-            notes: Some("insert 2"),
-            start: DateTime::parse_rfc3339_str("2000-01-01T09:00:00.000Z").unwrap(),
-            end: DateTime::parse_rfc3339_str("2000-01-01T09:30:00.000Z").unwrap(),
+            group: Some("test group".to_string()),
+            notes: Some("insert 2".to_string()),
+            start: "2000-01-01T09:00:00.000Z".to_string(),
+            end: "2000-01-01T09:30:00.000Z".to_string(),
             timezone: 0,
             data: None,
         };
@@ -194,7 +204,7 @@ mod tests {
     }
 
     async fn delete_test_activity(db: &MongoDatabase, id: String, user_id: String) {
-        let payload = DeleteActivityPayload { id: &id };
+        let payload = DeleteActivityPayload { id };
         let _ = db.delete_activity_by_id(payload, user_id).await;
     }
 
@@ -204,36 +214,40 @@ mod tests {
 
         let user_id = String::from("5f00b442bab42e04c05f5a9e");
         let data = PostActivityPayload {
-            title: "test create",
+            title: "test create".to_string(),
             variant: "exercise".into(),
-            group: Some("test group"),
-            notes: Some("insert 1"),
-            start: DateTime::parse_rfc3339_str("2000-01-01T09:00:00.000Z").unwrap(),
-            end: DateTime::parse_rfc3339_str("2000-01-01T09:30:00.000Z").unwrap(),
+            group: Some("test group".to_string()),
+            notes: Some("insert 1".to_string()),
+            start: "2000-01-01T09:00:00.000Z".to_string(),
+            end: "2000-01-01T09:30:00.000Z".to_string(),
             timezone: 0,
             data: Some(ActivityData {
                 exercise: Some(vec![
-                    Exercise::Strength(StrengthExercise::new(
-                        "pressups".to_string(),
-                        vec![Set {
+                    Exercise::Strength(StrengthExercise {
+                        title: "pressups".to_string(),
+                        sets: vec![Set {
                             idx: 0,
                             reps: Some(30),
                             rest: Some(60),
                             weight: None,
                             duration: None,
                         }],
-                    )),
-                    Exercise::Mobility(MobilityExercise::new(
-                        "pressups2".to_string(),
-                        vec![Set {
+                    }),
+                    Exercise::Mobility(MobilityExercise {
+                        title: "pressups2".to_string(),
+                        sets: vec![Set {
                             idx: 0,
                             reps: None,
                             rest: Some(60),
                             weight: None,
                             duration: Some(30),
                         }],
-                    )),
-                    Exercise::Cardio(CardioExercise::new("running".to_string(), 30, 5000)),
+                    }),
+                    Exercise::Cardio(CardioExercise {
+                        title: "running".to_string(),
+                        duration: 30,
+                        distance: 5000,
+                    }),
                 ]),
             }),
         };
@@ -256,7 +270,7 @@ mod tests {
         let (new_id, user_id) = create_test_activity(&db).await;
 
         let payload = GetActivityPayload {
-            id: &new_id.to_hex(),
+            id: new_id.to_hex(),
         };
 
         let activity = db.get_activity_by_id(payload, user_id.clone()).await;
@@ -271,37 +285,37 @@ mod tests {
         let db = init_db().await;
 
         let user_id = String::from("5f00b442bab42e04c05f5a9e");
-        let dates: Vec<(DateTime, DateTime)> = vec![
+        let dates: Vec<(String, String)> = vec![
             (
-                DateTime::parse_rfc3339_str("2000-01-01T09:00:00.000Z").unwrap(),
-                DateTime::parse_rfc3339_str("2000-01-01T09:30:00.000Z").unwrap(),
+                "2000-01-01T09:00:00.000Z".to_string(),
+                "2000-01-01T09:30:00.000Z".to_string(),
             ),
             (
-                DateTime::parse_rfc3339_str("2000-01-02T09:00:00.000Z").unwrap(),
-                DateTime::parse_rfc3339_str("2000-01-02T09:30:00.000Z").unwrap(),
+                "2000-01-02T09:00:00.000Z".to_string(),
+                "2000-01-02T09:30:00.000Z".to_string(),
             ),
             (
-                DateTime::parse_rfc3339_str("2000-01-03T09:00:00.000Z").unwrap(),
-                DateTime::parse_rfc3339_str("2000-01-03T09:30:00.000Z").unwrap(),
+                "2000-01-03T09:00:00.000Z".to_string(),
+                "2000-01-03T09:30:00.000Z".to_string(),
             ),
             (
-                DateTime::parse_rfc3339_str("2000-01-04T09:00:00.000Z").unwrap(),
-                DateTime::parse_rfc3339_str("2000-01-04T09:30:00.000Z").unwrap(),
+                "2000-01-04T09:00:00.000Z".to_string(),
+                "2000-01-04T09:30:00.000Z".to_string(),
             ),
             (
-                DateTime::parse_rfc3339_str("2000-01-05T09:00:00.000Z").unwrap(),
-                DateTime::parse_rfc3339_str("2000-01-05T09:30:00.000Z").unwrap(),
+                "2000-01-05T09:00:00.000Z".to_string(),
+                "2000-01-05T09:30:00.000Z".to_string(),
             ),
         ];
 
         let results_futures = dates.iter().map(|x| {
             let data = PostActivityPayload {
-                title: "get many",
+                title: "get many".to_string(),
                 variant: "default".into(),
                 group: None,
                 notes: None,
-                start: x.0,
-                end: x.1,
+                start: x.0.clone(),
+                end: x.1.clone(),
                 timezone: 0,
                 data: None,
             };
@@ -323,10 +337,10 @@ mod tests {
 
         let filters = GetActivitiesPayload {
             variant: None,
-            title: Some("get many"),
+            title: Some("get many".to_string()),
             group: None,
-            start: Some(DateTime::parse_rfc3339_str("2000-01-01T00:00:00.000Z").unwrap()),
-            end: Some(DateTime::parse_rfc3339_str("2000-01-01T23:59:59.999Z").unwrap()),
+            start: Some("2000-01-01T00:00:00.000Z".to_string()),
+            end: Some("2000-01-01T23:59:59.999Z".to_string()),
         };
 
         let activities = match db.get_activities(filters, user_id.clone()).await {
@@ -338,10 +352,10 @@ mod tests {
 
         let filters = GetActivitiesPayload {
             variant: None,
-            title: Some("get many"),
+            title: Some("get many".to_string()),
             group: None,
-            start: Some(DateTime::parse_rfc3339_str("2000-01-01T00:00:00.000Z").unwrap()),
-            end: Some(DateTime::parse_rfc3339_str("2000-01-03T23:59:59.999Z").unwrap()),
+            start: Some("2000-01-01T00:00:00.000Z".to_string()),
+            end: Some("2000-01-03T23:59:59.999Z".to_string()),
         };
 
         let activities = match db.get_activities(filters, user_id.clone()).await {
@@ -353,7 +367,7 @@ mod tests {
 
         let filters = GetActivitiesPayload {
             variant: None,
-            title: Some("get many"),
+            title: Some("get many".to_string()),
             group: None,
             start: None,
             end: None,
@@ -377,13 +391,13 @@ mod tests {
         let (new_id, user_id) = create_test_activity(&db).await;
 
         let update_payload = PatchActivityPayload {
-            id: &new_id.to_hex(),
-            title: Some("test update"),
+            id: new_id.to_hex(),
+            title: Some("test update".to_string()),
             variant: Some(ActivityVariant::Default),
-            group: Some("update group"),
-            notes: Some("update 2"),
+            group: Some("update group".to_string()),
+            notes: Some("update 2".to_string()),
             start: None,
-            end: Some(DateTime::parse_rfc3339_str("2000-01-01T10:30:00.000Z").unwrap()),
+            end: Some("2000-01-01T10:30:00.000Z".to_string()),
             timezone: Some(0),
             data: None,
         };
@@ -403,7 +417,7 @@ mod tests {
         assert!(updated_activity.modified_count == 1);
 
         let payload = GetActivityPayload {
-            id: &new_id.to_hex(),
+            id: new_id.to_hex(),
         };
 
         let activity = match db.get_activity_by_id(payload, user_id.clone()).await {
@@ -422,7 +436,7 @@ mod tests {
         assert!(activity.end == DateTime::parse_rfc3339_str("2000-01-01T10:30:00.000Z").unwrap());
 
         let update_payload = PatchActivityPayload {
-            id: &new_id.to_hex(),
+            id: new_id.to_hex(),
             title: None,
             variant: None,
             group: None,
@@ -450,7 +464,7 @@ mod tests {
         assert!(updated_activity.modified_count == 1);
 
         let payload = GetActivityPayload {
-            id: &new_id.to_hex(),
+            id: new_id.to_hex(),
         };
 
         let activity = match db.get_activity_by_id(payload, user_id.clone()).await {
@@ -465,7 +479,7 @@ mod tests {
         assert!(activity.data.unwrap().exercise.unwrap().len() == 0);
 
         let update_payload = PatchActivityPayload {
-            id: &new_id.to_hex(),
+            id: new_id.to_hex(),
             title: None,
             variant: None,
             group: None,
@@ -475,27 +489,31 @@ mod tests {
             timezone: None,
             data: Some(ActivityData {
                 exercise: Some(vec![
-                    Exercise::Strength(StrengthExercise::new(
-                        "pressups".to_string(),
-                        vec![Set {
+                    Exercise::Strength(StrengthExercise {
+                        title: "pressups".to_string(),
+                        sets: vec![Set {
                             idx: 0,
                             reps: Some(30),
                             rest: Some(60),
                             weight: None,
                             duration: None,
                         }],
-                    )),
-                    Exercise::Mobility(MobilityExercise::new(
-                        "pressups2".to_string(),
-                        vec![Set {
+                    }),
+                    Exercise::Mobility(MobilityExercise {
+                        title: "pressups2".to_string(),
+                        sets: vec![Set {
                             idx: 0,
                             reps: None,
                             rest: Some(60),
                             weight: None,
                             duration: Some(30),
                         }],
-                    )),
-                    Exercise::Cardio(CardioExercise::new("running".to_string(), 30, 5000)),
+                    }),
+                    Exercise::Cardio(CardioExercise {
+                        title: "running".to_string(),
+                        duration: 30,
+                        distance: 5000,
+                    }),
                 ]),
             }),
         };
@@ -515,7 +533,7 @@ mod tests {
         assert!(updated_activity.modified_count == 1);
 
         let payload = GetActivityPayload {
-            id: &new_id.to_hex(),
+            id: new_id.to_hex(),
         };
 
         let activity = match db.get_activity_by_id(payload, user_id.clone()).await {
@@ -530,7 +548,7 @@ mod tests {
         assert!(activity.data.unwrap().exercise.unwrap().len() == 3);
 
         let update_payload = PatchActivityPayload {
-            id: &new_id.to_hex(),
+            id: new_id.to_hex(),
             title: None,
             variant: None,
             group: None,
@@ -539,16 +557,16 @@ mod tests {
             end: None,
             timezone: None,
             data: Some(ActivityData {
-                exercise: Some(vec![Exercise::Strength(StrengthExercise::new(
-                    "pressups3".to_string(),
-                    vec![Set {
+                exercise: Some(vec![Exercise::Strength(StrengthExercise {
+                    title: "pressups3".to_string(),
+                    sets: vec![Set {
                         idx: 0,
                         reps: Some(30),
                         rest: Some(60),
                         weight: None,
                         duration: None,
                     }],
-                ))]),
+                })]),
             }),
         };
 
@@ -567,7 +585,7 @@ mod tests {
         assert!(updated_activity.modified_count == 1);
 
         let payload = GetActivityPayload {
-            id: &new_id.to_hex(),
+            id: new_id.to_hex(),
         };
 
         let activity = match db.get_activity_by_id(payload, user_id.clone()).await {
@@ -590,7 +608,7 @@ mod tests {
         let (new_id, user_id) = create_test_activity(&db).await;
 
         let payload = DeleteActivityPayload {
-            id: &new_id.to_hex(),
+            id: new_id.to_hex(),
         };
 
         let deleted_activity = db.delete_activity_by_id(payload, user_id).await;
