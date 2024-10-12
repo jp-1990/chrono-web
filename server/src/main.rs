@@ -1,7 +1,10 @@
-use std::env;
 use std::sync::Arc;
+use std::{env, ops::Deref};
 
+use axum::extract::FromRef;
+use axum::Extension;
 use axum::{
+    extract::{MatchedPath, Request},
     http::{
         header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
         HeaderValue, Method,
@@ -9,24 +12,48 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use axum_extra::extract::cookie::Key;
+use axum_extra::extract::PrivateCookieJar;
 use database::mongodb_database::MongoDatabase;
 use dotenv::dotenv;
 use serde_json::Value;
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use self::handlers::activity_handler::{
     create_activity_handler, delete_activity_handler, get_activities_handler, get_activity_handler,
     update_activity_handler,
 };
+use self::handlers::auth_handler::authorize;
 
 mod database;
+mod error;
 mod handlers;
 mod models;
 mod utils;
 
-pub struct AppState {
+#[derive(Clone)]
+struct AppState(Arc<InnerState>);
+
+// deref so you can still access the inner fields easily
+impl Deref for AppState {
+    type Target = InnerState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug)]
+pub struct InnerState {
     db: MongoDatabase,
-    user_id: String,
+    key: Key,
+}
+
+impl FromRef<AppState> for Key {
+    fn from_ref(state: &AppState) -> Self {
+        state.0.key.clone()
+    }
 }
 
 async fn health_check_handler() -> Json<Value> {
@@ -37,11 +64,18 @@ async fn health_check_handler() -> Json<Value> {
     Json(json_response)
 }
 
-//todo:: error handling
-
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()
+            }),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     let uri = match env::var("CLUSTER") {
         Ok(v) => v,
@@ -57,10 +91,10 @@ async fn main() {
         Err(_) => panic!("database connection failed to initialize"),
     };
 
-    let app_state = Arc::new(AppState {
-        db: db.clone(),
-        user_id: String::from("5f00b442bab42e04c05f5a9e"),
-    });
+    let app_state = AppState(Arc::new(InnerState {
+        db,
+        key: Key::generate(),
+    }));
 
     let cors = CorsLayer::new()
         .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
@@ -70,6 +104,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/api/health-check", get(health_check_handler))
+        .route("/api/v1/login", post(authorize))
         .route("/api/v1/activity", get(get_activities_handler))
         .route("/api/v1/activity", post(create_activity_handler))
         .route(
@@ -78,8 +113,26 @@ async fn main() {
                 .patch(update_activity_handler)
                 .delete(delete_activity_handler),
         )
-        .with_state(app_state)
-        .layer(cors);
+        .layer(cors)
+        .layer(
+            TraceLayer::new_for_http()
+                // Create our own span for the request and include the matched path. The matched
+                // path is useful for figuring out which handler the request was routed to.
+                .make_span_with(|req: &Request| {
+                    let method = req.method();
+                    let uri = req.uri();
+
+                    // axum automatically adds this extension.
+                    let matched_path = req
+                        .extensions()
+                        .get::<MatchedPath>()
+                        .map(|matched_path| matched_path.as_str());
+
+                    tracing::debug_span!("request", %method, %uri, matched_path)
+                })
+                .on_failure(()),
+        )
+        .with_state(app_state.into());
 
     let port = match env::var("PORT") {
         Ok(v) => v,
@@ -90,8 +143,7 @@ async fn main() {
         .await
         .unwrap();
 
-    println!("Server started successfully");
-    println!("Server running on port: {}...", port);
+    tracing::debug!("listening on {}", listener.local_addr().unwrap());
 
     axum::serve(listener, app).await.unwrap()
 }

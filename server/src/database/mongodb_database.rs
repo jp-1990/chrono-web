@@ -6,9 +6,12 @@ use mongodb::{
 };
 
 use crate::{
-    models::activity_model::{
-        Activity, ActivityDelete, DeleteActivityPayload, GetActivitiesPayload, GetActivityPayload,
-        PatchActivityPayload, PostActivityPayload,
+    models::{
+        activity_model::{
+            Activity, ActivityDelete, DeleteActivityPayload, GetActivitiesPayload,
+            GetActivityPayload, PatchActivityPayload, PostActivityPayload,
+        },
+        auth_model::{AuthPayload, User},
     },
     utils::utils::insert_optional,
 };
@@ -16,6 +19,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct MongoDatabase {
     activities: Collection<Activity>,
+    users: Collection<User>,
 }
 
 impl MongoDatabase {
@@ -24,8 +28,9 @@ impl MongoDatabase {
         let client = Client::with_uri_str(uri).await?;
         let db = client.database(db_name);
         let activities: Collection<Activity> = db.collection("activities");
+        let users: Collection<User> = db.collection("users");
 
-        Ok::<Self, Error>(Self { activities })
+        Ok::<Self, Error>(Self { activities, users })
     }
 
     async fn get_doc(&self, id: ObjectId, user_id: String) -> Result<Option<Activity>, Error> {
@@ -36,6 +41,16 @@ impl MongoDatabase {
 
         let res = self.activities.find_one(filter).await?;
 
+        Ok(res)
+    }
+
+    // todo:: write tests
+    pub async fn get_user_by_email(&self, payload: AuthPayload) -> Result<Option<User>, Error> {
+        let filter = doc! {
+            "email": payload.email
+        };
+
+        let res = self.users.find_one(filter).await?;
         Ok(res)
     }
 

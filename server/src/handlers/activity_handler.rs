@@ -1,17 +1,17 @@
-use core::panic;
-use std::sync::Arc;
-
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
+    Extension, Json,
 };
+use axum_extra::extract::PrivateCookieJar;
 
 use crate::{
+    error::error::AppError,
     models::activity_model::{
         ActivityDeleteResponse, ActivityResponse, DeleteActivityPayload, GetActivitiesPayload,
         GetActivityPayload, PatchActivityBody, PatchActivityPayload, PostActivityPayload,
     },
+    utils::auth::AccessClaims,
     AppState,
 };
 
@@ -25,74 +25,77 @@ use crate::{
 //   "timezone": -4
 // }'
 
-//todo:: return activityresponse
-//todo:: error handling
-
 pub async fn create_activity_handler(
-    State(app_state): State<Arc<AppState>>,
+    claims: AccessClaims,
+    Extension(jar): Extension<PrivateCookieJar>,
+    State(app_state): State<AppState>,
     Json(body): Json<PostActivityPayload>,
-) -> (StatusCode, Json<Option<ActivityResponse>>) {
-    match app_state
-        .db
-        .create_activity(body, app_state.user_id.clone())
-        .await
-    {
+) -> Result<(PrivateCookieJar, (StatusCode, Json<ActivityResponse>)), AppError> {
+    match app_state.db.create_activity(body, claims.sub).await {
         Ok(res) => match res {
-            Some(activity) => (
-                StatusCode::CREATED,
-                Json(Some(ActivityResponse::from(activity))),
-            ),
-            None => (StatusCode::CREATED, Json(None)),
+            Some(activity) => Ok((
+                jar,
+                (StatusCode::CREATED, Json(ActivityResponse::from(activity))),
+            )),
+            None => Err(AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to create activity!",
+            )),
         },
-        Err(_) => panic!("failed to create activity"),
+        Err(_) => Err(AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to create activity!",
+        )),
     }
 }
 
 // curl -X GET http://localhost:8000/api/v1/activity/66cc8f30ef7a9d4f94f9ad03 -H "Content-Type: application/json"
 
-//todo:: error handling
-
 pub async fn get_activity_handler(
+    claims: AccessClaims,
+    Extension(jar): Extension<PrivateCookieJar>,
     Path(id): Path<String>,
-    State(app_state): State<Arc<AppState>>,
-) -> (StatusCode, Json<ActivityResponse>) {
+    State(app_state): State<AppState>,
+) -> Result<(PrivateCookieJar, (StatusCode, Json<ActivityResponse>)), AppError> {
     let payload = GetActivityPayload { id };
-    match app_state
-        .db
-        .get_activity_by_id(payload, app_state.user_id.clone())
-        .await
-    {
+    match app_state.db.get_activity_by_id(payload, claims.sub).await {
         Ok(res) => match res {
             Some(v) => {
                 let activity = ActivityResponse::from(v);
-                (StatusCode::OK, Json(activity))
+                Ok((jar, (StatusCode::OK, Json(activity))))
             }
-            None => panic!("failed to get activity"),
+            None => Err(AppError::new(StatusCode::NOT_FOUND, "activity not found!")),
         },
-        Err(_) => panic!("failed to get activity"),
+        Err(_) => Err(AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to get activity!",
+        )),
     }
 }
 
-// curl -G "http://localhost:8000/api/v1/activities" --data-urlencode "title=My New Activity"
-
-//todo:: error handling
+// curl -GET "http://localhost:8000/api/v1/activity" --data-urlencode "title=My New Activity"
+// curl -GET "http://localhost:8000/api/v1/activity"
 
 pub async fn get_activities_handler(
+    claims: AccessClaims,
+    Extension(jar): Extension<PrivateCookieJar>,
     query: Option<Query<GetActivitiesPayload>>,
-    State(app_state): State<Arc<AppState>>,
-) -> (StatusCode, Json<Vec<ActivityResponse>>) {
+    State(app_state): State<AppState>,
+) -> Result<(PrivateCookieJar, (StatusCode, Json<Vec<ActivityResponse>>)), AppError> {
     let Query(query) = query.unwrap();
 
-    match app_state
-        .db
-        .get_activities(query, app_state.user_id.clone())
-        .await
-    {
-        Ok(res) => (
-            StatusCode::OK,
-            Json(res.iter().map(|a| ActivityResponse::from(a)).collect()),
-        ),
-        Err(_) => panic!("failed to get activities"),
+    match app_state.db.get_activities(query, claims.sub).await {
+        Ok(res) => Ok((
+            jar,
+            (
+                StatusCode::OK,
+                Json(res.iter().map(|a| ActivityResponse::from(a)).collect()),
+            ),
+        )),
+        Err(_) => Err(AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to get activities!",
+        )),
     }
 }
 
@@ -106,14 +109,13 @@ pub async fn get_activities_handler(
 //   "timezone": 0
 // }'
 
-//todo:: return activityresponse
-//todo:: error handling
-
 pub async fn update_activity_handler(
+    claims: AccessClaims,
+    Extension(jar): Extension<PrivateCookieJar>,
     Path(id): Path<String>,
-    State(app_state): State<Arc<AppState>>,
+    State(app_state): State<AppState>,
     Json(body): Json<PatchActivityBody>,
-) -> (StatusCode, Json<ActivityResponse>) {
+) -> Result<(PrivateCookieJar, (StatusCode, Json<ActivityResponse>)), AppError> {
     let payload = PatchActivityPayload {
         id,
         variant: body.variant,
@@ -127,33 +129,44 @@ pub async fn update_activity_handler(
     };
     match app_state
         .db
-        .update_activity_by_id(payload, app_state.user_id.clone())
+        .update_activity_by_id(payload, claims.sub)
         .await
     {
         Ok(v) => match v {
-            Some(res) => (StatusCode::OK, Json(ActivityResponse::from(res))),
-            None => panic!("failed to update activity"),
+            Some(res) => Ok((jar, (StatusCode::OK, Json(ActivityResponse::from(res))))),
+            None => Err(AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to update activity!",
+            )),
         },
-        Err(_) => panic!("failed to update activity"),
+        Err(_) => Err(AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to update activity!",
+        )),
     }
 }
 
 // curl -X DELETE http://localhost:8000/api/v1/activity/66cc8f30ef7a9d4f94f9ad03
 
-//todo:: return deleted id
-//todo:: error handling
-
 pub async fn delete_activity_handler(
+    claims: AccessClaims,
+    Extension(jar): Extension<PrivateCookieJar>,
     Path(id): Path<String>,
-    State(app_state): State<Arc<AppState>>,
-) -> (StatusCode, Json<ActivityDeleteResponse>) {
+    State(app_state): State<AppState>,
+) -> Result<(PrivateCookieJar, (StatusCode, Json<ActivityDeleteResponse>)), AppError> {
     let payload = DeleteActivityPayload { id };
     match app_state
         .db
-        .delete_activity_by_id(payload, app_state.user_id.clone())
+        .delete_activity_by_id(payload, claims.sub)
         .await
     {
-        Ok(res) => (StatusCode::OK, Json(ActivityDeleteResponse::from(res))),
-        Err(_) => panic!("failed to delete activity"),
+        Ok(res) => Ok((
+            jar,
+            (StatusCode::OK, Json(ActivityDeleteResponse::from(res))),
+        )),
+        Err(_) => Err(AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to delete activity!",
+        )),
     }
 }
