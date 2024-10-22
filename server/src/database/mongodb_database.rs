@@ -1,3 +1,5 @@
+use std::option;
+
 use futures::TryStreamExt;
 use mongodb::{
     bson::{doc, oid::ObjectId, Bson, Document},
@@ -11,7 +13,7 @@ use crate::{
             Activity, ActivityDelete, DeleteActivityPayload, GetActivitiesPayload,
             GetActivityPayload, PatchActivityPayload, PostActivityPayload,
         },
-        auth_model::{AuthPayload, User},
+        auth_model::{AuthPayload, TokenDB, User},
     },
     utils::utils::insert_optional,
 };
@@ -20,6 +22,7 @@ use crate::{
 pub struct MongoDatabase {
     activities: Collection<Activity>,
     users: Collection<User>,
+    tokens: Collection<TokenDB>,
 }
 
 impl MongoDatabase {
@@ -29,8 +32,13 @@ impl MongoDatabase {
         let db = client.database(db_name);
         let activities: Collection<Activity> = db.collection("activities");
         let users: Collection<User> = db.collection("users");
+        let tokens: Collection<TokenDB> = db.collection("tokens");
 
-        Ok::<Self, Error>(Self { activities, users })
+        Ok::<Self, Error>(Self {
+            activities,
+            users,
+            tokens,
+        })
     }
 
     async fn get_doc(&self, id: ObjectId, user_id: String) -> Result<Option<Activity>, Error> {
@@ -52,6 +60,63 @@ impl MongoDatabase {
 
         let res = self.users.find_one(filter).await?;
         Ok(res)
+    }
+
+    // todo:: write tests
+    pub async fn create_token(&self, token: TokenDB) -> Result<Option<ObjectId>, Error> {
+        match self.tokens.insert_one(token).await {
+            Ok(res) => match res.inserted_id {
+                Bson::ObjectId(oid) => {
+                    println!("created:{:?}", oid);
+                    Ok(Some(oid))
+                }
+                _ => panic!("failed to retrieve objectid"),
+            },
+            Err(e) => return Err(e),
+        }
+    }
+
+    // todo:: write tests
+    pub async fn get_token(&self, jti: String) -> Result<Option<TokenDB>, Error> {
+        let filter = doc! {
+            "jti": jti
+        };
+
+        let res = self.tokens.find_one(filter).await?;
+        println!("gettoken:{:?}", res);
+
+        Ok(res)
+    }
+
+    // todo:: write tests
+    pub async fn blacklist_user_tokens(&self, uid: ObjectId) -> Result<(), Error> {
+        let filter = doc! {
+            "uid": uid,
+        };
+
+        let mut update_doc = Document::new();
+        update_doc.insert("black", true);
+
+        let update = doc! { "$set": update_doc };
+        self.tokens.update_many(filter, update).await?;
+
+        Ok(())
+    }
+
+    // todo:: write tests
+    pub async fn blacklist_user_token(&self, jti: String) -> Result<(), Error> {
+        let filter = doc! {
+            "jti": jti,
+        };
+
+        let mut update_doc = Document::new();
+        update_doc.insert("black", true);
+
+        let update = doc! { "$set": update_doc };
+        let res = self.tokens.update_one(filter, update).await?;
+        println!("blacklist:{:?}", res);
+
+        Ok(())
     }
 
     pub async fn create_activity(

@@ -1,3 +1,5 @@
+use std::usize;
+
 use mongodb::bson::oid::ObjectId;
 use mongodb::bson::Bson;
 use serde::{Deserialize, Serialize};
@@ -69,4 +71,29 @@ pub struct User {
 pub struct AuthPayload {
     pub email: String,
     pub pass: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenDB {
+    id: ObjectId,
+    uid: ObjectId,
+    jti: String,
+    exp: mongodb::bson::DateTime,
+    pub black: bool,
+}
+
+impl TokenDB {
+    pub fn new(uid: ObjectId, jti: String, exp: usize) -> Self {
+        let timestamp: i64 = (exp * 1000)
+            .try_into()
+            .expect("Token::new failed. invalid timestamp");
+
+        Self {
+            id: ObjectId::new(),
+            exp: mongodb::bson::DateTime::from_millis(timestamp),
+            black: false,
+            jti,
+            uid,
+        }
+    }
 }

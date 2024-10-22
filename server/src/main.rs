@@ -1,8 +1,9 @@
 use std::sync::Arc;
 use std::{env, ops::Deref};
 
-use axum::extract::FromRef;
-use axum::Extension;
+use axum::async_trait;
+use axum::extract::{FromRef, FromRequestParts};
+use axum::http::request::Parts;
 use axum::{
     extract::{MatchedPath, Request},
     http::{
@@ -13,13 +14,13 @@ use axum::{
     Json, Router,
 };
 use axum_extra::extract::cookie::Key;
-use axum_extra::extract::PrivateCookieJar;
 use database::mongodb_database::MongoDatabase;
 use dotenv::dotenv;
 use serde_json::Value;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use self::error::error::AppError;
 use self::handlers::activity_handler::{
     create_activity_handler, delete_activity_handler, get_activities_handler, get_activity_handler,
     update_activity_handler,
@@ -53,6 +54,19 @@ pub struct InnerState {
 impl FromRef<AppState> for Key {
     fn from_ref(state: &AppState) -> Self {
         state.0.key.clone()
+    }
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for AppState
+where
+    Self: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        Ok(Self::from_ref(state))
     }
 }
 

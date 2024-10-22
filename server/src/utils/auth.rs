@@ -1,16 +1,20 @@
 use std::env;
 
 use axum::extract::FromRef;
+use axum::RequestPartsExt;
 use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
 use axum_extra::extract::cookie::{Cookie, Key, SameSite};
 use axum_extra::extract::PrivateCookieJar;
 use chrono::Utc;
 use jsonwebtoken::errors::{Error, ErrorKind};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::error::error::AuthError;
+use crate::models::auth_model::TokenDB;
+use crate::AppState;
 
 pub fn generate_jti() -> String {
     Uuid::new_v4().to_string()
@@ -39,7 +43,7 @@ pub struct RefreshClaims {
 }
 
 impl RefreshClaims {
-    pub fn new(sub: String, exp: Option<usize>) -> Self {
+    pub fn new(sub: &String, exp: Option<usize>) -> Self {
         // todo:: set true expiry time
         let iat = (Utc::now().naive_utc()).and_utc().timestamp() as usize;
         let exp = match exp {
@@ -51,7 +55,7 @@ impl RefreshClaims {
 
         Self {
             jti: generate_jti(),
-            sub,
+            sub: sub.to_string(),
             iat,
             exp,
         }
@@ -98,6 +102,7 @@ impl<S> FromRequestParts<S> for AccessClaims
 where
     S: Send + Sync,
     Key: FromRef<S>,
+    AppState: FromRef<S>,
 {
     type Rejection = AuthError;
 
@@ -111,6 +116,11 @@ where
         let refresh_keys = Keys::new(hmac_key.as_bytes());
 
         let jar = PrivateCookieJar::<Key>::from_request_parts(parts, &state)
+            .await
+            .map_err(|_| AuthError::InternalError)?;
+
+        let state = parts
+            .extract_with_state::<AppState, _>(state)
             .await
             .map_err(|_| AuthError::InternalError)?;
 
@@ -144,6 +154,28 @@ where
         }
         .map_err(|_| AuthError::InvalidToken)?;
 
+        // check if access token is blacklisted
+        if !access_token_expired {
+            let _ = match state
+                .db
+                .get_token(access_token_data.claims.jti.clone())
+                .await
+            {
+                Ok(token) => match token {
+                    Some(t) => {
+                        if t.black {
+                            Err(AuthError::Forbidden)
+                        } else {
+                            Ok(())
+                        }
+                    }
+                    None => Ok(()),
+                },
+                _ => Err(AuthError::InternalError),
+            }
+            .map_err(|_| AuthError::InvalidToken)?;
+        }
+
         if access_token_expired {
             // extract token from cookie
             let refresh_token = match jar.get("refresh").map(|cookie| cookie.value().to_owned()) {
@@ -162,8 +194,38 @@ where
                 return Err(AuthError::InvalidToken);
             }
 
-            // todo:: check refresh token has not been used before
-            // todo:: if it has - revoke all associated tokens
+            // check refresh token has not been used before
+            let _ = match state
+                .db
+                .get_token(refresh_token_data.claims.jti.clone())
+                .await
+            {
+                Ok(token) => match token {
+                    Some(t) => {
+                        // if it has - revoke all associated tokens
+                        if t.black {
+                            let _ = state
+                                .db
+                                .blacklist_user_tokens(
+                                    ObjectId::parse_str(refresh_token_data.claims.sub.clone())
+                                        .expect("failed to parse string to ObjectId"),
+                                )
+                                .await;
+                            Err(AuthError::Forbidden)
+                        } else {
+                            // if not - blacklist only the current refresh token
+                            let _ = state
+                                .db
+                                .blacklist_user_token(refresh_token_data.claims.jti.clone())
+                                .await;
+                            Ok(())
+                        }
+                    }
+                    None => Ok(()),
+                },
+                _ => Err(AuthError::InternalError),
+            }
+            .map_err(|_| AuthError::InvalidToken)?;
 
             // create new claims
             let new_access_claims = AccessClaims::new(
@@ -171,7 +233,7 @@ where
                 &access_token_data.claims.email,
             );
             let new_refresh_claims = RefreshClaims::new(
-                refresh_token_data.claims.sub,
+                &refresh_token_data.claims.sub,
                 Some(refresh_token_data.claims.exp),
             );
 
@@ -183,6 +245,22 @@ where
             let new_refresh_token = new_refresh_claims
                 .build_token(refresh_keys.encoding)
                 .map_err(|_| AuthError::InternalError)?;
+
+            // save new token jtis to db
+            let access_token_db = TokenDB::new(
+                ObjectId::parse_str(new_access_claims.sub.clone())
+                    .expect("failed to parse string to ObjectId"),
+                new_access_claims.jti.clone(),
+                new_access_claims.exp.clone(),
+            );
+            let refresh_token_db = TokenDB::new(
+                ObjectId::parse_str(new_refresh_claims.sub)
+                    .expect("failed to parse string to ObjectId"),
+                new_refresh_claims.jti,
+                new_refresh_claims.exp,
+            );
+            let _ = state.db.create_token(access_token_db).await;
+            let _ = state.db.create_token(refresh_token_db).await;
 
             // create cookies
             let new_access_cookie = Cookie::build(("access", new_access_token))
@@ -198,8 +276,6 @@ where
                 .same_site(SameSite::Lax)
                 .secure(false) // todo:: in prod = true
                 .http_only(true);
-
-            // todo:: link and blacklist tokens old
 
             parts
                 .extensions
