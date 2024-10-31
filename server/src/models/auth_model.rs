@@ -1,8 +1,11 @@
-use std::usize;
+use std::{u32, usize};
 
+use axum::http::StatusCode;
 use mongodb::bson::oid::ObjectId;
 use mongodb::bson::Bson;
 use serde::{Deserialize, Serialize};
+
+use crate::error::error::AppError;
 
 #[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Role {
@@ -58,13 +61,66 @@ pub struct User {
     pub role: Role,
     pub active: bool,
     pub verified: bool,
-    pub forename: String,
-    pub surname: String,
+    #[serde(rename = "givenName")]
+    pub given_name: String,
+    #[serde(rename = "familyName")]
+    pub family_name: String,
     pub img: String,
     #[serde(rename = "createdAt")]
     pub created_at: mongodb::bson::DateTime,
     #[serde(rename = "__v")]
     pub v: u32,
+}
+
+impl User {
+    pub fn new(
+        email: String,
+        pass: String,
+        given_name: String,
+        family_name: String,
+    ) -> Result<Self, AppError> {
+        match bcrypt::hash(pass, 12) {
+            Ok(hash) => Ok(Self {
+                id: ObjectId::new(),
+                given_name,
+                family_name,
+                email,
+                pass: hash,
+                role: Role::User,
+                active: true,
+                verified: false,
+                img: String::from(""),
+                created_at: mongodb::bson::DateTime::now(),
+                v: 1,
+            }),
+            Err(_) => Err(AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to create user",
+            )),
+        }
+    }
+}
+
+impl From<RegisterUserPayload> for User {
+    fn from(payload: RegisterUserPayload) -> User {
+        User::new(
+            payload.email,
+            payload.pass,
+            payload.given_name,
+            payload.family_name,
+        )
+        .expect("")
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RegisterUserPayload {
+    pub email: String,
+    pub pass: String,
+    #[serde(rename = "givenName")]
+    pub given_name: String,
+    #[serde(rename = "familyName")]
+    pub family_name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -96,4 +152,36 @@ impl TokenDB {
             uid,
         }
     }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct GoogleCertsResponse {
+    pub keys: Vec<GoogleCert>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct GoogleCert {
+    // pub alg: String,
+    pub kid: String,
+    pub n: String,
+    pub e: String,
+    // pub kty: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GoogleClaims {
+    pub iss: String,
+    pub azp: String,
+    pub aud: String,
+    pub sub: String,
+    pub email: String,
+    pub email_verified: bool,
+    pub nbf: usize,
+    pub name: String,
+    pub picture: String,
+    pub given_name: String,
+    pub family_name: String,
+    pub iat: usize,
+    pub exp: usize,
+    pub jti: String,
 }

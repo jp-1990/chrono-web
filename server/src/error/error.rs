@@ -11,6 +11,7 @@ struct ErrorMessage {
     error: String,
 }
 
+#[derive(Debug)]
 pub struct AppError {
     code: StatusCode,
     message: String,
@@ -37,6 +38,7 @@ impl IntoResponse for AppError {
     }
 }
 
+#[derive(Debug)]
 pub enum AuthError {
     InvalidToken,
     WrongCredentials,

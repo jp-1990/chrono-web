@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::usize;
 use std::{env, ops::Deref};
 
 use axum::async_trait;
@@ -17,7 +18,8 @@ use axum_extra::extract::cookie::Key;
 use database::mongodb_database::MongoDatabase;
 use dotenv::dotenv;
 use serde_json::Value;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tokio::sync::RwLock;
+use tower_http::{add_extension::AddExtensionLayer, cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use self::error::error::AppError;
@@ -25,13 +27,22 @@ use self::handlers::activity_handler::{
     create_activity_handler, delete_activity_handler, get_activities_handler, get_activity_handler,
     update_activity_handler,
 };
-use self::handlers::auth_handler::authorize;
+use self::handlers::auth_handler::{authorize, authorize_oauth, logout, register_user};
+use self::models::auth_model::GoogleCertsResponse;
 
 mod database;
 mod error;
 mod handlers;
 mod models;
 mod utils;
+
+type GoogleCertsState = Arc<RwLock<GoogleCerts>>;
+
+#[derive(Default)]
+struct GoogleCerts {
+    pub exp: Option<usize>,
+    pub certs: Option<GoogleCertsResponse>,
+}
 
 #[derive(Clone)]
 struct AppState(Arc<InnerState>);
@@ -49,6 +60,7 @@ impl Deref for AppState {
 pub struct InnerState {
     db: MongoDatabase,
     key: Key,
+    client: reqwest::Client,
 }
 
 impl FromRef<AppState> for Key {
@@ -105,8 +117,11 @@ async fn main() {
         Err(_) => panic!("database connection failed to initialize"),
     };
 
+    let client = reqwest::Client::new();
+
     let app_state = AppState(Arc::new(InnerState {
         db,
+        client,
         key: Key::generate(),
     }));
 
@@ -119,6 +134,9 @@ async fn main() {
     let app = Router::new()
         .route("/api/health-check", get(health_check_handler))
         .route("/api/v1/login", post(authorize))
+        .route("/api/v1/oauth", post(authorize_oauth))
+        .route("/api/v1/logout", post(logout))
+        .route("/api/v1/register", post(register_user))
         .route("/api/v1/activity", get(get_activities_handler))
         .route("/api/v1/activity", post(create_activity_handler))
         .route(
@@ -146,6 +164,7 @@ async fn main() {
                 })
                 .on_failure(()),
         )
+        .layer(AddExtensionLayer::new(GoogleCertsState::default()))
         .with_state(app_state.into());
 
     let port = match env::var("PORT") {

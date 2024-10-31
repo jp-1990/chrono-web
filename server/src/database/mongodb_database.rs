@@ -1,5 +1,3 @@
-use std::option;
-
 use futures::TryStreamExt;
 use mongodb::{
     bson::{doc, oid::ObjectId, Bson, Document},
@@ -13,7 +11,7 @@ use crate::{
             Activity, ActivityDelete, DeleteActivityPayload, GetActivitiesPayload,
             GetActivityPayload, PatchActivityPayload, PostActivityPayload,
         },
-        auth_model::{AuthPayload, TokenDB, User},
+        auth_model::{AuthPayload, RegisterUserPayload, TokenDB, User},
     },
     utils::utils::insert_optional,
 };
@@ -41,7 +39,11 @@ impl MongoDatabase {
         })
     }
 
-    async fn get_doc(&self, id: ObjectId, user_id: String) -> Result<Option<Activity>, Error> {
+    async fn get_activity_doc(
+        &self,
+        id: ObjectId,
+        user_id: String,
+    ) -> Result<Option<Activity>, Error> {
         let filter = doc! {
             "_id": id,
             "user": ObjectId::parse_str(user_id).expect("failed to parse string to ObjectId")
@@ -52,10 +54,35 @@ impl MongoDatabase {
         Ok(res)
     }
 
-    // todo:: write tests
-    pub async fn get_user_by_email(&self, payload: AuthPayload) -> Result<Option<User>, Error> {
+    async fn get_user_doc(&self, id: ObjectId) -> Result<Option<User>, Error> {
         let filter = doc! {
-            "email": payload.email
+            "_id": id,
+        };
+
+        let res = self.users.find_one(filter).await?;
+
+        Ok(res)
+    }
+
+    // todo:: write tests
+    pub async fn create_user(&self, payload: RegisterUserPayload) -> Result<Option<User>, Error> {
+        let new_user = User::from(payload);
+
+        let new_id = match self.users.insert_one(new_user).await {
+            Ok(res) => match res.inserted_id {
+                Bson::ObjectId(oid) => oid,
+                _ => panic!("failed to retrieve objectid"),
+            },
+            Err(e) => return Err(e),
+        };
+
+        self.get_user_doc(new_id).await
+    }
+
+    // todo:: write tests
+    pub async fn get_user_by_email(&self, email: &str) -> Result<Option<User>, Error> {
+        let filter = doc! {
+            "email": email
         };
 
         let res = self.users.find_one(filter).await?;
@@ -66,10 +93,7 @@ impl MongoDatabase {
     pub async fn create_token(&self, token: TokenDB) -> Result<Option<ObjectId>, Error> {
         match self.tokens.insert_one(token).await {
             Ok(res) => match res.inserted_id {
-                Bson::ObjectId(oid) => {
-                    println!("created:{:?}", oid);
-                    Ok(Some(oid))
-                }
+                Bson::ObjectId(oid) => Ok(Some(oid)),
                 _ => panic!("failed to retrieve objectid"),
             },
             Err(e) => return Err(e),
@@ -83,24 +107,8 @@ impl MongoDatabase {
         };
 
         let res = self.tokens.find_one(filter).await?;
-        println!("gettoken:{:?}", res);
 
         Ok(res)
-    }
-
-    // todo:: write tests
-    pub async fn blacklist_user_tokens(&self, uid: ObjectId) -> Result<(), Error> {
-        let filter = doc! {
-            "uid": uid,
-        };
-
-        let mut update_doc = Document::new();
-        update_doc.insert("black", true);
-
-        let update = doc! { "$set": update_doc };
-        self.tokens.update_many(filter, update).await?;
-
-        Ok(())
     }
 
     // todo:: write tests
@@ -114,7 +122,21 @@ impl MongoDatabase {
 
         let update = doc! { "$set": update_doc };
         let res = self.tokens.update_one(filter, update).await?;
-        println!("blacklist:{:?}", res);
+
+        Ok(())
+    }
+
+    // todo:: write tests
+    pub async fn blacklist_user_tokens(&self, uid: ObjectId) -> Result<(), Error> {
+        let filter = doc! {
+            "uid": uid,
+        };
+
+        let mut update_doc = Document::new();
+        update_doc.insert("black", true);
+
+        let update = doc! { "$set": update_doc };
+        self.tokens.update_many(filter, update).await?;
 
         Ok(())
     }
@@ -144,7 +166,7 @@ impl MongoDatabase {
             Err(e) => return Err(e),
         };
 
-        self.get_doc(new_id, user_id).await
+        self.get_activity_doc(new_id, user_id).await
     }
 
     pub async fn update_activity_by_id(
@@ -188,7 +210,7 @@ impl MongoDatabase {
             None
         };
 
-        self.get_doc(ObjectId::parse_str(payload.id).unwrap(), user_id)
+        self.get_activity_doc(ObjectId::parse_str(payload.id).unwrap(), user_id)
             .await
     }
 
