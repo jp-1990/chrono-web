@@ -38,11 +38,12 @@ impl IntoResponse for AppError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AuthError {
     InvalidToken,
     WrongCredentials,
     MissingCredentials,
+    MissingToken,
     InternalError,
     Forbidden,
 }
@@ -52,6 +53,7 @@ impl IntoResponse for AuthError {
         let (status, error_message) = match self {
             AuthError::WrongCredentials => (StatusCode::UNAUTHORIZED, "Wrong credentials"),
             AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),
+            AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing token"),
             AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token"),
             AuthError::InternalError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal Error"),
             AuthError::Forbidden => (StatusCode::FORBIDDEN, "Access forbidden"),

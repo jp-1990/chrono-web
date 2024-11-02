@@ -1,10 +1,5 @@
-use std::sync::Arc;
-use std::usize;
-use std::{env, ops::Deref};
+use std::{env, sync::Arc};
 
-use axum::async_trait;
-use axum::extract::{FromRef, FromRequestParts};
-use axum::http::request::Parts;
 use axum::{
     extract::{MatchedPath, Request},
     http::{
@@ -16,71 +11,27 @@ use axum::{
 };
 use axum_extra::extract::cookie::Key;
 use database::mongodb_database::MongoDatabase;
-use dotenv::dotenv;
 use serde_json::Value;
-use tokio::sync::RwLock;
 use tower_http::{add_extension::AddExtensionLayer, cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use self::error::error::AppError;
-use self::handlers::activity_handler::{
-    create_activity_handler, delete_activity_handler, get_activities_handler, get_activity_handler,
-    update_activity_handler,
+use self::{
+    handlers::activity_handler::{
+        create_activity_handler, delete_activity_handler, get_activities_handler,
+        get_activity_handler, update_activity_handler,
+    },
+    models::state_model::{AppState, EnvironmentVariables, GoogleCertsState},
 };
-use self::handlers::auth_handler::{authorize, authorize_oauth, logout, register_user};
-use self::models::auth_model::GoogleCertsResponse;
+use self::{
+    handlers::auth_handler::{authorize, authorize_oauth, logout, register_user},
+    models::state_model::InnerState,
+};
 
 mod database;
 mod error;
 mod handlers;
 mod models;
 mod utils;
-
-type GoogleCertsState = Arc<RwLock<GoogleCerts>>;
-
-#[derive(Default)]
-struct GoogleCerts {
-    pub exp: Option<usize>,
-    pub certs: Option<GoogleCertsResponse>,
-}
-
-#[derive(Clone)]
-struct AppState(Arc<InnerState>);
-
-// deref so you can still access the inner fields easily
-impl Deref for AppState {
-    type Target = InnerState;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[derive(Debug)]
-pub struct InnerState {
-    db: MongoDatabase,
-    key: Key,
-    client: reqwest::Client,
-}
-
-impl FromRef<AppState> for Key {
-    fn from_ref(state: &AppState) -> Self {
-        state.0.key.clone()
-    }
-}
-
-#[async_trait]
-impl<S> FromRequestParts<S> for AppState
-where
-    Self: FromRef<S>,
-    S: Send + Sync,
-{
-    type Rejection = AppError;
-
-    async fn from_request_parts(_parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        Ok(Self::from_ref(state))
-    }
-}
 
 async fn health_check_handler() -> Json<Value> {
     let json_response = serde_json::json!({
@@ -92,7 +43,7 @@ async fn health_check_handler() -> Json<Value> {
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
+    let env = EnvironmentVariables::from_env();
 
     tracing_subscriber::registry()
         .with(
@@ -103,25 +54,27 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let uri = match env::var("CLUSTER") {
-        Ok(v) => v,
-        Err(_) => panic!("Error loading CLUSTER. Ensure CLUSTER env var is set"),
-    };
-    let db_name = "task-tracker-testing";
+    let db_uri = env
+        .db_url
+        .replace("%USER%", &env.db_user)
+        .replace("%PASS%", &env.db_pass);
 
-    let db = match MongoDatabase::init(&uri, db_name).await {
+    let db = match MongoDatabase::init(&db_uri, &env.db_name).await {
         Ok(v) => {
             println!("Database connected");
             v
         }
-        Err(_) => panic!("database connection failed to initialize"),
+        Err(_) => panic!("Fatal: database connection failed to initialize"),
     };
 
     let client = reqwest::Client::new();
 
+    let port = &env.port.clone();
+
     let app_state = AppState(Arc::new(InnerState {
         db,
         client,
+        env,
         key: Key::generate(),
     }));
 
@@ -166,11 +119,6 @@ async fn main() {
         )
         .layer(AddExtensionLayer::new(GoogleCertsState::default()))
         .with_state(app_state.into());
-
-    let port = match env::var("PORT") {
-        Ok(v) => v,
-        Err(_) => panic!("Error loading PORT. Ensure PORT env var is set"),
-    };
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
         .await

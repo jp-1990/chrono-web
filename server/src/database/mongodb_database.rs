@@ -11,7 +11,8 @@ use crate::{
             Activity, ActivityDelete, DeleteActivityPayload, GetActivitiesPayload,
             GetActivityPayload, PatchActivityPayload, PostActivityPayload,
         },
-        auth_model::{AuthPayload, RegisterUserPayload, TokenDB, User},
+        auth_model::TokenDB,
+        user_model::{RegisterUserPayload, User},
     },
     utils::utils::insert_optional,
 };
@@ -64,7 +65,6 @@ impl MongoDatabase {
         Ok(res)
     }
 
-    // todo:: write tests
     pub async fn create_user(&self, payload: RegisterUserPayload) -> Result<Option<User>, Error> {
         let new_user = User::from(payload);
 
@@ -79,7 +79,6 @@ impl MongoDatabase {
         self.get_user_doc(new_id).await
     }
 
-    // todo:: write tests
     pub async fn get_user_by_email(&self, email: &str) -> Result<Option<User>, Error> {
         let filter = doc! {
             "email": email
@@ -89,7 +88,6 @@ impl MongoDatabase {
         Ok(res)
     }
 
-    // todo:: write tests
     pub async fn create_token(&self, token: TokenDB) -> Result<Option<ObjectId>, Error> {
         match self.tokens.insert_one(token).await {
             Ok(res) => match res.inserted_id {
@@ -100,8 +98,7 @@ impl MongoDatabase {
         }
     }
 
-    // todo:: write tests
-    pub async fn get_token(&self, jti: String) -> Result<Option<TokenDB>, Error> {
+    pub async fn get_token(&self, jti: &String) -> Result<Option<TokenDB>, Error> {
         let filter = doc! {
             "jti": jti
         };
@@ -111,8 +108,7 @@ impl MongoDatabase {
         Ok(res)
     }
 
-    // todo:: write tests
-    pub async fn blacklist_user_token(&self, jti: String) -> Result<(), Error> {
+    pub async fn blacklist_user_token(&self, jti: &String) -> Result<(), Error> {
         let filter = doc! {
             "jti": jti,
         };
@@ -121,12 +117,11 @@ impl MongoDatabase {
         update_doc.insert("black", true);
 
         let update = doc! { "$set": update_doc };
-        let res = self.tokens.update_one(filter, update).await?;
+        self.tokens.update_one(filter, update).await?;
 
         Ok(())
     }
 
-    // todo:: write tests
     pub async fn blacklist_user_tokens(&self, uid: ObjectId) -> Result<(), Error> {
         let filter = doc! {
             "uid": uid,
@@ -280,26 +275,24 @@ mod tests {
         ActivityData, ActivityVariant, CardioExercise, Exercise, MobilityExercise, Set,
         StrengthExercise,
     };
+    use crate::models::state_model::EnvironmentVariables;
+    use crate::utils::utils::generate_test_email;
 
     use super::*;
     use core::panic;
-    use dotenv::dotenv;
     use mongodb::bson::datetime::DateTime;
     use mongodb::bson::Bson;
-    use std::env;
     extern crate dotenv;
 
     async fn init_db() -> MongoDatabase {
-        dotenv().ok();
+        let env = EnvironmentVariables::from_env();
 
-        let uri = match env::var("CLUSTER") {
-            Ok(v) => v.to_string(),
-            Err(_) => format!("Error loading env variable"),
-        };
+        let db_uri = env
+            .db_url
+            .replace("%USER%", &env.db_user)
+            .replace("%PASS%", &env.db_pass);
 
-        let db_name = "task-tracker-testing";
-
-        let db = match MongoDatabase::init(&uri, db_name).await {
+        let db = match MongoDatabase::init(&db_uri, &env.db_name).await {
             Ok(v) => v,
             Err(_) => panic!("database connection failed to initialize"),
         };
@@ -347,8 +340,39 @@ mod tests {
         let _ = db.delete_activity_by_id(payload, user_id).await;
     }
 
+    async fn create_test_user(db: &MongoDatabase) -> Result<User, mongodb::error::Error> {
+        let payload = RegisterUserPayload {
+            email: generate_test_email(),
+            pass: "TEST".to_string(),
+            given_name: "testy".to_string(),
+            family_name: "mctestface".to_string(),
+        };
+
+        let new_id = match db.users.insert_one(User::from(payload)).await {
+            Ok(res) => match res.inserted_id {
+                Bson::ObjectId(oid) => oid,
+                _ => panic!("failed to retrieve objectid"),
+            },
+            Err(e) => return Err(e),
+        };
+
+        let filter = doc! {
+            "_id": new_id
+        };
+
+        let res = db.users.find_one(filter).await?;
+        Ok(res.unwrap())
+    }
+
+    async fn delete_test_user(db: &MongoDatabase, id: ObjectId) {
+        let filter = doc! {
+            "_id": id
+        };
+        let _ = db.users.delete_one(filter).await;
+    }
+
     #[tokio::test]
-    async fn create_one() {
+    async fn activity_create_one() {
         let db = init_db().await;
 
         let user_id = String::from("5f00b442bab42e04c05f5a9e");
@@ -399,7 +423,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn get_one() {
+    async fn activity_get_one() {
         let db = init_db().await;
         let (new_id, user_id) = create_test_activity(&db).await;
 
@@ -415,7 +439,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn get_many() {
+    async fn activity_get_many() {
         let db = init_db().await;
 
         let user_id = String::from("5f00b442bab42e04c05f5a9e");
@@ -517,7 +541,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_one() {
+    async fn activity_update_one() {
         let db = init_db().await;
         let (new_id, user_id) = create_test_activity(&db).await;
 
@@ -698,7 +722,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_one() {
+    async fn activity_delete_one() {
         let db = init_db().await;
         let (new_id, user_id) = create_test_activity(&db).await;
 
@@ -709,5 +733,190 @@ mod tests {
         let deleted_activity = db.delete_activity_by_id(payload, user_id).await;
         assert!(deleted_activity.is_ok());
         assert!(deleted_activity.unwrap().id == new_id);
+    }
+
+    #[tokio::test]
+    async fn user_create() {
+        let db = init_db().await;
+
+        let payload = RegisterUserPayload {
+            email: "test@test.com".to_string(),
+            pass: "TEST".to_string(),
+            given_name: "test".to_string(),
+            family_name: "testerton".to_string(),
+        };
+
+        let inserted_user = db.create_user(payload).await;
+        assert!(inserted_user.is_ok());
+
+        let new_id = inserted_user.unwrap().unwrap().id;
+        delete_test_user(&db, new_id).await;
+    }
+
+    #[tokio::test]
+    async fn user_get_by_email() {
+        let db = init_db().await;
+
+        let test_user = create_test_user(&db).await.unwrap();
+
+        let user = db.get_user_by_email(&test_user.email).await;
+        assert!(user.is_ok());
+
+        let ok_user = user.unwrap();
+        assert!(ok_user.is_some());
+
+        let some_user = ok_user.unwrap();
+        delete_test_user(&db, some_user.id).await;
+    }
+
+    #[tokio::test]
+    async fn token_create() {
+        let db = init_db().await;
+
+        let token = TokenDB::new(
+            "5f25a16b81fad94530820f39".to_string(),
+            "jti".to_string(),
+            1234,
+        );
+
+        let inserted_token = db.create_token(token).await;
+        assert!(inserted_token.is_ok());
+
+        let ok_token = inserted_token.unwrap();
+        assert!(ok_token.is_some());
+
+        let some_token = ok_token.unwrap();
+        let filter = doc! {
+            "_id": some_token
+        };
+        let _ = db.tokens.delete_one(filter).await;
+    }
+
+    #[tokio::test]
+    async fn token_get() {
+        let db = init_db().await;
+
+        let target_jti = "jti".to_string();
+        let new_token = TokenDB::new(
+            "5f25a16b81fad94530820f39".to_string(),
+            target_jti.clone(),
+            1234,
+        );
+
+        let _ = match db.tokens.insert_one(new_token).await {
+            Ok(res) => match res.inserted_id {
+                Bson::ObjectId(oid) => Ok(Some(oid)),
+                _ => panic!("failed to retrieve objectid"),
+            },
+            Err(e) => Err(e),
+        };
+
+        let token = db.get_token(&target_jti).await;
+        assert!(token.is_ok());
+        assert!(token.unwrap().is_some());
+
+        let filter = doc! {
+            "jti": &target_jti
+        };
+        let _ = db.tokens.delete_one(filter).await;
+    }
+
+    #[tokio::test]
+    async fn token_blacklist_one() {
+        let db = init_db().await;
+
+        let target_jti = "jti".to_string();
+        let new_token = TokenDB::new(
+            "5f25a16b81fad94530820f39".to_string(),
+            target_jti.clone(),
+            1234,
+        );
+
+        let _ = match db.tokens.insert_one(new_token).await {
+            Ok(res) => match res.inserted_id {
+                Bson::ObjectId(oid) => Ok(Some(oid)),
+                _ => panic!("failed to retrieve objectid"),
+            },
+            Err(e) => Err(e),
+        };
+
+        let res = db.blacklist_user_token(&target_jti).await;
+        assert!(res.is_ok());
+
+        let token = db.tokens.find_one(doc! {"jti": &target_jti }).await;
+        assert!(token.is_ok());
+
+        match token.unwrap() {
+            Some(t) => assert!(t.black == true),
+            None => panic!("failed to fetch token"),
+        }
+
+        let filter = doc! {
+            "jti": &target_jti
+        };
+        let _ = db.tokens.delete_one(filter).await;
+    }
+
+    #[tokio::test]
+    async fn token_blacklist_many() {
+        let db = init_db().await;
+
+        let target_jti = "jti".to_string();
+
+        let new_tokens: Vec<TokenDB> = vec![
+            TokenDB::new(
+                "5f25a16b81fad94530820f39".to_string(),
+                target_jti.clone() + "0",
+                1234,
+            ),
+            TokenDB::new(
+                "5f25a16b81fad94530820f39".to_string(),
+                target_jti.clone() + "1",
+                1234,
+            ),
+            TokenDB::new(
+                "5f25a16b81fad94530820f39".to_string(),
+                target_jti.clone() + "2",
+                1234,
+            ),
+        ];
+
+        let res = db.tokens.insert_many(new_tokens).await;
+        assert!(res.is_ok());
+
+        let res = db
+            .blacklist_user_tokens(
+                ObjectId::parse_str("5f25a16b81fad94530820f39".to_string()).unwrap(),
+            )
+            .await;
+        assert!(res.is_ok());
+
+        let mut res = match db
+            .tokens
+            .find(doc! {
+                "$or": [
+                    { "jti": "jti0" },
+                    { "jti": "jti1" },
+                    { "jti": "jti2" },
+                ],
+            })
+            .await
+        {
+            Ok(cursor) => cursor,
+            Err(_) => panic!("failed to find tokens"),
+        };
+
+        while let Some(doc) = res.try_next().await.unwrap() {
+            assert!(doc.black == true);
+        }
+
+        let filter = doc! {
+            "$or": [
+                { "jti": "jti0" },
+                { "jti": "jti1" },
+                { "jti": "jti2" },
+            ],
+        };
+        let _ = db.tokens.delete_many(filter).await;
     }
 }

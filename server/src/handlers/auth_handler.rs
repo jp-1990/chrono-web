@@ -1,14 +1,12 @@
-use std::{env, usize};
+use std::usize;
 
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::{Extension, Json};
-use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::PrivateCookieJar;
 use axum_macros::debug_handler;
 use chrono::Utc;
-use dotenv::dotenv;
-use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use mongodb::bson::oid::ObjectId;
 use regex::Regex;
@@ -17,11 +15,12 @@ use time::OffsetDateTime;
 
 use crate::error::error::AuthError;
 use crate::models::auth_model::{
-    AuthPayload, GoogleCertsResponse, GoogleClaims, RegisterUserPayload, TokenDB,
+    AccessToken, AuthPayload, GoogleCertsResponse, GoogleClaims, RefreshToken, TokenDB,
 };
-use crate::utils::auth::{AccessClaims, Keys, RefreshClaims};
+use crate::models::state_model::GoogleCerts;
+use crate::models::user_model::RegisterUserPayload;
 use crate::utils::utils::generate_password;
-use crate::{AppState, GoogleCerts, GoogleCertsState};
+use crate::{AppState, GoogleCertsState};
 
 /*
  db collection:
@@ -63,28 +62,15 @@ use crate::{AppState, GoogleCerts, GoogleCertsState};
 
 // curl -X POST http://localhost:8000/api/v1/auth -H 'Content-Type: application/json' \ -d '{"email":"","pass":""}'
 
-// todo:: better way to use env vars
-
 pub async fn authorize(
     State(app_state): State<AppState>,
     jar: PrivateCookieJar,
     Json(body): Json<AuthPayload>,
 ) -> Result<(StatusCode, PrivateCookieJar), AuthError> {
-    let hmac_key = match env::var("HMAC_KEY") {
-        Ok(v) => v,
-        Err(_) => panic!("Error loading HMAC_KEY. Ensure HMAC_KEY env var is set"),
-    };
-
-    let access_keys = Keys::new(hmac_key.as_bytes());
-    let refresh_keys = Keys::new(hmac_key.as_bytes());
-
     // Check if the user sent the credentials
     if body.email.is_empty() || body.pass.is_empty() {
         return Err(AuthError::MissingCredentials);
     }
-
-    let email = body.email.clone();
-    let pass = body.pass.clone();
 
     // fetch user
     let user = match app_state.db.get_user_by_email(&body.email).await {
@@ -96,7 +82,7 @@ pub async fn authorize(
     };
 
     // verify password
-    match bcrypt::verify(&pass, &user.pass) {
+    match bcrypt::verify(&body.pass, &user.pass) {
         Ok(v) => {
             if v == false {
                 return Err(AuthError::WrongCredentials);
@@ -106,39 +92,25 @@ pub async fn authorize(
     }
 
     // create tokens
-    let access_claims = AccessClaims::new(&user.id.to_string(), &email);
-    let refresh_claims = RefreshClaims::new(&user.id.to_string(), None);
-
-    let access_token = access_claims
-        .build_token(access_keys.encoding)
-        .map_err(|_| AuthError::InternalError)?;
-
-    let refresh_token = refresh_claims
-        .build_token(refresh_keys.encoding)
-        .map_err(|_| AuthError::InternalError)?;
+    let access_token = AccessToken::new(&user.id.to_string())?;
+    let refresh_token = RefreshToken::new(&user.id.to_string(), None)?;
 
     // save token jtis to db
-    let access_token_db = TokenDB::new(user.id, access_claims.jti, access_claims.exp);
-    let refresh_token_db = TokenDB::new(user.id, refresh_claims.jti, refresh_claims.exp);
-    let _ = app_state.db.create_token(access_token_db).await;
-    let _ = app_state.db.create_token(refresh_token_db).await;
+    let _ = app_state
+        .db
+        .create_token(TokenDB::from(&access_token))
+        .await;
+    let _ = app_state
+        .db
+        .create_token(TokenDB::from(&refresh_token))
+        .await;
 
     // create cookies
-    let access_cookie = Cookie::build(("access", access_token))
-        // .domain("localhost")
-        .path("/")
-        .same_site(SameSite::Lax)
-        .secure(false) // todo:: in prod = true
-        .http_only(true);
-
-    let refresh_cookie = Cookie::build(("refresh", refresh_token))
-        // .domain("localhost")
-        .path("/")
-        .same_site(SameSite::Lax)
-        .secure(false) // todo:: in prod = true
-        .http_only(true);
-
-    Ok((StatusCode::OK, jar.add(access_cookie).add(refresh_cookie)))
+    Ok((
+        StatusCode::OK,
+        jar.add(Cookie::from(&access_token))
+            .add(Cookie::from(&refresh_token)),
+    ))
 }
 
 /*
@@ -170,8 +142,6 @@ pub async fn authorize_oauth(
     jar: PrivateCookieJar,
     headers: HeaderMap,
 ) -> Result<(StatusCode, PrivateCookieJar), AuthError> {
-    dotenv().ok();
-
     // get jwt from headers and decode it
     let jwt = match headers.get("Authorization") {
         Some(v) => match v.to_str() {
@@ -192,17 +162,14 @@ pub async fn authorize_oauth(
         }
     };
 
+    let google_certs_url: &String = &app_state.env.google_certs_urls.to_string();
+
     // get certs from app_state
     let certs = match (&certs_state.certs, &certs_state.exp) {
         (Some(certs), Some(exp)) if exp > &now_timestamp => certs.clone(),
         // if none or expired - fetch certs and save to app_state
         _ => {
-            let certs_url = match env::var("GOOGLE_CERTS_URL") {
-                Ok(v) => v.to_string(),
-                Err(_) => format!("Error loading env variable"),
-            };
-
-            let res = match app_state.client.get(certs_url).send().await {
+            let res = match app_state.client.get(google_certs_url).send().await {
                 Ok(v) => Ok(v),
                 Err(_) => Err(AuthError::InternalError),
             }?;
@@ -266,13 +233,8 @@ pub async fn authorize_oauth(
         Err(_) => Err(AuthError::InternalError),
     }?;
 
-    let google_token_aud = match env::var("GOOGLE_TOKEN_AUD") {
-        Ok(v) => v.to_string(),
-        Err(_) => format!("Error loading env variable"),
-    };
-
     let mut validation = Validation::new(Algorithm::RS256);
-    validation.set_audience(&[google_token_aud]);
+    validation.set_audience(&[&app_state.env.google_token_aud]);
     validation.set_required_spec_claims(&["exp", "sub", "aud"]);
 
     let decoded_token = match decode::<GoogleClaims>(&jwt, &decoding_key, &validation) {
@@ -309,101 +271,40 @@ pub async fn authorize_oauth(
         Err(_) => Err(AuthError::InternalError),
     }?;
 
-    let hmac_key = match env::var("HMAC_KEY") {
-        Ok(v) => v,
-        Err(_) => panic!("Error loading HMAC_KEY. Ensure HMAC_KEY env var is set"),
-    };
-
-    let access_keys = Keys::new(hmac_key.as_bytes());
-    let refresh_keys = Keys::new(hmac_key.as_bytes());
-
     // create tokens
-    let access_claims = AccessClaims::new(&user.id.to_string(), &decoded_token.claims.email);
-    let refresh_claims = RefreshClaims::new(&user.id.to_string(), None);
-
-    let access_token = access_claims
-        .build_token(access_keys.encoding)
-        .map_err(|_| AuthError::InternalError)?;
-
-    let refresh_token = refresh_claims
-        .build_token(refresh_keys.encoding)
-        .map_err(|_| AuthError::InternalError)?;
+    let access_token = AccessToken::new(&user.id.to_string())?;
+    let refresh_token = RefreshToken::new(&user.id.to_string(), None)?;
 
     // save token jtis to db
-    let access_token_db = TokenDB::new(user.id, access_claims.jti, access_claims.exp);
-    let refresh_token_db = TokenDB::new(user.id, refresh_claims.jti, refresh_claims.exp);
-    let _ = app_state.db.create_token(access_token_db).await;
-    let _ = app_state.db.create_token(refresh_token_db).await;
+    let _ = app_state
+        .db
+        .create_token(TokenDB::from(&access_token))
+        .await;
+    let _ = app_state
+        .db
+        .create_token(TokenDB::from(&refresh_token))
+        .await;
 
     // create cookies
-    let access_cookie = Cookie::build(("access", access_token))
-        // .domain("localhost")
-        .path("/")
-        .same_site(SameSite::Lax)
-        .secure(false) // todo:: in prod = true
-        .http_only(true);
-
-    let refresh_cookie = Cookie::build(("refresh", refresh_token))
-        // .domain("localhost")
-        .path("/")
-        .same_site(SameSite::Lax)
-        .secure(false) // todo:: in prod = true
-        .http_only(true);
-
-    // add cookies to the jar
-    Ok((StatusCode::OK, jar.add(access_cookie).add(refresh_cookie)))
+    Ok((
+        StatusCode::OK,
+        jar.add(Cookie::from(&access_token))
+            .add(Cookie::from(&refresh_token)),
+    ))
 }
 
 pub async fn logout(
     State(app_state): State<AppState>,
     jar: PrivateCookieJar,
 ) -> Result<(StatusCode, PrivateCookieJar), AuthError> {
-    let hmac_key = match env::var("HMAC_KEY") {
-        Ok(v) => v,
-        Err(_) => panic!("Error loading HMAC_KEY. Ensure HMAC_KEY env var is set"),
-    };
-
-    let access_keys = Keys::new(hmac_key.as_bytes());
-
     // extract tokens from cookies
-    let access_token = match jar.get("access").map(|cookie| cookie.value().to_owned()) {
-        Some(value) => value,
-        None => String::from(""),
-    };
-    let refresh_token = match jar.get("refresh").map(|cookie| cookie.value().to_owned()) {
-        Some(value) => value,
-        None => String::from(""),
-    };
-
-    // decode access token
-    let access_token_data = match decode::<AccessClaims>(
-        &access_token,
-        &access_keys.decoding,
-        &Validation::default(),
-    ) {
-        Ok(token) => Ok(token),
-        Err(err) => match err.kind() {
-            // if token has expired decode anyway
-            ErrorKind::ExpiredSignature => {
-                let mut validation = Validation::default();
-                validation.validate_exp = false; // Disable expiration validation
-
-                let token_data =
-                    decode::<AccessClaims>(&access_token, &access_keys.decoding, &validation)
-                        .map_err(|_| AuthError::InvalidToken)?;
-
-                Ok(token_data)
-            }
-            _ => Err(err),
-        },
-    }
-    .map_err(|_| AuthError::InvalidToken)?;
+    let refresh_token = RefreshToken::try_from(&jar)?;
 
     // blacklist all associated user tokens
     let _ = app_state
         .db
         .blacklist_user_tokens(
-            ObjectId::parse_str(access_token_data.claims.sub)
+            ObjectId::parse_str(&refresh_token.claims.sub)
                 .expect("failed to parse string to ObjectId"),
         )
         .await;
@@ -418,29 +319,36 @@ pub async fn logout(
     }
     .unwrap();
 
+    let access_token = match AccessToken::try_from(&jar) {
+        Ok(token) => Ok(Some(token)),
+        Err(err) if err == AuthError::MissingToken => Ok(None),
+        Err(err) => Err(err),
+    }?;
+
+    let mut updated_jar = jar;
+
     // invalidate cookies
-    let access_cookie = Cookie::build(("access", ""))
-        .path("/")
-        .expires(exp)
-        .same_site(SameSite::Lax)
-        .secure(false) // todo:: in prod = true
-        .http_only(true);
+    match access_token {
+        Some(token) => {
+            let mut invalid_access_cookie = Cookie::from(&token);
+            invalid_access_cookie.set_value("");
+            invalid_access_cookie.set_expires(exp);
 
-    let refresh_cookie = Cookie::build(("refresh", ""))
-        // .domain("localhost")
-        .path("/")
-        .expires(exp)
-        .same_site(SameSite::Lax)
-        .secure(false) // todo:: in prod = true
-        .http_only(true);
+            updated_jar = updated_jar.remove(Cookie::from(&token));
+            updated_jar = updated_jar.add(invalid_access_cookie);
+            ()
+        }
+        None => (),
+    }
 
-    Ok((
-        StatusCode::OK,
-        jar.remove(access_token)
-            .remove(refresh_token)
-            .add(access_cookie)
-            .add(refresh_cookie),
-    ))
+    let mut invalid_refresh_cookie = Cookie::from(&refresh_token);
+    invalid_refresh_cookie.set_value("");
+    invalid_refresh_cookie.set_expires(exp);
+
+    updated_jar = updated_jar.remove(Cookie::from(&refresh_token));
+    updated_jar = updated_jar.add(invalid_refresh_cookie);
+
+    Ok((StatusCode::OK, updated_jar))
 }
 
 pub async fn register_user(
@@ -457,49 +365,26 @@ pub async fn register_user(
         Err(_) => Err(AuthError::InternalError),
     }?;
 
-    // authenticate user
-    let hmac_key = match env::var("HMAC_KEY") {
-        Ok(v) => v,
-        Err(_) => panic!("Error loading HMAC_KEY. Ensure HMAC_KEY env var is set"),
-    };
-
-    let access_keys = Keys::new(hmac_key.as_bytes());
-    let refresh_keys = Keys::new(hmac_key.as_bytes());
-
     // create tokens
-    let access_claims = AccessClaims::new(&new_user.id.to_string(), &new_user.email);
-    let refresh_claims = RefreshClaims::new(&new_user.id.to_string(), None);
-
-    let access_token = access_claims
-        .build_token(access_keys.encoding)
-        .map_err(|_| AuthError::InternalError)?;
-
-    let refresh_token = refresh_claims
-        .build_token(refresh_keys.encoding)
-        .map_err(|_| AuthError::InternalError)?;
+    let access_token = AccessToken::new(&new_user.id.to_string())?;
+    let refresh_token = RefreshToken::new(&new_user.id.to_string(), None)?;
 
     // save token jtis to db
-    let access_token_db = TokenDB::new(new_user.id, access_claims.jti, access_claims.exp);
-    let refresh_token_db = TokenDB::new(new_user.id, refresh_claims.jti, refresh_claims.exp);
-    let _ = app_state.db.create_token(access_token_db).await;
-    let _ = app_state.db.create_token(refresh_token_db).await;
+    let _ = app_state
+        .db
+        .create_token(TokenDB::from(&access_token))
+        .await;
+    let _ = app_state
+        .db
+        .create_token(TokenDB::from(&refresh_token))
+        .await;
 
     // create cookies
-    let access_cookie = Cookie::build(("access", access_token))
-        // .domain("localhost")
-        .path("/")
-        .same_site(SameSite::Lax)
-        .secure(false) // todo:: in prod = true
-        .http_only(true);
-
-    let refresh_cookie = Cookie::build(("refresh", refresh_token))
-        // .domain("localhost")
-        .path("/")
-        .same_site(SameSite::Lax)
-        .secure(false) // todo:: in prod = true
-        .http_only(true);
-
-    Ok((StatusCode::OK, jar.add(access_cookie).add(refresh_cookie)))
+    Ok((
+        StatusCode::OK,
+        jar.add(Cookie::from(&access_token))
+            .add(Cookie::from(&refresh_token)),
+    ))
 }
 
 // todo:: update_password

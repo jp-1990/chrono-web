@@ -1,132 +1,253 @@
-use std::{u32, usize};
+use std::{env, usize};
 
-use axum::http::StatusCode;
+use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_extra::extract::PrivateCookieJar;
+use chrono::Utc;
+use jsonwebtoken::errors::ErrorKind;
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use mongodb::bson::oid::ObjectId;
-use mongodb::bson::Bson;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
-use crate::error::error::AppError;
-
-#[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
-pub enum Role {
-    Admin,
-    User,
-}
-
-impl From<&str> for Role {
-    fn from(s: &str) -> Role {
-        match s {
-            "admin" => Role::Admin,
-            "user" => Role::User,
-            "Admin" => Role::Admin,
-            "User" => Role::User,
-            _ => panic!("invalid role!"),
-        }
-    }
-}
-
-impl From<Role> for String {
-    fn from(role: Role) -> String {
-        match role {
-            Role::Admin => "admin".into(),
-            Role::User => "user".into(),
-        }
-    }
-}
-
-impl From<Bson> for Role {
-    fn from(bson: Bson) -> Role {
-        if let Bson::String(s) = bson {
-            s.as_str().into()
-        } else {
-            panic!("expected Bson::String")
-        }
-    }
-}
-
-impl Into<Bson> for Role {
-    fn into(self) -> Bson {
-        let s: String = self.into();
-        Bson::String(s)
-    }
-}
-
-#[non_exhaustive]
-#[derive(Debug, Serialize, Deserialize)]
-pub struct User {
-    #[serde(rename = "_id")]
-    pub id: ObjectId,
-    pub email: String,
-    pub pass: String,
-    pub role: Role,
-    pub active: bool,
-    pub verified: bool,
-    #[serde(rename = "givenName")]
-    pub given_name: String,
-    #[serde(rename = "familyName")]
-    pub family_name: String,
-    pub img: String,
-    #[serde(rename = "createdAt")]
-    pub created_at: mongodb::bson::DateTime,
-    #[serde(rename = "__v")]
-    pub v: u32,
-}
-
-impl User {
-    pub fn new(
-        email: String,
-        pass: String,
-        given_name: String,
-        family_name: String,
-    ) -> Result<Self, AppError> {
-        match bcrypt::hash(pass, 12) {
-            Ok(hash) => Ok(Self {
-                id: ObjectId::new(),
-                given_name,
-                family_name,
-                email,
-                pass: hash,
-                role: Role::User,
-                active: true,
-                verified: false,
-                img: String::from(""),
-                created_at: mongodb::bson::DateTime::now(),
-                v: 1,
-            }),
-            Err(_) => Err(AppError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to create user",
-            )),
-        }
-    }
-}
-
-impl From<RegisterUserPayload> for User {
-    fn from(payload: RegisterUserPayload) -> User {
-        User::new(
-            payload.email,
-            payload.pass,
-            payload.given_name,
-            payload.family_name,
-        )
-        .expect("")
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RegisterUserPayload {
-    pub email: String,
-    pub pass: String,
-    #[serde(rename = "givenName")]
-    pub given_name: String,
-    #[serde(rename = "familyName")]
-    pub family_name: String,
-}
+use crate::error::error::AuthError;
+use crate::utils::auth::generate_jti;
 
 #[derive(Debug, Deserialize)]
 pub struct AuthPayload {
     pub email: String,
     pub pass: String,
+}
+
+pub struct Keys {
+    pub encoding: EncodingKey,
+    pub decoding: DecodingKey,
+}
+
+impl Keys {
+    pub fn new(secret: &[u8]) -> Self {
+        Self {
+            encoding: EncodingKey::from_secret(secret),
+            decoding: DecodingKey::from_secret(secret),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AccessClaims {
+    pub sub: String,
+    pub exp: usize,
+    pub iat: usize,
+    pub jti: String,
+}
+
+impl AccessClaims {
+    pub fn new(sub: &String) -> Self {
+        // todo:: set true expiry time
+        let iat = (Utc::now().naive_utc()).and_utc().timestamp() as usize;
+        let exp = (Utc::now().naive_utc() + chrono::Duration::minutes(1))
+            .and_utc()
+            .timestamp() as usize;
+
+        Self {
+            jti: generate_jti(),
+            sub: sub.to_string(),
+            iat,
+            exp,
+        }
+    }
+}
+
+pub struct AccessToken {
+    pub token: String,
+    pub claims: AccessClaims,
+    pub expired: bool,
+}
+
+impl AccessToken {
+    pub fn new(sub: &String) -> Result<Self, AuthError> {
+        let claims = AccessClaims::new(sub);
+
+        let hmac_key = match env::var("HMAC_KEY") {
+            Ok(v) => v,
+            Err(_) => return Err(AuthError::InternalError),
+        };
+
+        let keys = Keys::new(hmac_key.as_bytes());
+
+        let token = match encode(&Header::default(), &claims, &keys.encoding) {
+            Ok(token) => Ok(token),
+            Err(_) => Err(AuthError::InternalError),
+        }?;
+
+        Ok(Self {
+            token,
+            claims,
+            expired: false,
+        })
+    }
+}
+
+impl From<&AccessToken> for Cookie<'_> {
+    fn from(value: &AccessToken) -> Self {
+        Cookie::build(("access", value.token.clone()))
+            // .domain("localhost")
+            .path("/")
+            .expires(OffsetDateTime::from_unix_timestamp(value.claims.exp as i64).unwrap())
+            .same_site(SameSite::Lax)
+            .secure(false) // todo:: in prod = true
+            .http_only(true)
+            .build()
+    }
+}
+
+impl TryFrom<&PrivateCookieJar> for AccessToken {
+    type Error = AuthError;
+
+    fn try_from(jar: &PrivateCookieJar) -> Result<Self, AuthError> {
+        let hmac_key = match env::var("HMAC_KEY") {
+            Ok(v) => v,
+            Err(_) => return Err(AuthError::InternalError),
+        };
+
+        let keys = Keys::new(hmac_key.as_bytes());
+
+        let token = match jar.get("access").map(|cookie| cookie.value().to_owned()) {
+            Some(value) => Ok(value),
+            None => Err(AuthError::MissingToken),
+        }?;
+
+        // Decode the user data
+        let (token_data, token_expired) =
+            match decode::<AccessClaims>(&token, &keys.decoding, &Validation::default()) {
+                Ok(token) => Ok((token, false)),
+                Err(err) => match err.kind() {
+                    // if token has expired decode anyway
+                    ErrorKind::ExpiredSignature => {
+                        let mut validation = Validation::default();
+                        validation.validate_exp = false; // Disable expiration validation
+
+                        let token_data =
+                            decode::<AccessClaims>(&token, &keys.decoding, &validation)
+                                .map_err(|_| AuthError::InvalidToken)?;
+
+                        Ok((token_data, true))
+                    }
+                    _ => Err(AuthError::InvalidToken),
+                },
+            }?;
+
+        Ok(Self {
+            token,
+            expired: token_expired,
+            claims: AccessClaims {
+                sub: token_data.claims.sub,
+                exp: token_data.claims.exp,
+                iat: token_data.claims.iat,
+                jti: token_data.claims.jti,
+            },
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RefreshClaims {
+    pub sub: String,
+    pub exp: usize,
+    pub iat: usize,
+    pub jti: String,
+}
+
+impl RefreshClaims {
+    pub fn new(sub: &String, exp: Option<usize>) -> Self {
+        // todo:: set true expiry time
+        let iat = (Utc::now().naive_utc()).and_utc().timestamp() as usize;
+        let exp = match exp {
+            Some(v) => v,
+            None => (Utc::now().naive_utc() + chrono::Duration::minutes(5))
+                .and_utc()
+                .timestamp() as usize,
+        };
+
+        Self {
+            jti: generate_jti(),
+            sub: sub.to_string(),
+            iat,
+            exp,
+        }
+    }
+}
+
+pub struct RefreshToken {
+    pub token: String,
+    pub claims: RefreshClaims,
+}
+
+impl RefreshToken {
+    pub fn new(sub: &String, exp: Option<usize>) -> Result<Self, AuthError> {
+        let claims = RefreshClaims::new(sub, exp);
+
+        let hmac_key = match env::var("HMAC_KEY") {
+            Ok(v) => v,
+            Err(_) => return Err(AuthError::InternalError),
+        };
+
+        let keys = Keys::new(hmac_key.as_bytes());
+
+        let token = match encode(&Header::default(), &claims, &keys.encoding) {
+            Ok(token) => Ok(token),
+            Err(_) => Err(AuthError::Forbidden),
+        }?;
+
+        Ok(Self { token, claims })
+    }
+}
+
+impl From<&RefreshToken> for Cookie<'_> {
+    fn from(value: &RefreshToken) -> Self {
+        Cookie::build(("refresh", value.token.clone()))
+            // .domain("localhost")
+            .path("/")
+            .expires(OffsetDateTime::from_unix_timestamp(value.claims.exp as i64).unwrap())
+            .same_site(SameSite::Lax)
+            .secure(false) // todo:: in prod = true
+            .http_only(true)
+            .build()
+    }
+}
+
+impl TryFrom<&PrivateCookieJar> for RefreshToken {
+    type Error = AuthError;
+
+    fn try_from(jar: &PrivateCookieJar) -> Result<Self, AuthError> {
+        let hmac_key = match env::var("HMAC_KEY") {
+            Ok(v) => v,
+            Err(_) => return Err(AuthError::InternalError),
+        };
+
+        let keys = Keys::new(hmac_key.as_bytes());
+
+        let token = match jar.get("refresh").map(|cookie| cookie.value().to_owned()) {
+            Some(value) => Ok(value),
+            None => Err(AuthError::MissingToken),
+        }?;
+
+        // Decode the user data
+        let token_data =
+            match decode::<RefreshClaims>(&token, &keys.decoding, &Validation::default()) {
+                Ok(token) => Ok(token),
+                Err(_) => Err(AuthError::InvalidToken),
+            }?;
+
+        Ok(Self {
+            token,
+            claims: RefreshClaims {
+                sub: token_data.claims.sub,
+                exp: token_data.claims.exp,
+                iat: token_data.claims.iat,
+                jti: token_data.claims.jti,
+            },
+        })
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -139,18 +260,38 @@ pub struct TokenDB {
 }
 
 impl TokenDB {
-    pub fn new(uid: ObjectId, jti: String, exp: usize) -> Self {
+    pub fn new(uid: String, jti: String, exp: usize) -> Self {
         let timestamp: i64 = (exp * 1000)
             .try_into()
             .expect("Token::new failed. invalid timestamp");
 
         Self {
             id: ObjectId::new(),
+            uid: ObjectId::parse_str(uid).expect(""),
             exp: mongodb::bson::DateTime::from_millis(timestamp),
             black: false,
             jti,
-            uid,
         }
+    }
+}
+
+impl From<&AccessToken> for TokenDB {
+    fn from(value: &AccessToken) -> Self {
+        TokenDB::new(
+            value.claims.sub.clone(),
+            value.claims.jti.clone(),
+            value.claims.exp,
+        )
+    }
+}
+
+impl From<&RefreshToken> for TokenDB {
+    fn from(value: &RefreshToken) -> Self {
+        TokenDB::new(
+            value.claims.sub.clone(),
+            value.claims.jti.clone(),
+            value.claims.exp,
+        )
     }
 }
 

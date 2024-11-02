@@ -7,11 +7,13 @@ use axum_extra::extract::PrivateCookieJar;
 
 use crate::{
     error::error::AppError,
-    models::activity_model::{
-        ActivityDeleteResponse, ActivityResponse, DeleteActivityPayload, GetActivitiesPayload,
-        GetActivityPayload, PatchActivityBody, PatchActivityPayload, PostActivityPayload,
+    models::{
+        activity_model::{
+            ActivityDeleteResponse, ActivityResponse, DeleteActivityPayload, GetActivitiesPayload,
+            GetActivityPayload, PatchActivityBody, PatchActivityPayload, PostActivityPayload,
+        },
+        auth_model::AccessClaims,
     },
-    utils::auth::AccessClaims,
     AppState,
 };
 

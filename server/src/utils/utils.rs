@@ -30,3 +30,26 @@ pub fn generate_password(length: usize) -> String {
     // Shuffle the password to mix special characters into the string
     password.chars().collect::<Vec<_>>().into_iter().collect()
 }
+
+pub fn generate_test_email() -> String {
+    let special_chars = b"!@#$%^&*()_+-=[]{}|;:,.<>?";
+    let mut rng = thread_rng();
+
+    // Start with random alphanumeric characters
+    let mut email: String = iter::repeat_with(|| rng.sample(Alphanumeric))
+        .take(12 - 2) // Reserve space for special characters
+        .map(char::from)
+        .collect();
+
+    // Add two random special characters to ensure complexity
+    email.push(*special_chars.choose(&mut rng).unwrap() as char);
+    email.push(*special_chars.choose(&mut rng).unwrap() as char);
+
+    // Shuffle the password to mix special characters into the string
+    (email
+        .chars()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .collect::<String>())
+        + "@test.com"
+}
