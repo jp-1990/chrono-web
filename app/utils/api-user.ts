@@ -1,4 +1,9 @@
-import { LoginArgs, LoginRes, SignupArgs, SignupRes } from '~/types/user';
+import {
+  type LoginArgs,
+  type LoginRes,
+  type SignupArgs,
+  type SignupRes
+} from '~/types/user';
 
 export const login = async (user: LoginArgs): Promise<LoginRes> => {
   const response = await fetch('http://localhost:4000/graphql', {

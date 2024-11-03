@@ -1,12 +1,12 @@
 import {
-  DeleteItemArgs,
-  DeleteItemsRes,
-  GetItemArgs,
-  GetItemsRes,
-  PatchItemArgs,
-  PatchItemsRes,
-  PostItemArgs,
-  PostItemsRes
+  type DeleteItemArgs,
+  type DeleteItemsRes,
+  type GetItemArgs,
+  type GetItemsRes,
+  type PatchItemArgs,
+  type PatchItemsRes,
+  type PostItemArgs,
+  type PostItemsRes
 } from '~/types/item';
 
 export const getItems = async ({

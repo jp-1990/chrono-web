@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Container, FormattedItem, Handles } from '~/types/item';
+import { type Container, type FormattedItem, Handles } from '~/types/item';
 
 export const useStartEndDrag = (breakpoint: number) => {
   const dragTime = ref<string | undefined>(undefined);

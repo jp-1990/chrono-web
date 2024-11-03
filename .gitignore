@@ -8,6 +8,8 @@ app/dist
 app/.DS_Store
 app/.fleet
 app/.idea
+app/.env
 server/target
+server/.env
 .env
 .vscode

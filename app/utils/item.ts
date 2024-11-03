@@ -1,6 +1,11 @@
 import { ref } from 'vue';
 import { add, differenceInDays, set, startOfDay, sub } from 'date-fns';
-import { FormattedItem, FormattedItems, GetItemsRes, Item } from '~/types/item';
+import {
+  type FormattedItem,
+  type FormattedItems,
+  type GetItemsRes,
+  type Item
+} from '~/types/item';
 import { getDateId } from './date';
 import { timeOfDayToPercentage } from './date';
 

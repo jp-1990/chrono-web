@@ -47,15 +47,10 @@
       </div>
 
       <!-- table rows -->
-      <section v-on="{
-        mouseup: mouseDownState.pressed
-          ? ($event) => {
-            const target = onMouseUp($event);
-            onOpenUpdateTaskModal(target);
-          }
-          : null,
-        mousemove: mouseDownState.pressed ? onMouseMove : null
-      }" class="flex flex-1 cursor-default">
+      <section @mouseup="($event) => {
+        const target = onMouseUp($event);
+        onOpenUpdateTaskModal(target);
+      }" @mousemove="onMouseMove" class="flex flex-1 cursor-default">
         <ul class="flex flex-1 flex-col mb-2">
           <li v-for="date in datesInSelectedMonthYear" :key="date.toDateString()" :class="['w-full']"
             class="flex flex-row">
@@ -112,8 +107,8 @@
           <label for="create-exercise" class="text-xs mt-2 mb-1">Exercise</label>
           <div class="flex">
             <input id="create-exercise"
-              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" name="create-exercise"
-              v-model="exercise.name" />
+              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+              name="create-exercise" v-model="exercise.name" />
             <button v-if="exerciseIndex > 0" class="flex items-center px-2 font-bold text-xs"
               @click="removeExercise(exerciseIndex)">
               <close-icon :size="18" class="text-red-500 mr-px" />
@@ -130,18 +125,20 @@
               <label for="create-exercise-set" class="text-xs mr-2">Weight</label>
               <input id="create-exercise-weight"
                 class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
-                name="create-exercise-weight" v-model="row.weight" /><span class="text-xs text-slate-400 ml-px">kg</span>
+                name="create-exercise-weight" v-model="row.weight" /><span
+                class="text-xs text-slate-400 ml-px">kg</span>
             </div>
-            <button v-if="rowIndex !== exercise.data.length - 1" class="flex items-center px-2 font-bold text-xs" @click="
-              removeRepsRow({
-                exerciseIndex,
-                rowIndex
-              })
-              ">
+            <button v-if="rowIndex !== exercise.data.length - 1" class="flex items-center px-2 font-bold text-xs"
+              @click="
+                removeRepsRow({
+                  exerciseIndex,
+                  rowIndex
+                })
+                ">
               <close-icon :size="18" class="text-red-500 mr-px" />
             </button>
-            <button v-if="rowIndex === exercise.data.length - 1" class="flex items-center px-2 text-xs text-primary-blue"
-              @click="
+            <button v-if="rowIndex === exercise.data.length - 1"
+              class="flex items-center px-2 text-xs text-primary-blue" @click="
                 addRepsRow({
                   exerciseIndex,
                   reps: row.reps,
@@ -206,8 +203,8 @@
           <label for="create-exercise" class="text-xs mt-2 mb-1">Exercise</label>
           <div class="flex">
             <input id="update-exercise"
-              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700" name="update-exercise"
-              v-model="exercise.name" />
+              class="flex-1 border py-1 px-2 rounded-sm focus:outline-none focus:border-slate-700"
+              name="update-exercise" v-model="exercise.name" />
             <button v-if="exerciseIndex > 0" class="flex items-center px-2 font-bold text-xs"
               @click="removeExercise(exerciseIndex)">
               <close-icon :size="18" class="text-red-500 mr-px" />
@@ -224,18 +221,20 @@
               <label for="update-exercise-set" class="text-xs mr-2">Weight</label>
               <input id="update-exercise-weight"
                 class="border py-1 px-1 w-10 h-6 rounded-sm text-sm focus:outline-none focus:border-slate-700"
-                name="update-exercise-weight" v-model="row.weight" /><span class="text-xs text-slate-400 ml-px">kg</span>
+                name="update-exercise-weight" v-model="row.weight" /><span
+                class="text-xs text-slate-400 ml-px">kg</span>
             </div>
-            <button v-if="rowIndex !== exercise.data.length - 1" class="flex items-center px-2 font-bold text-xs" @click="
-              removeRepsRow({
-                exerciseIndex,
-                rowIndex
-              })
-              ">
+            <button v-if="rowIndex !== exercise.data.length - 1" class="flex items-center px-2 font-bold text-xs"
+              @click="
+                removeRepsRow({
+                  exerciseIndex,
+                  rowIndex
+                })
+                ">
               <close-icon :size="18" class="text-red-500 mr-px" />
             </button>
-            <button v-if="rowIndex === exercise.data.length - 1" class="flex items-center px-2 text-xs text-primary-blue"
-              @click="
+            <button v-if="rowIndex === exercise.data.length - 1"
+              class="flex items-center px-2 text-xs text-primary-blue" @click="
                 addRepsRow({
                   exerciseIndex,
                   reps: row.reps,
@@ -307,12 +306,12 @@ import {
   applyTZOffset
 } from '~~/utils/date';
 import {
-  FormattedItem,
-  PostItemArgs,
-  PatchItemArgs,
-  DeleteItemArgs
+  type FormattedItem,
+  type PostItemArgs,
+  type PatchItemArgs,
+  type DeleteItemArgs
 } from '~/types/item';
-import { Validation } from '~/types/form';
+import { type Validation } from '~/types/form';
 import { formatItems } from '~/utils/item';
 import { getItems, postItem, patchItem, deleteItem } from '~/utils/api-item';
 import {
@@ -323,6 +322,10 @@ import {
 import { DEFAULT_COLOR } from '~/constants/colors';
 import { useAuthCheck } from '~/composables/useAuthCheck';
 import { useMonthYearSelect } from '~/composables/useMonthYearSelect';
+
+definePageMeta({
+  layout: false
+});
 
 useAuthCheck();
 const hoursInDay = ref(getAllHoursInDay());
