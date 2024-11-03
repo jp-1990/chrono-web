@@ -1,28 +1,136 @@
 <template>
   <div>test</div>
-  <button @click="postTest">CALL POST http://localhost:8000/activity</button>
+  <button @click="postTest">CALL POST http://localhost:8000/api/v1/activity</button>
   <button @click="getTest">
-    CALL GET http://localhost:8000/activity/5f00caa89e941724088821ec
+    CALL GET http://localhost:8000/api/v1/activity/5f00caa89e941724088821ec
   </button>
   <button @click="patchTest">
-    CALL PATCH http://localhost:8000/activity/6547f3fe31cb0a68a3e5ea82
+    CALL PATCH http://localhost:8000/api/v1/activity/6547f3fe31cb0a68a3e5ea82
   </button>
   <button @click="deleteTest">
-    CALL DELETE http://localhost:8000/activity/6547f3fe31cb0a68a3e5ea82
+    CALL DELETE http://localhost:8000/api/v1/activity/6547f3fe31cb0a68a3e5ea82
   </button>
-  <button @click="getAllTest">CALL GET http://localhost:8000/activities</button>
+  <button @click="getAllTest">CALL GET http://localhost:8000/api/v1/activity</button>
+  <button @click="login">CALL POST http://localhost:8000/api/v1/login</button>
+  <button @click="logout">CALL POST http://localhost:8000/api/v1/logout</button>
+  <button @click="signup">CALL POST http://localhost:8000/api/v1/register</button>
+  <GoogleSignInButton @success="handleLoginSuccess" @error="handleLoginError"></GoogleSignInButton>
 </template>
 
 <script lang="ts" setup>
+import {
+  GoogleSignInButton,
+  type CredentialResponse,
+} from "vue3-google-signin";
 useAuthCheck();
+
+// handle success event
+const handleLoginSuccess = async (response: CredentialResponse) => {
+  const { credential } = response;
+  console.log("Access Token", credential, response);
+
+  // set token to auth header: bearer <token>
+  const res = await fetch(
+    'http://localhost:8000/api/v1/oauth',
+    {
+      credentials: 'include',
+      method: 'Post',
+      headers: {
+        // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+        'Content-Type': 'application/json',
+        'access-control-request-headers': 'content-type',
+        //   'Access-Control-Request-Headers': 'application/json'
+        'Authorization': `${credential}`
+      },
+    }
+  );
+  console.log('response', res);
+};
+
+// handle an error event
+const handleLoginError = () => {
+  console.error("Login failed");
+};
+
+
+const signup = async (): Promise<string> => {
+  const response = await fetch(
+    'http://localhost:8000/api/v1/register',
+    {
+      credentials: 'include',
+      method: 'Post',
+      headers: {
+        // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+        'Content-Type': 'application/json',
+        'access-control-request-headers': 'content-type'
+        //   'Access-Control-Request-Headers': 'application/json'
+        //   authorization: `${window.localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        email: 'test@gmail.com',
+        pass: 'testing',
+        givenName: 'TEST',
+        familyName: 'ING',
+      })
+    }
+  );
+  console.log('response', response);
+
+  return '';
+};
+
+const login = async (): Promise<string> => {
+  const response = await fetch(
+    'http://localhost:8000/api/v1/login',
+    {
+      credentials: 'include',
+      method: 'Post',
+      headers: {
+        // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+        'Content-Type': 'application/json',
+        'access-control-request-headers': 'content-type'
+        //   'Access-Control-Request-Headers': 'application/json'
+        //   authorization: `${window.localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        email: 'test@gmail.com',
+        pass: 'testing',
+      })
+    }
+  );
+  console.log('response', response);
+
+  return '';
+};
+
+const logout = async (): Promise<string> => {
+  const response = await fetch(
+    'http://localhost:8000/api/v1/logout',
+    {
+      credentials: 'include',
+      method: 'Post',
+      headers: {
+        // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+        'Content-Type': 'application/json',
+        'access-control-request-headers': 'content-type'
+        //   'Access-Control-Request-Headers': 'application/json'
+        //   authorization: `${window.localStorage.getItem('token')}`
+      },
+    }
+  );
+  console.log('response', response);
+
+  return '';
+};
 
 const getTest = async (): Promise<string> => {
   const response = await fetch(
-    'http://localhost:8000/activity/5f00caa89e941724088821ec',
+    'http://localhost:8000/api/v1/activity/66ccd0ef832a1b4795192219',
     {
-      method: 'GET'
+      method: 'GET',
+      credentials: 'include',
       // headers: {
-      //   'Access-Control-Allow-Origin': 'http://localhost:8000'
+      //   'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
       //   'Content-Type': 'application/json',
       //   authorization: `${window.localStorage.getItem('token')}`
       // }
@@ -35,22 +143,24 @@ const getTest = async (): Promise<string> => {
 };
 
 const postTest = async (): Promise<string> => {
-  const response = await fetch('http://localhost:8000/activity', {
+  const response = await fetch('http://localhost:8000/api/v1/activity', {
     method: 'POST',
+    credentials: 'include',
     headers: {
-      // 'Access-Control-Allow-Origin': 'http://localhost:8000'
+      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
       'Content-Type': 'application/json',
       'access-control-request-headers': 'content-type'
       //   'Access-Control-Request-Headers': 'application/json'
       //   authorization: `${window.localStorage.getItem('token')}`
     },
     body: JSON.stringify({
+      variant: 'Default',
       title: 'testing',
-      description: 'test desc',
+      group: 'test group',
+      notes: 'test desc',
       start: new Date(Date.now()),
       end: new Date(Date.now()),
-      group: 'test group',
-      color: '#000000'
+      timezone: new Date(Date.now()).getTimezoneOffset(),
     })
   });
   const res = await response.json();
@@ -61,11 +171,12 @@ const postTest = async (): Promise<string> => {
 
 const patchTest = async (): Promise<string> => {
   const response = await fetch(
-    'http://localhost:8000/activity/6547f3fe31cb0a68a3e5ea82',
+    'http://localhost:8000/api/v1/activity/66ccd0ef832a1b4795192219',
     {
       method: 'PATCH',
+      credentials: 'include',
       headers: {
-        // 'Access-Control-Allow-Origin': 'http://localhost:8000'
+        // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
         'Content-Type': 'application/json',
         'access-control-request-headers': 'content-type'
         //   'Access-Control-Request-Headers': 'application/json'
@@ -73,7 +184,7 @@ const patchTest = async (): Promise<string> => {
       },
       body: JSON.stringify({
         title: 'testing 2',
-        description: ''
+        notes: ''
         //   start: new Date(Date.now()),
         //   end: new Date(Date.now()),
         //   group: 'test group',
@@ -89,11 +200,12 @@ const patchTest = async (): Promise<string> => {
 
 const deleteTest = async (): Promise<string> => {
   const response = await fetch(
-    'http://localhost:8000/activity/6547f3fe31cb0a68a3e5ea82',
+    'http://localhost:8000/api/v1/activity/66ccd0ef832a1b4795192219',
     {
-      method: 'DELETE'
+      method: 'DELETE',
+      credentials: 'include',
       //   headers: {
-      //     // 'Access-Control-Allow-Origin': 'http://localhost:8000'
+      //     // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
       //     'Content-Type': 'application/json',
       //     'access-control-request-headers': 'content-type'
       //     //   'Access-Control-Request-Headers': 'application/json'
@@ -116,10 +228,11 @@ const deleteTest = async (): Promise<string> => {
 };
 
 const getAllTest = async (): Promise<string> => {
-  const response = await fetch('http://localhost:8000/activities', {
-    method: 'GET'
+  const response = await fetch('http://localhost:8000/api/v1/activity', {
+    method: 'GET',
+    credentials: 'include'
     // headers: {
-    //   'Access-Control-Allow-Origin': 'http://localhost:8000'
+    //   'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
     //   'Content-Type': 'application/json',
     //   authorization: `${window.localStorage.getItem('token')}`
     // }
