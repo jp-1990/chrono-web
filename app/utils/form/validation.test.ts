@@ -366,8 +366,6 @@ describe('validation', () => {
         hours: 26
       }).toISOString();
 
-      console.log({ newStart, newEnd });
-
       formState.value.data.startDate = newStart;
       formState.value.data.endDate = newEnd;
       validateDate(formState, formattedItems);

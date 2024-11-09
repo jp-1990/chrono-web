@@ -1,12 +1,16 @@
 import {
-  FormattedItem,
-  FormattedItems,
-  Item,
-  PostItemArgs
+  type FormattedItem,
+  type FormattedItems,
+  type Item,
+  type PostItemArgs
 } from '~/types/item';
-import { Validation } from '~/types/form';
+import { type Validation } from '~/types/form';
 import { getDateId } from '../date';
 import { add } from 'date-fns';
+
+export function required(v: string) {
+  return !!v;
+}
 
 export const validateTitle = (
   formState: Ref<{ data: PostItemArgs; valid: Validation }>
