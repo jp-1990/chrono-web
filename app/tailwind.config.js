@@ -1,4 +1,5 @@
 // tailwind.config.js
+const defaultTheme = require('tailwindcss/defaultTheme');
 const FormKitVariants = require('@formkit/themes/tailwindcss');
 module.exports = {
   content: [
@@ -23,6 +24,10 @@ module.exports = {
         'primary-gray': '#454851',
         'secondary-gray': '#818CA0',
         'primary-brown': '#705E57'
+      },
+      fontFamily: {
+        sans: ['"Lato"', ...defaultTheme.fontFamily.sans],
+        mono: ['"Roboto Mono"', ...defaultTheme.fontFamily.mono]
       }
     }
   }

@@ -5,7 +5,12 @@ export default defineNuxtConfig({
     shim: false
   },
 
-  modules: ['@nuxtjs/tailwindcss', '@formkit/nuxt', 'nuxt-vue3-google-signin'],
+  modules: [
+    '@nuxtjs/tailwindcss',
+    '@formkit/nuxt',
+    'nuxt-vue3-google-signin',
+    '@nuxt/fonts'
+  ],
 
   build: {
     transpile: ['@vuepic/vue-datepicker']
@@ -15,5 +20,12 @@ export default defineNuxtConfig({
     clientId: process.env.GOOGLE_CLIENT_ID
   },
 
+  fonts: {
+    defaults: {
+      weights: [300, 400, 500, 600, 700]
+    }
+  },
+
   compatibilityDate: '2024-11-03'
 });
+

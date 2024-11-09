@@ -1,62 +1,42 @@
 <template>
-  <div class="flex flex-col w-32 min-w-[128px]">
-    <div
-      ref="calendarButtonEl"
-      @click="toggleModal"
-      class="flex justify-between items-center relative bg-white cursor-pointer border border-slate-300 rounded-sm"
-    >
-      <month-calendar-icon :size="18" class="ml-2 mt-0.5 text-slate-500" />
-      <input
-        id="month-year-select"
-        inputmode="none"
-        autocomplete="off"
-        readonly
-        class="h-8 max-w-[72px] cursor-pointer font-mono font-light text-slate-500 bg-transparent outline-none"
-        :value="`${format(selectedMonth, 'MMM').toUpperCase()} ${format(
-          selectedYear,
-          'yyyy'
-        )}`"
-      />
-      <div class="mr-1"></div>
+  <div ref="calendarButtonEl" @click="toggleModal" class="flex items-center w-20 h-9 p-1.5 relative cursor-pointer rounded-[4px]
+    bg-gradient-to-r from-slate-700 to-slate-800 text-slate-200
+    ">
+    <month-calendar-icon :size="24" class="mr-2" />
+    <div class="flex flex-col items-center w-8 ">
+      <div class="text-[14px]/[14px] font-mono">{{ format(selectedMonth, 'MMM').toUpperCase() }}</div>
+      <div class="text-[10px]/[10px] font-mono font-light">{{ format(selectedYear, 'yyyy') }}</div>
     </div>
-    <div ref="calendarEl" class="relative">
+  </div>
+
+  <div ref="calendarEl" class="relative">
+    <div v-if="modalOpen" class="absolute top-0.5 right-0 z-20 flex flex-col bg-transparent w-[184px]">
       <div
-        v-if="modalOpen"
-        class="absolute top-0.5 z-20 flex flex-col bg-white border border-slate-300 w-48 pb-0.5 rounded-sm"
-      >
-        <div class="flex justify-center items-center">
-          <div class="flex items-center font-mono text-slate-100 text-xl my-1">
-            <div
-              @click="decrementYear"
-              class="cursor-pointer bg-primary-blue rounded-sm p-0.5 pr-1"
-            >
-              <left-icon :size="16" />
-            </div>
-            <span
-              class="px-7 mx-2.5 border border-slate-300 rounded-sm text-slate-500"
-              >{{ format(selectedYear, 'yyyy') }}</span
-            >
-            <div
-              @click="incrementYear"
-              class="cursor-pointer bg-primary-blue rounded-sm p-0.5 pl-1"
-            >
-              <right-icon :size="16" />
-            </div>
+        class="flex justify-center items-center h-9 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-[4px] text-slate-200">
+        <div class="flex items-center justify-between w-full p-2">
+          <div @click="decrementYear"
+            class="h-5 w-5 flex justify-center items-center cursor-pointer bg-slate-600/60 rounded-sm">
+            <left-icon :size="20" />
+          </div>
+
+          <span class="text-slate-200 text-lg">{{ format(selectedYear, 'yyyy')
+            }}</span>
+
+          <div @click="incrementYear"
+            class="h-5 w-5 flex justify-center items-center cursor-pointer bg-slate-600/60 rounded-sm">
+            <right-icon :size="20" />
           </div>
         </div>
-        <div class="flex flex-wrap content-start px-px">
-          <div
-            v-for="month in monthsInYear"
-            @click="selectMonth(month)"
-            :class="[
-              month.valueOf() === selectedMonth.valueOf()
-                ? 'bg-primary-blue text-slate-100'
-                : 'bg-white text-slate-500'
-            ]"
-            class="flex items-center h-8 m-0.5 px-4 font-mono font-light cursor-pointer rounded-sm"
-          >
-            <span>{{ format(month, 'MMM').toUpperCase() }}</span>
-          </div>
+      </div>
+
+      <div class="flex flex-wrap content-start p-0.5 bg-white rounded-b-[4px] drop-shadow-lg">
+        <div v-for="month in monthsInYear" @click="selectMonth(month)" :class="[
+          month.valueOf() === selectedMonth.valueOf()
+            ? 'bg-slate-700 text-slate-100'
+            : 'bg-slate-50/50 text-slate-600 border border-slate-50'
+        ]"
+          class="flex items-center justify-center m-0.5 h-8 w-14 text-sm font-mono font-light cursor-pointer rounded-sm">
+          <span>{{ format(month, 'MMM').toUpperCase() }}</span>
         </div>
       </div>
     </div>
@@ -67,8 +47,8 @@
 import { add, sub, format, startOfMonth, startOfYear } from 'date-fns';
 import { ref } from 'vue';
 import MonthCalendarIcon from 'vue-material-design-icons/CalendarFilter.vue';
-import LeftIcon from 'vue-material-design-icons/ArrowLeftBold.vue';
-import RightIcon from 'vue-material-design-icons/ArrowRightBold.vue';
+import LeftIcon from 'vue-material-design-icons/ChevronLeft.vue';
+import RightIcon from 'vue-material-design-icons/ChevronRight.vue';
 import { getAllMonthsInYear } from '~/utils/date';
 
 const emit = defineEmits<{
@@ -83,20 +63,22 @@ const now = new Date();
 const monthsInYear = ref(getAllMonthsInYear(now.getFullYear()));
 
 const modalOpen = ref(false);
-const toggleModal = () => (modalOpen.value = !modalOpen.value);
+function toggleModal() {
+  modalOpen.value = !modalOpen.value
+};
 
 const selectedMonth = ref(props.selectedMonth ?? startOfMonth(now));
 const selectedYear = ref(props.selectedYear ?? startOfYear(now));
 
-const incrementYear = () => {
+function incrementYear() {
   selectedYear.value = add(selectedYear.value, { years: 1 });
   emit('onChange', selectedMonth.value, selectedYear.value);
 };
-const decrementYear = () => {
+function decrementYear() {
   selectedYear.value = sub(selectedYear.value, { years: 1 });
   emit('onChange', selectedMonth.value, selectedYear.value);
 };
-const selectMonth = (date: Date) => {
+function selectMonth(date: Date) {
   selectedMonth.value = date;
   emit('onChange', selectedMonth.value, selectedYear.value);
 };
@@ -104,7 +86,7 @@ const selectMonth = (date: Date) => {
 const calendarEl = ref(null);
 const calendarButtonEl = ref(null);
 
-const closeUserMenuListener = (event) => {
+function closeUserMenuListener(event) {
   if (
     !(calendarEl.value as any)?.contains(event.target) &&
     !(calendarButtonEl.value as any)?.contains(event.target)
