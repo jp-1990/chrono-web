@@ -1,72 +1,109 @@
 <template>
-  <div
-    @keyup.escape="isOpen && $emit('onClose', $event)"
-    tabindex="0"
-    :class="[isOpen ? 'border-l' : 'translate-x-96 border-none']"
-    class="fixed z-40 w-96 p-2 top-0 right-0 flex flex-col h-screen overflow-hidden bg-white border-l-slate-200 duration-200 overflow-y-auto"
-  >
+  <div ref="modalEl" @keydown.tab="handleTab" @keyup.escape="isOpen && $emit('onClose', $event)" tabindex="0"
+    :class="[isOpen ? '' : 'translate-x-96']"
+    class="fixed z-40 w-screen max-w-96 top-0 right-0 flex flex-col h-screen overflow-hidden bg-slate-50 duration-200 overflow-y-auto">
     <!-- title -->
-    <header
-      id="side-panel-header"
-      class="flex justify-between items-start mb-2"
-    >
-      <h1 class="text-2xl ml-2 mt-1 font-bold text-slate-900">
-        <slot name="title-text">Title</slot>
-      </h1>
-      <close-icon
-        class="text-slate-700"
-        @click="$emit('onClose', $event)"
-        :size="30"
-        role="button"
-      />
+    <header :id="`side-panel-header-${id}`"
+      class="relative flex flex-col justify-between items-start mb-2 bg-gradient-to-r from-slate-700 to-slate-800 border-b-2 border-b-slate-300">
+      <div :class="[!!slots['description-extra'] ? 'h-[72px]' : 'h-[76px]']" class="flex flex-col">
+        <span class="ml-4 mt-3 flex flex-row items-center">
+          <slot name="title-icon">
+            <title-icon class="text-slate-50" :size="32" />
+          </slot>
+          <h1 class="text-3xl ml-1.5 font-bold text-slate-50">
+            <slot name="title-text">title-text</slot>
+          </h1>
+        </span>
+        <h6 class="ml-5 text-xs/[14px] text-slate-300/80 font-light">
+          <slot name="description-text">descrtiption_text</slot>
+        </h6>
+      </div>
+      <div :class="[!!slots['description-extra'] ? 'flex' : 'hidden']"
+        class="items-center pl-5 pb-0.5 h-6 w-full bg-slate-800 text-slate-300 text-[10px]/[10px] font-light">
+        <slot name="description-extra">
+          description-extra
+        </slot>
+      </div>
+      <close-icon class="absolute top-0 right-0 text-slate-200 m-2" @click="$emit('onClose', $event)" :size="24"
+        role="button" />
     </header>
 
-    <slot name="description-text"></slot>
-
     <!-- content -->
-    <section id="side-panel-content" class="flex flex-col mx-2">
-      <slot name="content"></slot>
+    <section :id="`side-panel-content-${id}`" class="flex flex-col mx-4">
+      <slot name="content">content</slot>
     </section>
 
     <div class="flex flex-1"></div>
 
     <!-- submit -->
-    <div class="w-full flex">
-      <button
-        id="side-panel-submit"
-        @click="$emit('onSubmit', $event)"
-        :disabled="disableSubmit"
-        type="submit"
-        :class="[disableSubmit ? 'bg-slate-400' : 'bg-primary-blue']"
-        class="flex-1 h-14 rounded-sm text-lg text-slate-50 focus:outline-slate-700"
-      >
-        <slot name="submit-text">Submit</slot>
+    <div class="w-full flex my-4">
+      <slot name="extra-button">
+        <button :id="`side-panel-extra-${id}`" @click="$emit('onExtra', $event)" :disabled="disableExtra" type="button"
+          :class="[disableExtra ? 'bg-slate-300 border-slate-400/40 text-slate-400' : 'bg-white border-slate-700 text-slate-700'
+            , !!slots['extra-button-text'] ? 'flex' : 'hidden'
+          ]" class="flex-1 justify-center items-center h-10 ml-4 rounded-[3px] border text-sm focus:outline-slate-700">
+          <slot name="extra-button-text">extra-button-text</slot>
+        </button>
+      </slot>
+      <button :id="`side-panel-submit-${id}`" @click="$emit('onSubmit', $event)" :disabled="disableSubmit" type="submit"
+        :class="[disableSubmit ? 'bg-slate-400 text-slate-200' : 'bg-gradient-to-r from-slate-700 to-slate-800 text-slate-50 ']"
+        class="flex flex-1 justify-center items-center min-w-[calc(50%_-_0.5rem)] h-10 mx-4 rounded-[3px] text-sm focus:outline-slate-400">
+        <slot name="submit-text">submit-text</slot>
       </button>
-      <slot name="extra-button"></slot>
     </div>
   </div>
 
   <!-- modal backgrounds -->
-  <div
-    @click="$emit('onClose', $event)"
-    :class="[
-      isOpen
-        ? 'w-full opacity-20 [transition:opacity_0.2s_cubic-bezier(0.4,0,0.2,1)_0s]'
-        : 'w-0 opacity-0 [transition:width,_0s,_linear,_1s,opacity_0.2s_cubic-bezier(0.4,0,0.2,1)_0s]'
-    ]"
-    class="fixed z-30 h-full bg-black"
-  ></div>
+  <div @click="$emit('onClose', $event)" :class="[
+    isOpen
+      ? 'w-full opacity-20 [transition:opacity_0.2s_cubic-bezier(0.4,0,0.2,1)_0s]'
+      : 'w-0 opacity-0 [transition:width,_0s,_linear,_1s,opacity_0.2s_cubic-bezier(0.4,0,0.2,1)_0s]'
+  ]" class="fixed z-30 h-full bg-black"></div>
 </template>
 
 <script setup lang="ts">
+import { useSlots, ref, watch } from 'vue'
 import CloseIcon from 'vue-material-design-icons/Close.vue';
+import TitleIcon from 'vue-material-design-icons/Timelapse.vue';
 
-defineProps<{
+const slots = useSlots()
+
+const props = defineProps<{
+  id: string,
   isOpen: boolean;
   disableSubmit?: boolean;
+  disableExtra?: boolean;
 }>();
 defineEmits<{
   (e: 'onSubmit', v: MouseEvent): void;
+  (e: 'onExtra', v: MouseEvent): void;
   (e: 'onClose', v: MouseEvent | KeyboardEvent): void;
 }>();
+
+const modalEl = ref<HTMLElement | null>(null);
+const focusableElements = ref<HTMLElement[] | null>(null);
+
+const handleTab = (event) => {
+  if (!props.isOpen) return;
+  if (event.shiftKey && document.activeElement === focusableElements.value[0]) {
+    event.preventDefault();
+    focusableElements.value[focusableElements.value.length - 1].focus()
+  } else if (!event.shiftKey && document.activeElement === focusableElements.value[focusableElements.value.length - 1]) {
+    event.preventDefault();
+    focusableElements.value[0].focus();
+  }
+};
+
+watch(
+  props,
+  (props) => {
+    if (props.isOpen) {
+      focusableElements.value = modalEl.value?.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+
+    }
+  }
+);
+
 </script>

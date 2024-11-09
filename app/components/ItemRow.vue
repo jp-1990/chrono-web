@@ -1,62 +1,40 @@
 <template>
-  <div ref="container" id="item-row" class="flex h-14 w-full relative">
-    <div
-      v-if="ids"
-      v-for="(id, index) in ids?.value || []"
-      v-on:mouseup="$emit('itemClick', $event, items?.value[id])"
-      :key="id"
-      :style="`${items?.value[id].style} background-color:${items?.value[id].colour}`"
+  <div ref="container" id="item-row" class="flex h-full w-full relative">
+    <div v-if="ids" v-for="(id, index) in ids?.value || []" v-on:mouseup="$emit('itemClick', $event, items?.value[id])"
+      :key="id" :style="`${items?.value[id].style} background-color:${items?.value[id].colour}`"
       :id="`${items?.value[id].id}-${index}-${id}-container`"
-      class="h-full py-0.5 rounded-sm flex overflow-hidden absolute animate-fade-in"
-    >
-      <div
-        v-if="items?.value[id].isStart"
-        class="bg-transparent w-1 h-full cursor-ew-resize"
-      >
-        <div
-          v-on:mousedown.left.self="
-            isReady
-              ? $emit(
-                  'changeItemStartTime',
-                  $event,
-                  Handles.START,
-                  containerRect,
-                  items?.value[id],
-                  getPrevEnd(index),
-                  items?.value[id].endPercentage
-                )
-              : null
-          "
-          :id="`${items?.value[id].id}-${index}-${id}-start`"
-          class="h-full w-full"
-        ></div>
+      class="h-full py-0.5 rounded-sm flex overflow-hidden absolute animate-fade-in">
+      <div v-if="items?.value[id].isStart" class="bg-transparent w-1 h-full cursor-ew-resize">
+        <div v-on:mousedown.left.self="
+          isReady
+            ? $emit(
+              'changeItemStartTime',
+              $event,
+              Handles.START,
+              containerRect,
+              items?.value[id],
+              getPrevEnd(index),
+              items?.value[id].endPercentage
+            )
+            : null
+          " :id="`${items?.value[id].id}-${index}-${id}-start`" class="h-full w-full"></div>
       </div>
-      <div
-        :id="`${items?.value[id].id}-${index}-${id}-duration`"
-        class="flex-1 bg-transparent h-full overflow-hidden"
-        :class="[!isReady ? 'bg-slate-100' : 'bg-slate-100']"
-      ></div>
-      <div
-        v-if="items?.value[id].isEnd"
-        class="bg-transparent w-1 h-full cursor-ew-resize"
-      >
-        <div
-          v-on:mousedown.left.self="
-            isReady
-              ? $emit(
-                  'changeItemEndTime',
-                  $event,
-                  Handles.END,
-                  containerRect,
-                  items?.value[id],
-                  items?.value[id].startPercentage,
-                  getNextStart(index)
-                )
-              : null
-          "
-          :id="`${items?.value[id].id}-${index}-${id}-end`"
-          class="h-full w-full"
-        ></div>
+      <div :id="`${items?.value[id].id}-${index}-${id}-duration`" class="flex-1 bg-transparent h-full overflow-hidden"
+        :class="[!isReady ? 'bg-slate-100' : 'bg-slate-100']"></div>
+      <div v-if="items?.value[id].isEnd" class="bg-transparent w-1 h-full cursor-ew-resize">
+        <div v-on:mousedown.left.self="
+          isReady
+            ? $emit(
+              'changeItemEndTime',
+              $event,
+              Handles.END,
+              containerRect,
+              items?.value[id],
+              items?.value[id].startPercentage,
+              getNextStart(index)
+            )
+            : null
+          " :id="`${items?.value[id].id}-${index}-${id}-end`" class="h-full w-full"></div>
       </div>
     </div>
   </div>
