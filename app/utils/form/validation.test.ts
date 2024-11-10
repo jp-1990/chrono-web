@@ -3,8 +3,8 @@ import { ref, computed } from 'vue';
 import { add, startOfDay, sub } from 'date-fns';
 
 import { validateTitle, validateGroup, validateDate } from './validation';
-import { PostItemArgs } from '~/types/item';
-import { Validation } from '~/types/form';
+import { type PostItemArgs } from '~/types/item';
+import { type Validation } from '~/types/form';
 import {
   applyTZOffset,
   timeOfDayToPercentage,
@@ -21,10 +21,6 @@ describe('validation', () => {
     const end = add(sub(startOfDay(new Date()), { days: 1 }), {
       hours: i * 3 + 1
     });
-
-    console.log(i, start);
-    console.log(i, end);
-    console.log('');
 
     data.push({
       id: `${i}a`,
@@ -49,10 +45,6 @@ describe('validation', () => {
   for (let i = 2; i < 6; i++) {
     const start = add(startOfDay(new Date()), { hours: i * 3 });
     const end = add(startOfDay(new Date()), { hours: i * 3 + 1 });
-
-    console.log(i, start);
-    console.log(i, end);
-    console.log('');
 
     data.push({
       id: `${i}b`,
@@ -81,10 +73,6 @@ describe('validation', () => {
     const end = add(add(startOfDay(new Date()), { days: 1 }), {
       hours: i * 3 + 1
     });
-
-    console.log(i, start);
-    console.log(i, end);
-    console.log('');
 
     data.push({
       id: `${i}c`,
@@ -217,8 +205,6 @@ describe('validation', () => {
         minutes: 1
       }).toISOString();
 
-      console.log({ newStart });
-
       formState.value.data.startDate = newStart;
       validateDate(formState, formattedItems);
 
@@ -278,8 +264,6 @@ describe('validation', () => {
       const newEnd = add(startOfDay(new Date()), {
         hours: 4
       }).toISOString();
-
-      console.log({ newStart, newEnd });
 
       formState.value.data.startDate = newStart;
       formState.value.data.endDate = newEnd;

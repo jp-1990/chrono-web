@@ -45,7 +45,7 @@ export const minutesToHoursAndMinutes = (minutes: number) => {
   };
 };
 
-export const millisecondsToHoursAndMinutes = (milliseconds) => {
+export const millisecondsToHoursAndMinutes = (milliseconds: number) => {
   const hours = Math.floor(milliseconds / (1000 * 60 * 60));
   const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
 
@@ -69,7 +69,7 @@ export const roundSeconds = (date: Date) => {
   return date;
 };
 
-export const getDatesInMonthYear = (month, year) => {
+export const getDatesInMonthYear = (month: number, year: number) => {
   const startDate = startOfMonth(new Date(year, month));
   const endDate = endOfMonth(new Date(year, month));
 

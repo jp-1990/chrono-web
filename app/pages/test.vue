@@ -14,7 +14,7 @@
   <button @click="login">CALL POST http://localhost:8000/api/v1/login</button>
   <button @click="logout">CALL POST http://localhost:8000/api/v1/logout</button>
   <button @click="signup">CALL POST http://localhost:8000/api/v1/register</button>
-  <GoogleSignInButton @success="handleLoginSuccess" @error="handleLoginError"></GoogleSignInButton>
+  <google-sign-in-button @success="handleLoginSuccess" @error="handleLoginError"></google-sign-in-button>
 </template>
 
 <script lang="ts" setup>

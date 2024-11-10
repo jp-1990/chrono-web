@@ -81,16 +81,20 @@ defineEmits<{
 }>();
 
 const modalEl = ref<HTMLElement | null>(null);
-const focusableElements = ref<HTMLElement[] | null>(null);
+const focusableElements = ref<HTMLInputElement[] | undefined>(undefined);
 
-const handleTab = (event) => {
+const handleTab = (event: KeyboardEvent) => {
+  const availableElements = focusableElements.value?.filter(e => {
+    return !e.classList.contains('hidden') && !e.disabled;
+  });
+
   if (!props.isOpen) return;
-  if (event.shiftKey && document.activeElement === focusableElements.value[0]) {
+  if (event.shiftKey && document.activeElement === availableElements?.[0]) {
     event.preventDefault();
-    focusableElements.value[focusableElements.value.length - 1].focus()
-  } else if (!event.shiftKey && document.activeElement === focusableElements.value[focusableElements.value.length - 1]) {
+    availableElements[availableElements.length - 1].focus()
+  } else if (!event.shiftKey && document.activeElement === availableElements?.[availableElements.length - 1]) {
     event.preventDefault();
-    focusableElements.value[0].focus();
+    availableElements[0].focus();
   }
 };
 
@@ -100,8 +104,7 @@ watch(
     if (props.isOpen) {
       focusableElements.value = modalEl.value?.querySelectorAll(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-
+      ).values().toArray() as any;
     }
   }
 );

@@ -78,7 +78,7 @@ function toggleModal() {
 const keyEl = ref(null);
 const keyButtonEl = ref(null);
 
-function closeUserMenuListener(event) {
+function closeUserMenuListener(event: KeyboardEvent | MouseEvent) {
   if (
     !(keyEl.value as any)?.contains(event.target) &&
     !(keyButtonEl.value as any)?.contains(event.target)
