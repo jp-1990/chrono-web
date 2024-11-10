@@ -80,7 +80,7 @@ export type ExerciseMobility<T extends 'form' | undefined = undefined> = {
   sets: ExerciseSet<T>[];
 };
 
-export type ActivityVariant = 'default' | 'exercise';
+export type ActivityVariant = 'Default' | 'Exercise';
 
 type Exercise<T extends 'form' | undefined = undefined> =
   | ExerciseWorkout<T>[]
@@ -116,3 +116,30 @@ export type Activity<
   : T extends 'mobility'
   ? ActivityBase<ExerciseMobility<U>[], U>
   : ActivityBase;
+
+export type PostActivityPayload = Omit<
+  | (Activity & { data?: undefined })
+  | Activity<'cardio'>
+  | Activity<'mobility'>
+  | Activity<'workout'>,
+  'id'
+>;
+
+export type PatchActivityPayload = Pick<
+  | (Activity & { data?: undefined })
+  | Activity<'cardio'>
+  | Activity<'mobility'>
+  | Activity<'workout'>,
+  'id'
+> &
+  Partial<
+    Omit<
+      | (Activity & { data?: undefined })
+      | Activity<'cardio'>
+      | Activity<'mobility'>
+      | Activity<'workout'>,
+      'id'
+    >
+  >;
+
+export type DeleteActivityPayload = Pick<Activity, 'id'>;

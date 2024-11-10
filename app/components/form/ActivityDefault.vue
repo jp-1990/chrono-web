@@ -1,5 +1,6 @@
 <template>
-  <side-panel :id="scope" :is-open="!!props.mode" @on-close="onClose" @on-submit="onSubmit" @on-extra="onDelete">
+  <side-panel :id="scope" :is-open="!!props.mode" @on-close="onClose" @on-submit="onSubmit" @on-extra="onDelete"
+    :disable-submit="!isFormStateValid">
     <template v-slot:title-text>{{ props.mode === 'update' ? "Update Activity" : "Add Activity" }}</template>
     <template v-slot:description-text>Record the time spent doing an activity</template>
     <template v-slot:description-extra v-if="props.mode === 'update'">[ Current Duration:{{ duration.hours ?
@@ -62,7 +63,7 @@ const props = defineProps<{
   data?: Activity;
 }>();
 const emit = defineEmits<{
-  (e: 'onClose', v: MouseEvent | KeyboardEvent): void;
+  (e: 'onClose', v?: MouseEvent | KeyboardEvent): void;
 }>();
 
 const scope = 'form-activity-default';
@@ -83,11 +84,10 @@ watch(
   }
 )
 
-const formState = ref<{ data: Activity & { color: string }; valid: Validation }>({
+const formState = ref<{ data: Omit<Activity & { color: string }, 'id'>; valid: Validation }>({
   data: {
-    id: '',
     title: '',
-    variant: 'default',
+    variant: 'Default',
     group: '',
     notes: '',
     start: applyTZOffset(new Date(Date.now())).toISOString().slice(0, -8),
@@ -105,13 +105,16 @@ const formState = ref<{ data: Activity & { color: string }; valid: Validation }>
   }
 });
 
+const isFormStateValid = computed(() => {
+  return !Object.values(formState.value.valid).some(e => e === false)
+});
+
 const duration = computed(() => {
   return millisecondsToHoursAndMinutes(new Date(formState.value.data.end).getTime() - new
     Date(formState.value.data.start).getTime());
 });
 
 function resetFormState() {
-  formState.value.data.id = '';
   formState.value.data.title = '';
   formState.value.data.notes = '';
   formState.value.data.group = '';
@@ -152,23 +155,59 @@ function validateEndDate(v: string) {
   return true
 }
 
-function onSubmit() {
-  console.log(formState.value.data.color);
+async function onSubmit() {
   switch (props.mode) {
-    case 'create':
-      console.log('create::submitting');
+    case 'create': {
+      // todo: validate & prepare payload
+      const unrefedData = toRaw(unref(formState)).data;
+      const payload: Parameters<typeof postActivity>[0] = {} as any;
+      payload.title = unrefedData.title;
+      payload.variant = unrefedData.variant;
+      payload.group = unrefedData.group;
+      payload.notes = unrefedData.notes;
+      payload.timezone = unrefedData.timezone;
+      payload.start = new Date(unrefedData.start).toISOString();
+      payload.end = new Date(unrefedData.end).toISOString();
+
+      const response = await apiRequest(postActivity, payload);
+      console.log('create::response', response);
       break;
-    case 'update':
-      console.log('update::submitting');
+    }
+    case 'update': {
+      if (!props.data?.id) return
+
+      // todo: validate & prepare payload
+      const unrefedData = toRaw(unref(formState)).data;
+      const payload: Parameters<typeof patchActivity>[0] = {} as any;
+      payload.id = props.data.id;
+      payload.title = unrefedData.title;
+      payload.variant = unrefedData.variant;
+      payload.group = unrefedData.group;
+      payload.notes = unrefedData.notes;
+      payload.timezone = unrefedData.timezone;
+      payload.start = new Date(unrefedData.start).toISOString();
+      payload.end = new Date(unrefedData.end).toISOString();
+
+
+      const response = await apiRequest(patchActivity, payload);
+      console.log('update::response', response);
       break;
+    }
   }
+
+  emit('onClose');
 }
 
-function onDelete() {
-  console.log('deleting');
+async function onDelete() {
+  if (!props.data?.id) return
+
+  const response = await apiRequest(deleteActivity, { id: props.data.id });
+  console.log('deleted::response', response);
+
+  emit('onClose');
 }
 
-function onClose(event) {
+function onClose(event: MouseEvent | KeyboardEvent) {
   emit('onClose', event);
 }
 

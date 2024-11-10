@@ -103,14 +103,13 @@
     <span>{{ dragTime }}</span>
   </div>
 
-  <form-activity-default :mode="taskModal.open" :data="{ ...formState.data, id: formState.id }"
-    @on-close="onCloseCreateTaskModal" />
+  <form-activity-default :mode="taskModal.open" @on-close="onCloseCreateTaskModal" />
 
-  <form-activity-workout :mode="workoutModal.open" :data="{}" @on-close="onCloseCreateWorkoutModal" />
+  <form-activity-workout :mode="workoutModal.open" @on-close="onCloseCreateWorkoutModal" />
 
-  <form-activity-cardio :mode="cardioModal.open" :data="{}" @on-close="onCloseCreateCardioModal" />
+  <form-activity-cardio :mode="cardioModal.open" @on-close="onCloseCreateCardioModal" />
 
-  <form-activity-mobility :mode="mobilityModal.open" :data="{}" @on-close="onCloseCreateMobilityModal" />
+  <form-activity-mobility :mode="mobilityModal.open" @on-close="onCloseCreateMobilityModal" />
 
 
 
@@ -384,10 +383,10 @@ const onOpenUpdateTaskModal = (task: FormattedItem | undefined) => {
     formState.value.data.notes = taskData.description;
     formState.value.data.group = taskData.group;
     formState.value.data.color = taskData.colour;
-    formState.value.data.startDate = applyTZOffset(start)
+    formState.value.data.start = applyTZOffset(start)
       .toISOString()
       .slice(0, -8);
-    formState.value.data.endDate = applyTZOffset(end)
+    formState.value.data.end = applyTZOffset(end)
       .toISOString()
       .slice(0, -8);
 
