@@ -11,7 +11,7 @@
           <calendar :selected-month="selectedMonth" :selected-year="selectedYear" @on-change="onCalendarChange" />
         </div>
 
-        <button id="create-item" @click="onOpenCreateTaskModal"
+        <button id="create-item" @click="onOpenActivityDefaultCreate"
           class="hidden sm:flex ml-2 justify-center items-center h-9 py-2 pl-3 pr-4 rounded-[4px] text-slate-50 bg-slate-800 focus:outline-slate-700">
           <add-icon :size="22" class="text-slate-50 mr-1" />
           <span class="min-w-fit"> Create Task </span>
@@ -19,31 +19,35 @@
       </div>
     </section>
 
-    <button id="create-item-mobile" @click="onOpenCreateTaskModal"
+    <button id="create-item-mobile" @click="onOpenActivityDefaultCreate"
       class="fixed z-20 right-2 bottom-16 flex sm:hidden justify-center items-center h-12 w-12 rounded-full bg-slate-700 drop-shadow-lg focus:outline-slate-700">
       <add-icon :size="24" class="text-slate-50" />
     </button>
-    <button id="create-session-mobile" @click="onOpenCreateWorkoutModal"
+    <button id="create-item-mobile" @click="onOpenActivityDefaultUpdate"
+      class="fixed z-20 right-16 bottom-16 flex sm:hidden justify-center items-center h-12 w-12 rounded-full bg-slate-700 drop-shadow-lg focus:outline-slate-700">
+      <add-icon :size="24" class="text-slate-50" />
+    </button>
+    <button id="create-session-mobile" @click="onOpenActivityWorkoutCreate"
       class="fixed z-20 right-2 bottom-32 flex sm:hidden justify-center items-center h-12 w-12 rounded-full bg-blue-500 drop-shadow-lg focus:outline-slate-700">
       <add-icon :size="24" class="text-slate-100" />
     </button>
-    <button id="update-session-mobile" @click="onOpenUpdateWorkoutModal"
+    <button id="update-session-mobile" @click="onOpenActivityWorkoutUpdate"
       class="fixed z-20 right-2 bottom-48 flex sm:hidden justify-center items-center h-12 w-12 rounded-full bg-blue-300 drop-shadow-lg focus:outline-slate-700">
       <add-icon :size="24" class="text-slate-100" />
     </button>
-    <button id="create-cardio-mobile" @click="onOpenCreateCardioModal"
+    <button id="create-cardio-mobile" @click="onOpenActivityCardioCreate"
       class="fixed z-20 right-16 bottom-32 flex sm:hidden justify-center items-center h-12 w-12 rounded-full bg-orange-500 drop-shadow-lg focus:outline-slate-700">
       <add-icon :size="24" class="text-slate-100" />
     </button>
-    <button id="update-cardio-mobile" @click="onOpenUpdateCardioModal"
+    <button id="update-cardio-mobile" @click="onOpenActivityCardioUpdate"
       class="fixed z-20 right-16 bottom-48 flex sm:hidden justify-center items-center h-12 w-12 rounded-full bg-orange-300 drop-shadow-lg focus:outline-slate-700">
       <add-icon :size="24" class="text-slate-100" />
     </button>
-    <button id="create-cardio-mobile" @click="onOpenCreateMobilityModal"
+    <button id="create-cardio-mobile" @click="onOpenActivityMobilityCreate"
       class="fixed z-20 right-32 bottom-32 flex sm:hidden justify-center items-center h-12 w-12 rounded-full bg-purple-500 drop-shadow-lg focus:outline-slate-700">
       <add-icon :size="24" class="text-slate-100" />
     </button>
-    <button id="update-cardio-mobile" @click="onOpenUpdateMobilityModal"
+    <button id="update-cardio-mobile" @click="onOpenActivityMobilityUpdate"
       class="fixed z-20 right-32 bottom-48 flex sm:hidden justify-center items-center h-12 w-12 rounded-full bg-purple-300 drop-shadow-lg focus:outline-slate-700">
       <add-icon :size="24" class="text-slate-100" />
     </button>
@@ -67,7 +71,8 @@
       <!-- table rows -->
       <section @mouseup="($event) => {
         const target = onMouseUp($event);
-        onOpenUpdateTaskModal(target);
+        if (!target) return
+        onOpenActivityDefaultUpdate(target);
       }" @mousemove="onMouseMove" class="flex flex-1 cursor-default">
         <ul class="flex flex-1 flex-col mb-2">
           <li v-for="date in datesInSelectedMonthYear" :key="date.toDateString()" :class="['w-full']"
@@ -87,7 +92,7 @@
             <!-- tasks -->
             <div class="h-6 flex flex-1 bg-white mb-0.5 rounded-sm">
               <item-row @change-item-start-time="onMouseDown" @change-item-end-time="onMouseDown" @item-click="(_$event, target) =>
-                !mouseDownState.pressed && onOpenUpdateTaskModal(target)
+                !mouseDownState.pressed && onOpenActivityDefaultUpdate(target)
                 " :date="date" :ids="formattedItems[getDateId(date)]?.ids"
                 :items="formattedItems[getDateId(date)]?.items" />
             </div>
@@ -103,15 +108,21 @@
     <span>{{ dragTime }}</span>
   </div>
 
-  <form-activity-default :mode="taskModal.open" @on-close="onCloseCreateTaskModal" />
+  <form-activity-default
+    :mode="activityModal.open?.includes('default') ? activityModal.open.split(':')[1] as 'create' | 'update' : undefined"
+    :data="activityModal.data" @on-close="onCloseActivityModal" />
 
-  <form-activity-workout :mode="workoutModal.open" @on-close="onCloseCreateWorkoutModal" />
+  <form-activity-workout
+    :mode="activityModal.open?.includes('workout') ? activityModal.open.split(':')[1] as 'create' | 'update' : undefined"
+    @on-close="onCloseActivityModal" />
 
-  <form-activity-cardio :mode="cardioModal.open" @on-close="onCloseCreateCardioModal" />
+  <form-activity-cardio
+    :mode="activityModal.open?.includes('cardio') ? activityModal.open.split(':')[1] as 'create' | 'update' : undefined"
+    @on-close="onCloseActivityModal" />
 
-  <form-activity-mobility :mode="mobilityModal.open" @on-close="onCloseCreateMobilityModal" />
-
-
+  <form-activity-mobility
+    :mode="activityModal.open?.includes('mobility') ? activityModal.open.split(':')[1] as 'create' | 'update' : undefined"
+    @on-close="onCloseActivityModal" />
 
 </template>
 
@@ -137,17 +148,10 @@ import {
 import {
   type FormattedItem,
   type PostItemArgs,
-  type PatchItemArgs,
-  type DeleteItemArgs
 } from '~/types/item';
 import { type Validation } from '~/types/form';
 import { formatItems } from '~/utils/item';
-import { getItems, postItem, patchItem, deleteItem } from '~/utils/api-item';
-import {
-  validateDate,
-  validateGroup,
-  validateTitle
-} from '~/utils/form/validation';
+import { getItems } from '~/utils/api-item';
 import { DEFAULT_COLOR } from '~/constants/colors';
 import { useAuthCheck } from '~/composables/useAuthCheck';
 import { useMonthYearSelect } from '~/composables/useMonthYearSelect';
@@ -257,291 +261,154 @@ const resetFormState = () => {
 
 };
 
-const formStateNotValid = computed(() => {
-  return Object.values(formState.value.valid).some((v) => !v);
-});
-
-const mobilityModal = ref<{
-  task: FormattedItem | undefined;
-  open: 'create' | 'update' | undefined;
+const activityModal = ref<{
+  data: any,
+  open: 'default:create' | 'default:update'
+  | 'cardio:create' | 'cardio:update'
+  | 'mobility:create' | 'mobility:update'
+  | 'workout:create' | 'workout:update'
+  | undefined
 }>({
-  task: undefined,
+  data: undefined,
   open: undefined
 });
 
-const onOpenCreateMobilityModal = () => {
-  mobilityModal.value.open = 'create';
-};
+const modalVariants = ['default', 'workout', 'cardio', 'mobility'];
 
-const onCloseCreateMobilityModal = () => {
-  mobilityModal.value.open = undefined;
-};
+function onCloseActivityModal() {
+  // todo: if update, and update cancelled, reset activity times to previous state
+  activityModal.value.open = undefined;
+  activityModal.value.data = undefined;
+}
 
-const onOpenUpdateMobilityModal = () => {
-  mobilityModal.value.open = 'update';
-};
-
-const onCloseUpdateMobilityModal = () => {
-  mobilityModal.value.open = undefined;
-};
-
-const cardioModal = ref<{
-  task: FormattedItem | undefined;
-  open: 'create' | 'update' | undefined;
-}>({
-  task: undefined,
-  open: undefined
-});
-
-const onOpenCreateCardioModal = () => {
-  cardioModal.value.open = 'create';
-};
-
-const onCloseCreateCardioModal = () => {
-  cardioModal.value.open = undefined;
-};
-
-const onOpenUpdateCardioModal = () => {
-  cardioModal.value.open = 'update';
-};
-
-const onCloseUpdateCardioModal = () => {
-  cardioModal.value.open = undefined;
-};
-
-const workoutModal = ref<{
-  task: FormattedItem | undefined;
-  open: 'create' | 'update' | undefined;
-}>({
-  task: undefined,
-  open: undefined
-});
-
-const onOpenCreateWorkoutModal = () => {
-  workoutModal.value.open = 'create';
-};
-
-const onCloseCreateWorkoutModal = () => {
-  workoutModal.value.open = undefined;
-};
-
-const onOpenUpdateWorkoutModal = () => {
-  workoutModal.value.open = 'update';
-};
-
-const onCloseUpdateWorkoutModal = () => {
-  workoutModal.value.open = undefined;
-};
-
-const taskModal = ref<{
-  task: FormattedItem | undefined;
-  open: 'create' | 'update' | undefined;
-}>({
-  task: undefined,
-  open: undefined
-});
-
-
-
-const onOpenCreateTaskModal = () => {
-  taskModal.value.open = 'create';
-};
-
-const onCloseCreateTaskModal = () => {
-  taskModal.value.open = undefined;
-};
-
-const onOpenUpdateTaskModal = (task: FormattedItem | undefined) => {
-  const taskData = data.value?.find((t) => t.id === task?.id);
-
-  if (taskData && task) {
-    const end = task.isEnd ? task.end : new Date(+taskData.end);
-    const start = task.isStart ? task.start : new Date(+taskData.start);
-
-    // parse weights
-    if (taskData.title === 'weights') {
-      try {
-        const exercise = JSON.parse(taskData.description);
-      } catch (_) {
-        const exercise: any[] = [];
-        const exercises = taskData.description.split(',');
-
-        for (const e of exercises) {
-          const [sets, reps, ...name] = e.trim().split(' ');
-          const output = { name: name.join(' ').trim(), data: [] as any[] };
-          for (let i = 0; i < parseInt(sets); i++) {
-            output.data.push({ reps: parseInt(reps.slice(1)), weight: '' });
-          }
-          exercise.push(output);
-        }
-
-      }
-    }
-
-    formState.value.id = taskData.id;
-    formState.value.data.title = taskData.title;
-    formState.value.data.notes = taskData.description;
-    formState.value.data.group = taskData.group;
-    formState.value.data.color = taskData.colour;
-    formState.value.data.start = applyTZOffset(start)
-      .toISOString()
-      .slice(0, -8);
-    formState.value.data.end = applyTZOffset(end)
-      .toISOString()
-      .slice(0, -8);
-
-    taskModal.value.open = 'update';
-    taskModal.value.task = task;
-
-    // titleRefUpdate.value!.focus();
+const [
+  [onOpenActivityDefaultCreate, onOpenActivityDefaultUpdate],
+  [onOpenActivityWorkoutCreate, onOpenActivityWorkoutUpdate],
+  [onOpenActivityCardioCreate, onOpenActivityCardioUpdate],
+  [onOpenActivityMobilityCreate, onOpenActivityMobilityUpdate],
+] = modalVariants.map(variant => {
+  function openCreate() {
+    activityModal.value.open = `${variant}:create` as any;
   }
-};
-
-const onCloseUpdateTaskModal = () => {
-  const taskData = data.value?.find((t) => t.id === taskModal.value.task?.id);
-
-  if (taskData && taskModal.value.task) {
-    let start;
-    let end;
-    let width;
-    let style;
-    let startPercentage;
-    let endPercentage;
-
-    // isStart && isEnd
-    if (taskModal.value.task.isStart && taskModal.value.task.isEnd) {
-      start = new Date(+taskData.start);
-      end = new Date(+taskData.end);
-      startPercentage = timeOfDayToPercentage(start);
-      endPercentage = timeOfDayToPercentage(end);
-      width = endPercentage - startPercentage;
-    }
-
-    // isStart && !isEnd
-    if (taskModal.value.task.isStart && !taskModal.value.task.isEnd) {
-      start = new Date(+taskData.start);
-      end = endOfDay(taskModal.value.task.end);
-      startPercentage = timeOfDayToPercentage(start);
-      endPercentage = 100;
-      width = endPercentage - startPercentage;
-    }
-
-    // !isStart && isEnd
-    if (!taskModal.value.task.isStart && taskModal.value.task.isEnd) {
-      start = startOfDay(taskModal.value.task.start);
-      end = new Date(+taskData.end);
-      startPercentage = 0;
-      endPercentage = timeOfDayToPercentage(end);
-      width = endPercentage;
-    }
-
-    // !isStart && !isEnd
-    if (!taskModal.value.task.isStart && !taskModal.value.task.isEnd) {
-      start = startOfDay(taskModal.value.task.start);
-      end = endOfDay(taskModal.value.task.end);
-      startPercentage = 0;
-      endPercentage = 100;
-      width = 100;
-    }
-
-    style = `left: ${startPercentage}%; width: ${width}%;`;
-
-    taskModal.value.task.start = start;
-    taskModal.value.task.end = end;
-    taskModal.value.task.width = width;
-    taskModal.value.task.style = style;
-    taskModal.value.task.startPercentage = startPercentage;
-    taskModal.value.task.endPercentage = endPercentage;
-
-    taskModal.value.open = undefined;
-    taskModal.value.task = undefined;
-    resetFormState();
+  // todo: not any
+  function openUpdate(data: any) {
+    console.log('data', data);
+    activityModal.value.data = data;
+    activityModal.value.open = `${variant}:update` as any;
   }
-};
+  return [openCreate, openUpdate];
+})
 
 
-// ADD TASK
+// const onOpenUpdateTaskModal = (task: FormattedItem | undefined) => {
+//   const taskData = data.value?.find((t) => t.id === task?.id);
+//
+//   if (taskData && task) {
+//     const end = task.isEnd ? task.end : new Date(+taskData.end);
+//     const start = task.isStart ? task.start : new Date(+taskData.start);
+//
+//     // parse weights
+//     if (taskData.title === 'weights') {
+//       try {
+//         const exercise = JSON.parse(taskData.description);
+//       } catch (_) {
+//         const exercise: any[] = [];
+//         const exercises = taskData.description.split(',');
+//
+//         for (const e of exercises) {
+//           const [sets, reps, ...name] = e.trim().split(' ');
+//           const output = { name: name.join(' ').trim(), data: [] as any[] };
+//           for (let i = 0; i < parseInt(sets); i++) {
+//             output.data.push({ reps: parseInt(reps.slice(1)), weight: '' });
+//           }
+//           exercise.push(output);
+//         }
+//
+//       }
+//     }
+//
+//     formState.value.id = taskData.id;
+//     formState.value.data.title = taskData.title;
+//     formState.value.data.notes = taskData.description;
+//     formState.value.data.group = taskData.group;
+//     formState.value.data.color = taskData.colour;
+//     formState.value.data.start = applyTZOffset(start)
+//       .toISOString()
+//       .slice(0, -8);
+//     formState.value.data.end = applyTZOffset(end)
+//       .toISOString()
+//       .slice(0, -8);
+//
+//     taskModal.value.open = 'update';
+//     taskModal.value.task = task;
+//
+//     // titleRefUpdate.value!.focus();
+//   }
+// };
+//
+// const onCloseUpdateTaskModal = () => {
+//   const taskData = data.value?.find((t) => t.id === taskModal.value.task?.id);
+//
+//   if (taskData && taskModal.value.task) {
+//     let start;
+//     let end;
+//     let width;
+//     let style;
+//     let startPercentage;
+//     let endPercentage;
+//
+//     // isStart && isEnd
+//     if (taskModal.value.task.isStart && taskModal.value.task.isEnd) {
+//       start = new Date(+taskData.start);
+//       end = new Date(+taskData.end);
+//       startPercentage = timeOfDayToPercentage(start);
+//       endPercentage = timeOfDayToPercentage(end);
+//       width = endPercentage - startPercentage;
+//     }
+//
+//     // isStart && !isEnd
+//     if (taskModal.value.task.isStart && !taskModal.value.task.isEnd) {
+//       start = new Date(+taskData.start);
+//       end = endOfDay(taskModal.value.task.end);
+//       startPercentage = timeOfDayToPercentage(start);
+//       endPercentage = 100;
+//       width = endPercentage - startPercentage;
+//     }
+//
+//     // !isStart && isEnd
+//     if (!taskModal.value.task.isStart && taskModal.value.task.isEnd) {
+//       start = startOfDay(taskModal.value.task.start);
+//       end = new Date(+taskData.end);
+//       startPercentage = 0;
+//       endPercentage = timeOfDayToPercentage(end);
+//       width = endPercentage;
+//     }
+//
+//     // !isStart && !isEnd
+//     if (!taskModal.value.task.isStart && !taskModal.value.task.isEnd) {
+//       start = startOfDay(taskModal.value.task.start);
+//       end = endOfDay(taskModal.value.task.end);
+//       startPercentage = 0;
+//       endPercentage = 100;
+//       width = 100;
+//     }
+//
+//     style = `left: ${startPercentage}%; width: ${width}%;`;
+//
+//     taskModal.value.task.start = start;
+//     taskModal.value.task.end = end;
+//     taskModal.value.task.width = width;
+//     taskModal.value.task.style = style;
+//     taskModal.value.task.startPercentage = startPercentage;
+//     taskModal.value.task.endPercentage = endPercentage;
+//
+//     taskModal.value.open = undefined;
+//     taskModal.value.task = undefined;
+//     resetFormState();
+//   }
+// };
 
-const onAddTask = async () => {
-  validateTitle(formState);
-  validateGroup(formState);
-  validateDate(formState, formattedItems);
-  if (formStateNotValid.value) return;
 
-  taskModal.value.open = undefined;
-
-  if (formState.value.data.title === 'weights') {
-    // const notes = formatExerciseState();
-    // formState.value.data.notes = notes;
-  }
-
-  try {
-    await postItem(formState.value.data);
-    await refresh();
-
-    formState.value.data.title = '';
-    formState.value.data.notes = '';
-    formState.value.data.group = '';
-    formState.value.data.startDate = formState.value.data.endDate;
-    formState.value.data.endDate = applyTZOffset(
-      add(new Date(formState.value.data.endDate), { minutes: 5 })
-    )
-      .toISOString()
-      .slice(0, -8);
-  } catch (e) {
-    console.log('error', e);
-  }
-};
-
-// UPDATE TASK
-
-const onUpdateTask = async () => {
-  validateTitle(formState);
-  validateGroup(formState);
-  validateDate(formState, formattedItems);
-  if (formStateNotValid.value) return;
-
-  taskModal.value.open = undefined;
-
-  if (formState.value.data.title === 'weights') {
-    // const notes = formatExerciseState();
-    // formState.value.data.notes = notes;
-  }
-
-  try {
-    const patchArgs: PatchItemArgs = formState.value.data as any;
-    patchArgs.id = formState.value.id;
-
-    if (patchArgs.group === taskModal.value.task?.group)
-      patchArgs.group = undefined;
-    if (patchArgs.color === taskModal.value.task?.colour)
-      patchArgs.color = undefined;
-
-    await patchItem(patchArgs);
-    await refresh();
-
-    resetFormState();
-  } catch (e) {
-    console.log('error', e);
-  }
-};
-
-// DELETE TASK
-
-const onDeleteTask = async () => {
-  taskModal.value.open = undefined;
-
-  try {
-    const deleteArgs: DeleteItemArgs = { id: formState.value.id };
-
-    await deleteItem(deleteArgs);
-    await refresh();
-
-    resetFormState();
-  } catch (e) {
-    console.log('error', e);
-  }
-};
 
 // MOUSE EVENTS
 
@@ -559,10 +426,10 @@ const computedBreakpoint = computed(() => {
 const { onMouseDown, onMouseMove, onMouseUp, dragTime, mouseDownState } =
   useStartEndDrag(computedBreakpoint.value);
 
-const openCreateTaskModalListener = (e) => {
-  if (e.key === 'i' && taskModal.value.open === undefined) {
+const openCreateTaskModalListener = (e: KeyboardEvent) => {
+  if (e.key === 'i' && activityModal.value.open === undefined) {
     e.preventDefault();
-    onOpenCreateTaskModal();
+    onOpenActivityDefaultCreate();
   }
 };
 
