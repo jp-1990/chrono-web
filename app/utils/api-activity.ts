@@ -8,6 +8,9 @@ import type { TypedResponse } from '~/types/api-request';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
+// todo:: access policies
+// todo:: headers
+
 export async function postActivity(payload: PostActivityPayload) {
   const request = new Request(`${API_URL}/v1/activity`, {
     method: 'POST',

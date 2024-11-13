@@ -41,8 +41,8 @@
 </template>
 
 <script setup lang="ts">
-import { Ref, ref, onMounted, onUpdated } from 'vue';
-import { Container, Handles, FormattedItem } from '~/types/item';
+import { type Ref, ref, onMounted, onUpdated } from 'vue';
+import type { Container, Handles, FormattedItem } from '~/types/item';
 
 const props = defineProps<{
   date: Date;

@@ -3,8 +3,8 @@ import { ref, computed } from 'vue';
 import { add, startOfDay, sub } from 'date-fns';
 
 import { validateTitle, validateGroup, validateDate } from './validation';
-import { type PostItemArgs } from '~/types/item';
-import { type Validation } from '~/types/form';
+import { type PostItemArgs } from '../../types/item';
+import { type Validation } from '../../types/form';
 import {
   applyTZOffset,
   timeOfDayToPercentage,
@@ -12,7 +12,7 @@ import {
 } from '../date';
 import { formatItems } from '../item';
 
-describe('validation', () => {
+describe('utils/form/validation', () => {
   const data = [] as any;
   for (let i = 2; i < 6; i++) {
     const start = add(sub(startOfDay(new Date()), { days: 1 }), {

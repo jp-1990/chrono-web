@@ -3,8 +3,8 @@ import {
   type FormattedItems,
   type Item,
   type PostItemArgs
-} from '~/types/item';
-import { type Validation } from '~/types/form';
+} from '../../types/item';
+import { type Validation } from '../../types/form';
 import { getDateId } from '../date';
 import { add } from 'date-fns';
 

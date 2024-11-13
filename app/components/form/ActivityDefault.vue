@@ -78,7 +78,13 @@ watch(
       titleRef.value?.focus();
 
       if (props.mode === 'update' && props.data) {
-        formState.value.data = { ...formState.value.data, ...props.data };
+        formState.value.data = {
+          ...formState.value.data,
+          ...props.data,
+          // todo: probably shouldnt be doing this must date creation and parsing
+          start: new Date(props.data.start).toISOString().slice(0, -8),
+          end: new Date(props.data.end).toISOString().slice(0, -8),
+        };
       }
     }
   }
@@ -171,6 +177,9 @@ async function onSubmit() {
 
       const response = await apiRequest(postActivity, payload);
       console.log('create::response', response);
+
+      // todo: add to local cache
+
       break;
     }
     case 'update': {
@@ -191,6 +200,9 @@ async function onSubmit() {
 
       const response = await apiRequest(patchActivity, payload);
       console.log('update::response', response);
+
+      // todo: update item in local cache
+
       break;
     }
   }
@@ -203,6 +215,8 @@ async function onDelete() {
 
   const response = await apiRequest(deleteActivity, { id: props.data.id });
   console.log('deleted::response', response);
+
+  // todo:remove item from local cache
 
   emit('onClose');
 }

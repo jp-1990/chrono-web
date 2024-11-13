@@ -32,6 +32,7 @@ export const apiRequest = async <
 
     return output;
   } catch (err) {
+    // todo:: do something with this
     console.log('err', err);
 
     output.data = undefined;

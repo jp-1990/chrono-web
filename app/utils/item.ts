@@ -5,7 +5,7 @@ import {
   type FormattedItems,
   type GetItemsRes,
   type Item
-} from '~/types/item';
+} from '../types/item';
 import { getDateId } from './date';
 import { timeOfDayToPercentage } from './date';
 

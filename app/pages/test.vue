@@ -27,7 +27,6 @@ useAuthCheck();
 // handle success event
 const handleLoginSuccess = async (response: CredentialResponse) => {
   const { credential } = response;
-  console.log("Access Token", credential, response);
 
   // set token to auth header: bearer <token>
   const res = await fetch(
@@ -158,7 +157,7 @@ const postTest = async (): Promise<string> => {
       title: 'testing',
       group: 'test group',
       notes: 'test desc',
-      start: new Date(Date.now()),
+      start: new Date('2024-11-12T19:00:00.000Z'),
       end: new Date(Date.now()),
       timezone: new Date(Date.now()).getTimezoneOffset(),
     })
@@ -228,7 +227,26 @@ const deleteTest = async (): Promise<string> => {
 };
 
 const getAllTest = async (): Promise<string> => {
-  const response = await fetch('http://localhost:8000/api/v1/activity', {
+  const url = new URL('http://localhost:8000/api/v1/activity');
+
+  // without Z = create dates in the current timezone as defined by the browswer
+  // below would get items created within the current month based on the user tz
+  url.searchParams.set('start', new Date('2024-11-01T00:00:00.000').toISOString());
+  url.searchParams.set('end', new Date('2024-11-30T23:59:59.999').toISOString());
+
+  /*
+  - create all activities in UTC (with Z), then fetch and display based on users timezone
+  - store created at tz against activity
+
+  GET:
+  queryparam - tz offset
+  calculate all frontend css requirements on server based on stored time adjusted by the requesting users tz
+  returned items should have their original start/end dates
+  frontend should perform date opperations based on its own tz offset
+  
+  */
+
+  const response = await fetch(url, {
     method: 'GET',
     credentials: 'include'
     // headers: {

@@ -79,8 +79,8 @@ export const getDatesInMonthYear = (month: number, year: number) => {
 };
 
 export const getAllHoursInDay = () => {
-  const startDate = new Date('2000-01-01T00:00:00.000Z');
-  const endDate = new Date('2000-01-01T23:59:59.999Z');
+  const startDate = new Date('2000-01-01T00:00:00.000');
+  const endDate = new Date('2000-01-01T23:59:59.999');
 
   const hours = eachHourOfInterval({ start: startDate, end: endDate });
 
