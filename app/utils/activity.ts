@@ -1,6 +1,11 @@
-import { add, differenceInDays, startOfDay } from 'date-fns';
-import type { Activity, FormattedActivity } from '~/types/activity';
+import { add, differenceInDays, startOfDay, sub } from 'date-fns';
+import type {
+  Activity,
+  FormattedActivities,
+  FormattedActivity
+} from '~/types/activity';
 import { timeOfDayToPercentage, getDateId } from './date';
+import type { DateId } from '~/types/date';
 
 /**
   based on the timezone of the browser, split the activity at each instance of midnight
@@ -64,4 +69,28 @@ export function formatActivity(activity: Activity, tzOffset: number = 0) {
   }
 
   return output;
+}
+
+export function formatActivities(dates: Date[], activities: Activity[] | null) {
+  const structure: FormattedActivities = {};
+
+  for (const date of dates) {
+    structure[getDateId(date)] = {
+      ids: [],
+      items: {}
+    };
+  }
+
+  // loop items
+  for (const activity of activities ?? []) {
+    const formattedActivity = formatActivity(activity);
+
+    for (const item of formattedActivity) {
+      if (!structure[item.dateId]) continue;
+      structure[item.dateId].ids.push(item.id);
+      structure[item.dateId].items[item.id] = item;
+    }
+  }
+
+  return structure;
 }

@@ -1,10 +1,10 @@
 <template>
   <div ref="container" id="item-row" class="flex h-full w-full relative">
-    <div v-if="ids" v-for="(id, index) in ids?.value || []" v-on:mouseup="$emit('itemClick', $event, items?.value[id])"
-      :key="id" :style="`${items?.value[id].style} background-color:${items?.value[id].colour}`"
-      :id="`${items?.value[id].id}-${index}-${id}-container`"
+    <div v-if="ids" v-for="(id, index) in ids || []" v-on:mouseup="$emit('itemClick', $event, items?.[id])" :key="id"
+      :style="`${items?.[id].style} background-color:${getRandomHexColor()}`"
+      :id="`${items?.[id].id}-${index}-${id}-container`"
       class="h-full py-0.5 rounded-sm flex overflow-hidden absolute animate-fade-in">
-      <div v-if="items?.value[id].isStart" class="bg-transparent w-1 h-full cursor-ew-resize">
+      <div v-if="items?.[id].isStart" class="bg-transparent w-1 h-full cursor-ew-resize">
         <div v-on:mousedown.left.self="
           isReady
             ? $emit(
@@ -12,16 +12,16 @@
               $event,
               Handles.START,
               containerRect,
-              items?.value[id],
+              items?.[id],
               getPrevEnd(index),
-              items?.value[id].endPercentage
+              items?.[id].endPercentage
             )
             : null
-          " :id="`${items?.value[id].id}-${index}-${id}-start`" class="h-full w-full"></div>
+          " :id="`${items?.[id].id}-${index}-${id}-start`" class="h-full w-full"></div>
       </div>
-      <div :id="`${items?.value[id].id}-${index}-${id}-duration`" class="flex-1 bg-transparent h-full overflow-hidden"
+      <div :id="`${items?.[id].id}-${index}-${id}-duration`" class="flex-1 bg-transparent h-full overflow-hidden"
         :class="[!isReady ? 'bg-slate-100' : 'bg-slate-100']"></div>
-      <div v-if="items?.value[id].isEnd" class="bg-transparent w-1 h-full cursor-ew-resize">
+      <div v-if="items?.[id].isEnd" class="bg-transparent w-1 h-full cursor-ew-resize">
         <div v-on:mousedown.left.self="
           isReady
             ? $emit(
@@ -29,34 +29,42 @@
               $event,
               Handles.END,
               containerRect,
-              items?.value[id],
-              items?.value[id].startPercentage,
+              items?.[id],
+              items?.[id].startPercentage,
               getNextStart(index)
             )
             : null
-          " :id="`${items?.value[id].id}-${index}-${id}-end`" class="h-full w-full"></div>
+          " :id="`${items?.[id].id}-${index}-${id}-end`" class="h-full w-full"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { type Ref, ref, onMounted, onUpdated } from 'vue';
-import type { Container, Handles, FormattedItem } from '~/types/item';
+import { ref, onMounted, onUpdated } from 'vue';
+import { DEFAULT_COLOR } from '~/constants/colors';
+import type { FormattedActivities, FormattedActivity } from '~/types/activity';
+import type { Container, Handles } from '~/types/item';
+
+//todo: remove
+function getRandomHexColor() {
+  const randomColor = Math.floor(Math.random() * 16777215).toString(16);
+  return `#${randomColor.padStart(6, '0')}`;
+}
 
 const props = defineProps<{
   date: Date;
-  ids?: Ref<string[]>;
-  items?: Ref<{ [key: number]: FormattedItem }>;
+  ids?: FormattedActivities[keyof FormattedActivities]['ids']
+  items?: FormattedActivities[keyof FormattedActivities]['items']
 }>();
 defineEmits<{
-  (e: 'itemClick', v: MouseEvent, target?: FormattedItem): void;
+  (e: 'itemClick', v: MouseEvent, target?: FormattedActivity): void;
   (
     e: 'changeItemStartTime',
     v: MouseEvent,
     handle: Handles,
     container: Container,
-    target: FormattedItem,
+    target: FormattedActivity,
     min: number,
     max: number
   ): void;
@@ -65,7 +73,7 @@ defineEmits<{
     v: MouseEvent,
     handle: Handles,
     container: Container,
-    target: FormattedItem,
+    target: FormattedActivity,
     min: number,
     max: number
   ): void;
@@ -78,16 +86,17 @@ const containerRect = ref({
   width: 0
 });
 
+
 const getPrevEnd = (index: number) => {
-  const targetId = props.ids?.value[index - 1];
+  const targetId = props.ids?.[index - 1];
   if (typeof targetId !== 'string') return 0;
-  return props.items?.value[targetId].endPercentage ?? 0;
+  return props.items?.[targetId].endPercentage ?? 0;
 };
 
 const getNextStart = (index: number) => {
-  const targetId = props.ids?.value[index + 1];
+  const targetId = props.ids?.[index + 1];
   if (typeof targetId !== 'string') return 99.9999999999;
-  return props.items?.value[targetId].startPercentage ?? 99.9999999999;
+  return props.items?.[targetId].startPercentage ?? 99.9999999999;
 };
 
 const isReady = ref(false);

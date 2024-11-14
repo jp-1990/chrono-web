@@ -93,8 +93,7 @@
             <div class="h-6 flex flex-1 bg-white mb-0.5 rounded-sm">
               <item-row @change-item-start-time="onMouseDown" @change-item-end-time="onMouseDown" @item-click="(_$event, target) =>
                 !mouseDownState.pressed && onOpenActivityDefaultUpdate(target)
-                " :date="date" :ids="formattedItems[getDateId(date)]?.ids"
-                :items="formattedItems[getDateId(date)]?.items" />
+                " :date="date" :ids="data?.[getDateId(date)]?.ids" :items="data?.[getDateId(date)]?.items" />
             </div>
           </li>
         </ul>
@@ -143,18 +142,17 @@ import {
   getAllHoursInDay,
   getDateId,
   timeOfDayToPercentage,
-  applyTZOffset
+  applyTZOffset,
+  buildLocalDatetime
 } from '~~/utils/date';
 import {
-  type FormattedItem,
   type PostItemArgs,
 } from '~/types/item';
 import { type Validation } from '~/types/form';
-import { formatItems } from '~/utils/item';
-import { getItems } from '~/utils/api-item';
 import { DEFAULT_COLOR } from '~/constants/colors';
 import { useAuthCheck } from '~/composables/useAuthCheck';
 import { useMonthYearSelect } from '~/composables/useMonthYearSelect';
+import { getActivities } from '~/utils/api-activity'
 
 
 useAuthCheck();
@@ -177,42 +175,64 @@ const onCalendarChange = (month: Date, year: Date) => {
 
 // ITEMS
 
+// todo: swap for get activites
 const { data, pending, error, refresh } = await useAsyncData(
-  'getItems',
+  getActivities.name,
   async () =>
-    getItems({
-      startDate: sub(startDate.value, { days: 1 }),
-      endDate: add(endDate.value, { days: 1 })
+    getActivities({
+      start: [startDate.value.getFullYear(), startDate.value.getMonth(), startDate.value.getDate()],
+      end: [endDate.value.getFullYear(), endDate.value.getMonth(), endDate.value.getDate()]
     }),
-  { watch: [startDate, endDate], server: false }
-);
+  {
+    watch: [startDate, endDate],
+    server: false,
+    transform: (activities) => {
+      const dates = getDatesInMonthYear(
+        selectedMonth.value.getMonth(),
+        selectedMonth.value.getFullYear(),
+      )
 
-const formattedItems = computed(() =>
-  formatItems(
-    getDatesInMonthYear(
-      selectedMonth.value.getMonth(),
-      selectedYear.value.getFullYear()
-    ),
-    data.value
-  )
+      return formatActivities(dates, activities);
+    },
+  }
 );
 
 const itemsKey = computed(() => {
   const key: Record<string, [number, string]> = {};
+  const seenIds: Record<string, boolean> = {};
 
-  const startMonthMs = startOfMonth(selectedMonth.value).getTime();
-  const endMonthMs = endOfMonth(selectedMonth.value).getTime();
+  const localStart = buildLocalDatetime(
+    startDate.value.getFullYear(), startDate.value.getMonth(), startDate.value.getDate(), '00:00:00.000'
+  ).getTime();
+  const localEnd = buildLocalDatetime(
+    endDate.value.getFullYear(), endDate.value.getMonth(), endDate.value.getDate(), '23:59:59.999'
+  ).getTime();
 
-  for (const item of data.value ?? []) {
-    if (+item.end <= startMonthMs) continue;
-    if (+item.start >= endMonthMs) continue;
+  for (const date of Object.keys(data.value ?? {})) {
+    for (const id of data.value?.[date]?.ids ?? []) {
+      const activity = data.value?.[date]?.items[id]
+      if (!activity) continue;
+      if (seenIds[activity.id]) continue;
 
-    const itemStart = +item.start < startMonthMs ? startMonthMs : +item.start;
-    const itemEnd = +item.end > endMonthMs ? endMonthMs : +item.end;
+      let start = new Date(activity.start).getTime();
+      let end = new Date(activity.end).getTime();
 
-    const duration = itemEnd - itemStart;
-    key[item.title] = [duration + (key[item.title]?.[0] ?? 0), item.colour];
+      start = start < localStart ? localStart : start;
+      end = end > localEnd ? localEnd : end;
+
+      const duration = end - start;
+
+      //todo: remove
+      function getRandomHexColor() {
+        const randomColor = Math.floor(Math.random() * 16777215).toString(16);
+        return `#${randomColor.padStart(6, '0')}`;
+      }
+
+      key[activity.title] = [duration + (key[activity.title]?.[0] ?? 0), getRandomHexColor()];
+      seenIds[activity.id] = true;
+    }
   }
+
   return key;
 });
 

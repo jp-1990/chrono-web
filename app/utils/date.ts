@@ -46,8 +46,12 @@ export const minutesToHoursAndMinutes = (minutes: number) => {
 };
 
 export const millisecondsToHoursAndMinutes = (milliseconds: number) => {
-  const hours = Math.floor(milliseconds / (1000 * 60 * 60));
-  const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+  let hours = Math.floor(milliseconds / (1000 * 60 * 60));
+  let minutes = Math.round((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+  if (minutes === 60) {
+    minutes = 0;
+    hours++;
+  }
 
   return { hours, minutes };
 };
@@ -112,3 +116,21 @@ export const isToday = (date: Date) => {
     date.getFullYear() === today.getFullYear()
   );
 };
+
+export function prefixZero(n: number) {
+  if (n < 10 && n >= 0) {
+    return `0${n}`;
+  }
+  return n.toString();
+}
+
+export function buildLocalDatetime(
+  year: number,
+  month: number,
+  date: number,
+  time: string = '00:00:00.000'
+) {
+  return new Date(
+    `${year}-${prefixZero(month + 1)}-${prefixZero(date)}T${time}`
+  );
+}

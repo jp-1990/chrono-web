@@ -1,3 +1,5 @@
+import type { DateId } from './date';
+
 type ExerciseSet<T extends 'form' | undefined = undefined> = T extends undefined
   ? {
       idx: number;
@@ -92,6 +94,14 @@ export type FormattedActivity<
   isStart: boolean;
   isEnd: boolean;
 };
+
+export type FormattedActivities = Record<
+  DateId,
+  {
+    ids: FormattedActivity['id'][];
+    items: Record<FormattedActivity['id'], FormattedActivity>;
+  }
+>;
 
 export type PostActivityPayload = Omit<
   | (Activity & { data?: undefined })
