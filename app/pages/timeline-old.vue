@@ -69,7 +69,7 @@
             <!-- tasks -->
             <div class="h-14 flex flex-1 bg-white mb-0.5 rounded-sm">
               <!-- @insert-new-shift="onInsertNewShift" -->
-              <item-row @change-item-start-time="onMouseDown" @change-item-end-time="onMouseDown" @item-click="(_$event, target) =>
+              <item-row-old @change-item-start-time="onMouseDown" @change-item-end-time="onMouseDown" @item-click="(_$event, target) =>
                 !mouseDownState.pressed && onOpenUpdateTaskModal(target)
                 " :date="date" :ids="formattedItems[getDateId(date)]?.ids"
                 :items="formattedItems[getDateId(date)]?.items" />
