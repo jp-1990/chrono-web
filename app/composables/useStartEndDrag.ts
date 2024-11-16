@@ -1,18 +1,21 @@
 import { format } from 'date-fns';
-import { type Container, type FormattedItem, Handles } from '~/types/item';
+import type { FormattedActivity } from '~/types/activity';
+import { type Container, Handles } from '~/types/item';
 
 export const useStartEndDrag = (breakpoint: number) => {
   const dragTime = ref<string | undefined>(undefined);
-  const setDragTime = (date: Date) => {
-    dragTime.value = format(date, 'HH:mm');
-  };
+
+  function setDragTime(date: string) {
+    dragTime.value = format(new Date(date), 'HH:mm');
+  }
 
   const initialMouseDown = {
     handle: undefined as Handles | undefined,
     startX: 0,
     pressed: false,
     container: undefined as Container | undefined,
-    target: undefined as FormattedItem | undefined,
+    target: undefined as FormattedActivity | undefined,
+    prevStyle: '' as string,
     min: 0,
     max: 100,
     date: undefined as Date | undefined
@@ -27,7 +30,7 @@ export const useStartEndDrag = (breakpoint: number) => {
     event: MouseEvent,
     handle: Handles,
     container: Container,
-    target: FormattedItem,
+    target: FormattedActivity,
     min: number,
     max: number
   ) => {
@@ -38,6 +41,7 @@ export const useStartEndDrag = (breakpoint: number) => {
     mouseDownState.value.pressed = true;
     mouseDownState.value.container = container;
     mouseDownState.value.target = target;
+    mouseDownState.value.prevStyle = target.style;
     mouseDownState.value.min = min;
     mouseDownState.value.max = max;
 
@@ -45,9 +49,16 @@ export const useStartEndDrag = (breakpoint: number) => {
   };
 
   const onMouseUp = (event: MouseEvent) => {
-    const { handle, startX, target, container, min, max } =
+    const { handle, startX, target, prevStyle, container, min, max } =
       mouseDownState.value;
-    if (!handle || !target || !container) return;
+    if (!handle || !target || !container) {
+      return {
+        target: undefined,
+        prevStyle: undefined,
+        prevStart: undefined,
+        prevEnd: undefined
+      };
+    }
 
     const diff = new Diff(
       event.pageX,
@@ -65,32 +76,35 @@ export const useStartEndDrag = (breakpoint: number) => {
 
     const newDate = getItemDate({
       difference: diff.value,
-      date: target[handle]
+      date: new Date(target[handle])
     });
 
+    let prevStart: string | undefined = undefined;
+    let prevEnd: string | undefined = undefined;
+
     if (handle === Handles.START) {
+      prevStart = target.start;
+
       const width = target.width - diff.value;
       const startPercentage = timeOfDayToPercentage(newDate);
       const style = `left: ${startPercentage}%; width: ${width}%;`;
 
-      target.width = width;
       target.style = style;
-      target.start = roundSeconds(newDate);
-      target.startPercentage = timeOfDayToPercentage(newDate);
+      target.start = roundSeconds(newDate).toISOString();
     }
 
     if (handle === Handles.END) {
+      prevEnd = target.end;
+
       const width = target.width + diff.value;
       const style = `left: ${target.startPercentage}%; width: ${width}%;`;
 
-      target.width = width;
       target.style = style;
-      target.end = newDate;
-      target.endPercentage = timeOfDayToPercentage(newDate);
+      target.end = newDate.toISOString();
     }
 
     resetMouseDownState();
-    return target;
+    return { target, prevStyle, prevStart, prevEnd };
   };
 
   const onMouseMove = (event: MouseEvent) => {
@@ -116,7 +130,7 @@ export const useStartEndDrag = (breakpoint: number) => {
 
     const newDate = getItemDate({
       difference: diff.value,
-      date: target[handle]
+      date: new Date(target[handle])
     });
 
     if (handle === Handles.START) {
@@ -136,8 +150,8 @@ export const useStartEndDrag = (breakpoint: number) => {
     setDragTime(
       getItemDate({
         difference: diff.value,
-        date: target[handle]
-      })
+        date: new Date(target[handle])
+      }).toISOString()
     );
   };
 

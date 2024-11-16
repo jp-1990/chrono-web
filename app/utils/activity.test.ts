@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import type { Activity } from '~/types/activity';
-import { formatActivity } from './activity';
+import { ActivityVariant, type Activity } from '../types/activity';
+import { getDatesInMonthYear, prefixZero } from '../utils/date';
+import { DerivedActivities, formatActivity } from './activity';
 
-function buildActivity(id: number, start: string, end: string) {
+function buildActivity(id: number | string, start: string, end: string) {
   const activity: Activity = {
     id: id.toString(),
-    variant: 'Default',
+    variant: ActivityVariant.DEFAULT,
     title: 'Activity 1',
     group: 'Group 1',
     notes: 'Notes',
@@ -520,6 +521,309 @@ describe('utils/activity', () => {
       expect(res[6].style).toEqual('left: 0%; width: 50%;');
       expect(res[6].isStart).toBe(false);
       expect(res[6].isEnd).toBe(true);
+    });
+  });
+
+  describe('class - DerivedActivities', () => {
+    test('constructor', () => {
+      const dates = getDatesInMonthYear(0, 2020);
+      const activities: Activity[] = [];
+
+      for (let i = 0; i < 10; i++) {
+        const activity = buildActivity(
+          i,
+          `2020-01-${prefixZero(i)}T06:00:00.000Z`,
+          `2020-01-${prefixZero(i)}T12:00:00.000Z`
+        );
+        activities.push(activity);
+      }
+
+      const prefixOutlier = buildActivity(
+        100,
+        `2019-12-31T06:00:00.000Z`,
+        `2019-12-31T12:00:00.000Z`
+      );
+
+      const suffixOutlier = buildActivity(
+        101,
+        `2020-02-01T06:00:00.000Z`,
+        `2020-02-01T12:00:00.000Z`
+      );
+
+      activities.unshift(prefixOutlier);
+      activities.push(suffixOutlier);
+
+      expect(activities.length).toBe(12);
+
+      const derivedActivities = new DerivedActivities(dates, activities);
+
+      expect(Object.keys(derivedActivities.activities).length).toEqual(
+        dates.length
+      );
+
+      // ensure format
+      for (const dateId of Object.keys(derivedActivities.activities)) {
+        for (const id of derivedActivities.activities[dateId].ids) {
+          expect(activities.find((a) => a.id === id)).toBeTruthy();
+          expect(derivedActivities.activities[dateId].items[id]).toBeTruthy();
+
+          // ensure range outliers are not included
+          expect(id).not.toBe('100');
+          expect(id).not.toBe('101');
+        }
+      }
+    });
+
+    test('method - createActivity', () => {
+      const dates = getDatesInMonthYear(0, 2020);
+      const activities: Activity[] = [];
+
+      for (let i = 0; i < 10; i++) {
+        const activity = buildActivity(
+          i,
+          `2020-01-${prefixZero(i)}T06:00:00.000Z`,
+          `2020-01-${prefixZero(i)}T12:00:00.000Z`
+        );
+        activities.push(activity);
+      }
+
+      const derivedActivities = new DerivedActivities(dates, activities);
+
+      let newActivity = buildActivity(
+        'temp:20',
+        `2020-01-01T00:00:00.000Z`,
+        `2020-01-01T06:00:00.000Z`
+      ) as any;
+
+      delete newActivity.id;
+      derivedActivities.createActivity(newActivity, 'temp:20');
+
+      // single day
+      expect(
+        derivedActivities.activities['2020-0-1'].ids.includes(newActivity.id)
+      ).toBe(true);
+      expect(
+        derivedActivities.activities['2020-0-1'].items[newActivity.id]
+      ).toBeTruthy();
+
+      newActivity = buildActivity(
+        'temp:21',
+        `2020-01-01T00:00:00.000Z`,
+        `2020-01-02T06:00:00.000Z`
+      ) as any;
+
+      delete newActivity.id;
+      derivedActivities.createActivity(newActivity, 'temp:21');
+
+      // multi day span
+      expect(
+        derivedActivities.activities['2020-0-1'].ids.includes(newActivity.id)
+      ).toBe(true);
+      expect(
+        derivedActivities.activities['2020-0-2'].ids.includes(newActivity.id)
+      ).toBe(true);
+      expect(
+        derivedActivities.activities['2020-0-1'].items[newActivity.id]
+      ).toBeTruthy();
+      expect(
+        derivedActivities.activities['2020-0-2'].items[newActivity.id]
+      ).toBeTruthy();
+    });
+
+    test('method - replaceTempIdWithId', () => {
+      const dates = getDatesInMonthYear(0, 2020);
+      const activities: Activity[] = [];
+
+      for (let i = 0; i < 10; i++) {
+        const activity = buildActivity(
+          i,
+          `2020-01-${prefixZero(i)}T06:00:00.000Z`,
+          `2020-01-${prefixZero(i)}T12:00:00.000Z`
+        );
+        activities.push(activity);
+      }
+
+      const derivedActivities = new DerivedActivities(dates, activities);
+
+      // single day
+      let tempId = 'temp:20';
+      let newActivity = buildActivity(
+        tempId,
+        `2020-01-01T00:00:00.000Z`,
+        `2020-01-01T06:00:00.000Z`
+      ) as any;
+
+      delete newActivity.id;
+      derivedActivities.createActivity(newActivity, tempId);
+
+      expect(
+        derivedActivities.activities['2020-0-1'].ids.includes(tempId)
+      ).toBe(true);
+      expect(
+        derivedActivities.activities['2020-0-1'].items[tempId]
+      ).toBeTruthy();
+
+      let id = '20';
+      derivedActivities.replaceTempIdWithId(id, tempId);
+
+      expect(derivedActivities.activities['2020-0-1'].ids.includes(id)).toBe(
+        true
+      );
+      expect(
+        derivedActivities.activities['2020-0-1'].ids.includes(tempId)
+      ).toBe(false);
+      expect(derivedActivities.activities['2020-0-1'].items[id]).toBeTruthy();
+      expect(
+        derivedActivities.activities['2020-0-1'].items[tempId]
+      ).toBeFalsy();
+      expect(derivedActivities.activities['2020-0-1'].items[id].id).toEqual(id);
+
+      // multi day span
+      tempId = 'temp:21';
+      newActivity = buildActivity(
+        tempId,
+        `2020-01-25T12:00:00.000Z`,
+        `2020-01-26T12:00:00.000Z`
+      ) as any;
+
+      delete newActivity.id;
+      derivedActivities.createActivity(newActivity, tempId);
+
+      expect(
+        derivedActivities.activities['2020-0-25'].ids.includes(tempId)
+      ).toBe(true);
+      expect(
+        derivedActivities.activities['2020-0-26'].ids.includes(tempId)
+      ).toBe(true);
+      expect(
+        derivedActivities.activities['2020-0-25'].items[tempId]
+      ).toBeTruthy();
+      expect(
+        derivedActivities.activities['2020-0-26'].items[tempId]
+      ).toBeTruthy();
+
+      id = '21';
+      derivedActivities.replaceTempIdWithId(id, tempId);
+
+      expect(derivedActivities.activities['2020-0-25'].ids.includes(id)).toBe(
+        true
+      );
+      expect(
+        derivedActivities.activities['2020-0-25'].ids.includes(tempId)
+      ).toBe(false);
+      expect(derivedActivities.activities['2020-0-25'].items[id]).toBeTruthy();
+      expect(
+        derivedActivities.activities['2020-0-25'].items[tempId]
+      ).toBeFalsy();
+
+      expect(derivedActivities.activities['2020-0-26'].ids.includes(id)).toBe(
+        true
+      );
+      expect(
+        derivedActivities.activities['2020-0-26'].ids.includes(tempId)
+      ).toBe(false);
+      expect(derivedActivities.activities['2020-0-26'].items[id]).toBeTruthy();
+      expect(
+        derivedActivities.activities['2020-0-26'].items[tempId]
+      ).toBeFalsy();
+    });
+
+    test('method - deleteActivity', () => {
+      const dates = getDatesInMonthYear(0, 2020);
+      const activities: Activity[] = [];
+
+      for (let i = 0; i < 10; i++) {
+        const activity = buildActivity(
+          i,
+          `2020-01-${prefixZero(i)}T06:00:00.000Z`,
+          `2020-01-${prefixZero(i)}T12:00:00.000Z`
+        );
+        activities.push(activity);
+      }
+
+      const multiDayActivity = buildActivity(
+        20,
+        `2020-01-25T12:00:00.000Z`,
+        `2020-01-26T12:00:00.000Z`
+      );
+
+      activities.push(multiDayActivity);
+
+      const derivedActivities = new DerivedActivities(dates, activities);
+
+      // single day
+      let targetId = '0';
+      derivedActivities.deleteActivity(targetId);
+
+      expect(
+        derivedActivities.activities['2020-0-1'].ids.includes(targetId)
+      ).toBe(false);
+      expect(
+        derivedActivities.activities['2020-0-1'].items[targetId]
+      ).toBeFalsy();
+
+      // multi day span
+      targetId = '20';
+
+      expect(
+        derivedActivities.activities['2020-0-25'].items[targetId]
+      ).toBeTruthy();
+      expect(
+        derivedActivities.activities['2020-0-26'].items[targetId]
+      ).toBeTruthy();
+
+      derivedActivities.deleteActivity(targetId);
+
+      expect(
+        derivedActivities.activities['2020-0-25'].ids.includes(targetId)
+      ).toBe(false);
+      expect(
+        derivedActivities.activities['2020-0-25'].items[targetId]
+      ).toBeFalsy();
+      expect(
+        derivedActivities.activities['2020-0-26'].ids.includes(targetId)
+      ).toBe(false);
+      expect(
+        derivedActivities.activities['2020-0-26'].items[targetId]
+      ).toBeFalsy();
+    });
+
+    test('method - updateActivity', () => {
+      const dates = getDatesInMonthYear(0, 2020);
+      const activities: Activity[] = [];
+
+      for (let i = 0; i < 10; i++) {
+        const activity = buildActivity(
+          i,
+          `2020-01-${prefixZero(i)}T06:00:00.000Z`,
+          `2020-01-${prefixZero(i)}T12:00:00.000Z`
+        );
+        activities.push(activity);
+      }
+
+      const derivedActivities = new DerivedActivities(dates, activities);
+
+      let updateActivity = buildActivity(
+        '0',
+        `2020-01-01T00:00:00.000Z`,
+        `2020-01-01T06:00:00.000Z`
+      );
+
+      derivedActivities.updateActivity(updateActivity);
+
+      expect(
+        derivedActivities.activities['2020-0-1'].ids.includes(updateActivity.id)
+      ).toBe(true);
+      expect(
+        derivedActivities.activities['2020-0-1'].items[updateActivity.id]
+      ).toBeTruthy();
+
+      const target =
+        derivedActivities.activities['2020-0-1'].items[updateActivity.id];
+
+      expect(target.start).toEqual(updateActivity.start);
+      expect(target.end).toEqual(updateActivity.end);
+      expect(target.startPercentage).toEqual(0);
     });
   });
 });

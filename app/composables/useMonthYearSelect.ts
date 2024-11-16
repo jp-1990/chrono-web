@@ -35,11 +35,17 @@ export const useMonthYearSelect = () => {
     );
   });
 
+  function onCalendarChange(month: Date, year: Date) {
+    selectedMonth.value = month;
+    selectedYear.value = year;
+  }
+
   return {
     selectedMonth,
     selectedYear,
     datesInSelectedMonthYear,
     startDate,
-    endDate
+    endDate,
+    onCalendarChange
   };
 };

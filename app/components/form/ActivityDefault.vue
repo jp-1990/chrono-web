@@ -10,7 +10,7 @@
       ]</template>
     <template v-slot:content>
       <form-input-text ref="titleRef" v-model:value="formState.data.title" v-model:valid="formState.valid.title"
-        required label="Title" placeholder="Title" />
+        required label="Title" placeholder="Title" @on-blur="onTitleBlur" />
 
       <form-input-text v-model:value="formState.data.group" v-model:valid="formState.valid.group" required label="Group"
         placeholder="Group" />
@@ -54,16 +54,21 @@ import { watch } from 'vue';
 import {
   add,
 } from 'date-fns';
-import type { Activity } from '~/types/activity';
+import { ActivityContext, ActivityVariant, type FormattedActivity } from '~/types/activity';
 import type { Validation } from '~/types/form';
 import { DEFAULT_COLOR } from '~/constants/colors';
+import { useUserState } from '#imports';
+import type { DerivedActivities } from '~/utils/activity';
+
+const userState = useUserState();
 
 const props = defineProps<{
   mode: 'create' | 'update' | undefined;
-  data?: Activity;
+  data?: FormattedActivity;
+  activities?: DerivedActivities | null;
 }>();
 const emit = defineEmits<{
-  (e: 'onClose', v?: MouseEvent | KeyboardEvent): void;
+  (e: 'onClose', v?: MouseEvent | KeyboardEvent, reason?: 'submit' | 'cancel'): void;
 }>();
 
 const scope = 'form-activity-default';
@@ -81,23 +86,23 @@ watch(
         formState.value.data = {
           ...formState.value.data,
           ...props.data,
-          // todo: probably shouldnt be doing this must date creation and parsing
-          start: new Date(props.data.start).toISOString().slice(0, -8),
-          end: new Date(props.data.end).toISOString().slice(0, -8),
+          start: applyTZOffset(new Date(props.data.start)).toISOString().slice(0, -8),
+          end: applyTZOffset(new Date(props.data.end)).toISOString().slice(0, -8),
+          color: userState.value.activities[props.data.title] ?? DEFAULT_COLOR,
         };
       }
     }
   }
 )
 
-const formState = ref<{ data: Omit<Activity & { color: string }, 'id'>; valid: Validation }>({
+const formState = ref<{ data: Omit<FormattedActivity<undefined, ActivityContext.FORM> & { color: string }, 'id'>; valid: Validation }>({
   data: {
     title: '',
-    variant: 'Default',
+    variant: ActivityVariant.DEFAULT,
     group: '',
     notes: '',
-    start: applyTZOffset(new Date(Date.now())).toISOString().slice(0, -8),
-    end: applyTZOffset(add(new Date(Date.now()), { minutes: 5 }))
+    start: applyTZOffset(new Date()).toISOString().slice(0, -8),
+    end: applyTZOffset(add(new Date(), { minutes: 5 }))
       .toISOString()
       .slice(0, -8),
     timezone: new Date().getTimezoneOffset(),
@@ -124,11 +129,11 @@ function resetFormState() {
   formState.value.data.title = '';
   formState.value.data.notes = '';
   formState.value.data.group = '';
-  formState.value.data.start = applyTZOffset(new Date(Date.now()))
+  formState.value.data.start = applyTZOffset(new Date())
     .toISOString()
     .slice(0, -8);
   formState.value.data.end = applyTZOffset(
-    add(new Date(Date.now()), { minutes: 5 })
+    add(new Date(), { minutes: 5 })
   )
     .toISOString()
     .slice(0, -8);
@@ -143,10 +148,9 @@ function resetFormState() {
 
 
 function onTitleBlur() {
-  // todo:: autoset color based on users colors
-  // if (itemsKey.value[formState.value.data.title]) {
-  //   formState.value.data.color = itemsKey.value[formState.value.data.title][1];
-  // }
+  if (formState.value.data.title) {
+    formState.value.data.color = userState.value.activities[formState.value.data.title] ?? DEFAULT_COLOR;
+  }
 };
 
 function validateStartDate(v: string) {
@@ -161,68 +165,87 @@ function validateEndDate(v: string) {
   return true
 }
 
-async function onSubmit() {
+const onSubmit = async (event: MouseEvent | KeyboardEvent) => {
+  // todo: validate & prepare payload
+  const unrefedData = toRaw(unref(formState)).data;
+  const payload = {
+    title: unrefedData.title,
+    variant: unrefedData.variant,
+    group: unrefedData.group,
+    notes: unrefedData.notes,
+    timezone: unrefedData.timezone,
+    start: new Date(unrefedData.start).toISOString(),
+    end: new Date(unrefedData.end).toISOString(),
+    color: unrefedData.color,
+    id: ''
+  };
+
   switch (props.mode) {
     case 'create': {
-      // todo: validate & prepare payload
-      const unrefedData = toRaw(unref(formState)).data;
-      const payload: Parameters<typeof postActivity>[0] = {} as any;
-      payload.title = unrefedData.title;
-      payload.variant = unrefedData.variant;
-      payload.group = unrefedData.group;
-      payload.notes = unrefedData.notes;
-      payload.timezone = unrefedData.timezone;
-      payload.start = new Date(unrefedData.start).toISOString();
-      payload.end = new Date(unrefedData.end).toISOString();
+      const tempId = `temp-${Date.now().toString()}`
+      // todo: do we need the serverside properties in the type?
+      props.activities?.createActivity(payload as any, tempId);
+
+      // todo: add to local cache
+      userState.value.activities[unrefedData.title] = unrefedData.color;
+      // todo: this is shit - race conditions
+      window.localStorage.setItem('userState', JSON.stringify(userState.value));
 
       const response = await apiRequest(postActivity, payload);
       console.log('create::response', response);
 
-      // todo: add to local cache
+      // todo: confirm that the response from the server matches what we sent
+      // update local state again if necessary?
+      // todo: deal with unsuccessful response
+
+      if (response.data) {
+        props.activities?.replaceTempIdWithId(response.data.id, tempId);
+      }
+
 
       break;
     }
     case 'update': {
       if (!props.data?.id) return
-
-      // todo: validate & prepare payload
-      const unrefedData = toRaw(unref(formState)).data;
-      const payload: Parameters<typeof patchActivity>[0] = {} as any;
       payload.id = props.data.id;
-      payload.title = unrefedData.title;
-      payload.variant = unrefedData.variant;
-      payload.group = unrefedData.group;
-      payload.notes = unrefedData.notes;
-      payload.timezone = unrefedData.timezone;
-      payload.start = new Date(unrefedData.start).toISOString();
-      payload.end = new Date(unrefedData.end).toISOString();
 
+      // todo: do we need the serverside properties in the type?
+      props.activities?.updateActivity(payload as any);
+      // todo: update item in local cache
+      userState.value.activities[unrefedData.title] = unrefedData.color;
+      // todo: this is shit - race conditions
+      window.localStorage.setItem('userState', JSON.stringify(userState.value));
 
       const response = await apiRequest(patchActivity, payload);
       console.log('update::response', response);
 
-      // todo: update item in local cache
+      // todo: confirm that the response from the server matches what we sent
+      // update local state again if necessary?
+      // todo: deal with unsuccessful response
 
       break;
     }
   }
 
-  emit('onClose');
+  emit('onClose', event, 'submit');
 }
 
-async function onDelete() {
+async function onDelete(event: MouseEvent | KeyboardEvent) {
   if (!props.data?.id) return
+
+  // todo:remove item from local cache
+  props.activities?.deleteActivity(props.data.id);
 
   const response = await apiRequest(deleteActivity, { id: props.data.id });
   console.log('deleted::response', response);
 
-  // todo:remove item from local cache
+  // todo: deal with unsuccessful response
 
-  emit('onClose');
+  emit('onClose', event, 'submit');
 }
 
 function onClose(event: MouseEvent | KeyboardEvent) {
-  emit('onClose', event);
+  emit('onClose', event, 'cancel');
 }
 
 </script>

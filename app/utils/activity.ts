@@ -94,3 +94,91 @@ export function formatActivities(dates: Date[], activities: Activity[] | null) {
 
   return structure;
 }
+
+export class DerivedActivities {
+  activities: FormattedActivities = {};
+  #idToDateId: Record<FormattedActivity['id'], DateId[]> = {};
+  constructor(dates: Date[], activities: Activity[] | null) {
+    this.createActivity = this.createActivity.bind(this);
+    this.replaceTempIdWithId = this.replaceTempIdWithId.bind(this);
+    this.deleteActivity = this.deleteActivity.bind(this);
+    this.updateActivity = this.updateActivity.bind(this);
+
+    for (const date of dates) {
+      this.activities[getDateId(date)] = {
+        ids: [],
+        items: {}
+      };
+    }
+
+    for (const activity of activities ?? []) {
+      this.#internal_create(activity);
+    }
+  }
+
+  createActivity(activity: Activity, tempId: string) {
+    this.#internal_create(activity, tempId);
+  }
+
+  replaceTempIdWithId(id: string, tempId: string) {
+    const dateIds = this.#idToDateId[tempId];
+    if (!dateIds) return;
+
+    for (const dateId of dateIds) {
+      const hasTarget = this.activities[dateId].items[tempId] !== undefined;
+      if (hasTarget) {
+        this.activities[dateId].ids = this.activities[dateId].ids.filter(
+          (id_) => id_ !== tempId
+        );
+        this.activities[dateId].ids.push(id);
+
+        this.activities[dateId].items[id] =
+          this.activities[dateId].items[tempId];
+        delete this.activities[dateId].items[tempId];
+        this.activities[dateId].items[id].id = id;
+      }
+    }
+
+    this.#idToDateId[id] = this.#idToDateId[tempId];
+    delete this.#idToDateId[tempId];
+  }
+
+  deleteActivity(id: FormattedActivity['id']) {
+    this.#internal_delete(id);
+  }
+
+  updateActivity(activity: Activity) {
+    this.#internal_delete(activity.id);
+    this.#internal_create(activity);
+  }
+
+  #internal_create(activity: Activity, tempId?: string) {
+    if (!activity.id && tempId) activity.id = tempId;
+    const formattedActivity = formatActivity(activity);
+
+    for (const part of formattedActivity) {
+      if (!this.activities[part.dateId]) continue;
+      this.activities[part.dateId].ids.push(activity.id);
+      this.activities[part.dateId].items[activity.id] = part;
+      this.#idToDateId[activity.id] ??= [];
+      this.#idToDateId[activity.id].push(part.dateId);
+    }
+  }
+
+  #internal_delete(id: FormattedActivity['id']) {
+    const dateIds = this.#idToDateId[id];
+    if (!dateIds) return;
+
+    for (const dateId of dateIds) {
+      const hasTarget = this.activities[dateId].items[id] !== undefined;
+      if (hasTarget) {
+        this.activities[dateId].ids = this.activities[dateId].ids.filter(
+          (id_) => id_ !== id
+        );
+        delete this.activities[dateId].items[id];
+      }
+    }
+
+    delete this.#idToDateId[id];
+  }
+}

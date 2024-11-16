@@ -21,6 +21,14 @@ export const timeOfDayToPercentage = (date: Date) => {
   return percentage;
 };
 
+const baseTime = new Date('2000-01-01T00:00:00.000Z');
+const hours = Math.floor(0 / 60);
+const minutes = 5 % 60;
+
+baseTime.setUTCHours(hours);
+baseTime.setUTCMinutes(minutes);
+export const dragBreakpoint = timeOfDayToPercentage(baseTime);
+
 export const percentageToTimeOfDay = (percentage: number) => {
   const totalSecondsInDay = 24 * 60 * 60;
   const totalSeconds = Math.floor((percentage / 100) * totalSecondsInDay);

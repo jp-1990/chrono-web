@@ -23,11 +23,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:valid', v: boolean): void;
+  (e: 'onBlur'): void;
 }>();
 
 const inputRef = ref<HTMLElement | null>(null);
 
 function onBlur() {
+  emit('onBlur');
+
   const validators = props.validators ?? [];
   if (props.required) validators.unshift(required);
 

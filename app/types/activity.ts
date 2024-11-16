@@ -1,21 +1,32 @@
 import type { DateId } from './date';
 
-type ExerciseSet<T extends 'form' | undefined = undefined> = T extends undefined
-  ? {
-      idx: number;
-      reps?: number;
-      weight?: number;
-      rest?: number;
-      duration?: number;
-    }
-  : {
-      reps?: string;
-      weight?: string;
-      rest?: string;
-      duration?: string;
-    };
+export enum ExerciseType {
+  WORKOUT = 'workout',
+  CARDIO = 'cardio',
+  MOBILITY = 'mobility'
+}
 
-type ExerciseSplit<T extends 'form' | undefined = undefined> =
+export enum ActivityContext {
+  FORM = 'form'
+}
+
+type ExerciseSet<T extends ActivityContext.FORM | undefined = undefined> =
+  T extends undefined
+    ? {
+        idx: number;
+        reps?: number;
+        weight?: number;
+        rest?: number;
+        duration?: number;
+      }
+    : {
+        reps?: string;
+        weight?: string;
+        rest?: string;
+        duration?: string;
+      };
+
+type ExerciseSplit<T extends ActivityContext.FORM | undefined = undefined> =
   T extends undefined
     ? {
         idx: number;
@@ -25,34 +36,49 @@ type ExerciseSplit<T extends 'form' | undefined = undefined> =
         pace: string;
       };
 
-export type ExerciseWorkout<T extends 'form' | undefined = undefined> = {
+export type ExerciseWorkout<
+  T extends ActivityContext.FORM | undefined = undefined
+> = {
   title: string;
   sets: ExerciseSet<T>[];
 };
 
-export type ExerciseCardio<T extends 'form' | undefined = undefined> = {
+export type ExerciseCardio<
+  T extends ActivityContext.FORM | undefined = undefined
+> = {
   title: string;
   duration: T extends undefined ? number : string;
   distance: T extends undefined ? number : string;
   splits: ExerciseSplit<T>[];
 };
 
-export type ExerciseMobility<T extends 'form' | undefined = undefined> = {
+export type ExerciseMobility<
+  T extends ActivityContext.FORM | undefined = undefined
+> = {
   title: string;
   sets: ExerciseSet<T>[];
 };
 
-export type ActivityVariant = 'Default' | 'Exercise';
+export enum ActivityVariant {
+  DEFAULT = 'Default',
+  EXERCISE = 'Exercise'
+}
 
-type Exercise<T extends 'form' | undefined = undefined> =
+type Exercise<T extends ActivityContext.FORM | undefined = undefined> =
   | ExerciseWorkout<T>[]
   | ExerciseCardio<T>
   | ExerciseMobility<T>[]
   | undefined;
 
+type ServerProperties = {
+  createdAt: string;
+  user: string;
+  v: number;
+};
+
 export type ActivityBase<
   T extends Exercise<U> | undefined = undefined,
-  U extends 'form' | undefined = undefined
+  U extends ActivityContext.FORM | undefined = undefined
 > = {
   id: string;
   title: string;
@@ -62,31 +88,26 @@ export type ActivityBase<
   start: string;
   end: string;
   timezone: number;
-  createdAt: string;
-  user: string;
-  v: number;
 } & (T extends undefined
   ? {}
   : {
       data: { exercise: T };
-    });
+    }) &
+  (U extends undefined ? ServerProperties : {});
 
 export type Activity<
-  T extends 'workout' | 'cardio' | 'mobility' | undefined = undefined,
-  U extends 'form' | undefined = undefined
-> = T extends 'workout'
+  T extends ExerciseType | undefined = undefined,
+  U extends ActivityContext.FORM | undefined = undefined
+> = T extends ExerciseType.WORKOUT
   ? ActivityBase<ExerciseWorkout<U>[], U>
-  : T extends 'cardio'
+  : T extends ExerciseType.CARDIO
   ? ActivityBase<ExerciseCardio<U>, U>
-  : T extends 'mobility'
+  : T extends ExerciseType.MOBILITY
   ? ActivityBase<ExerciseMobility<U>[], U>
-  : ActivityBase;
+  : ActivityBase<undefined, U>;
 
-export type FormattedActivity<
-  T extends 'workout' | 'cardio' | 'mobility' | undefined = undefined,
-  U extends 'form' | undefined = undefined
-> = Activity<T, U> & {
-  dateId: string; // yyyy-mm-dd
+type ExtraProperties = {
+  dateId: DateId;
   startPercentage: number;
   endPercentage: number;
   width: number;
@@ -95,37 +116,52 @@ export type FormattedActivity<
   isEnd: boolean;
 };
 
-export type FormattedActivities = Record<
-  DateId,
-  {
+export type FormattedActivity<
+  T extends ExerciseType | undefined = undefined,
+  U extends ActivityContext.FORM | undefined = undefined
+> = Activity<T, U> &
+  (U extends ActivityContext.FORM ? Partial<ExtraProperties> : ExtraProperties);
+
+export type FormattedActivities = {
+  [key: DateId]: {
     ids: FormattedActivity['id'][];
     items: Record<FormattedActivity['id'], FormattedActivity>;
-  }
->;
+  };
+};
 
 export type PostActivityPayload = Omit<
-  | (Activity & { data?: undefined })
-  | Activity<'cardio'>
-  | Activity<'mobility'>
-  | Activity<'workout'>,
+  | Activity<undefined, ActivityContext.FORM>
+  | Activity<ExerciseType.CARDIO, ActivityContext.FORM>
+  | Activity<ExerciseType.MOBILITY, ActivityContext.FORM>
+  | Activity<ExerciseType.WORKOUT, ActivityContext.FORM>,
   'id'
->;
+> & { color: string };
 
 export type PatchActivityPayload = Pick<
-  | (Activity & { data?: undefined })
-  | Activity<'cardio'>
-  | Activity<'mobility'>
-  | Activity<'workout'>,
+  | Activity<undefined, ActivityContext.FORM>
+  | Activity<ExerciseType.CARDIO, ActivityContext.FORM>
+  | Activity<ExerciseType.MOBILITY, ActivityContext.FORM>
+  | Activity<ExerciseType.WORKOUT, ActivityContext.FORM>,
   'id'
 > &
   Partial<
     Omit<
-      | (Activity & { data?: undefined })
-      | Activity<'cardio'>
-      | Activity<'mobility'>
-      | Activity<'workout'>,
+      | Activity<undefined, ActivityContext.FORM>
+      | Activity<ExerciseType.CARDIO, ActivityContext.FORM>
+      | Activity<ExerciseType.MOBILITY, ActivityContext.FORM>
+      | Activity<ExerciseType.WORKOUT, ActivityContext.FORM>,
       'id'
     >
-  >;
+  > & { color: string };
 
 export type DeleteActivityPayload = Pick<Activity, 'id'>;
+
+export type ActivityPayload<
+  T extends 'create' | 'update' | 'delete' | undefined = undefined
+> = T extends 'create'
+  ? PostActivityPayload
+  : T extends 'update'
+  ? PatchActivityPayload
+  : T extends 'delete'
+  ? DeleteActivityPayload
+  : any;

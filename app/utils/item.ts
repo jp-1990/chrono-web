@@ -8,6 +8,7 @@ import {
 } from '../types/item';
 import { getDateId } from './date';
 import { timeOfDayToPercentage } from './date';
+import type { FormattedActivity } from '~/types/activity';
 
 export const formatItems = (
   dates: Date[],
@@ -190,7 +191,7 @@ export const getItemDate = ({ difference, date }: GetItemDateParams) => {
 
 export class Diff {
   #handle: Handles;
-  #target: FormattedItem;
+  #target: FormattedActivity;
   #breakpoint: number;
   #min: number;
   #max: number;
@@ -200,7 +201,7 @@ export class Diff {
     startX: number,
     container: Container,
     handle: Handles,
-    target: FormattedItem,
+    target: FormattedActivity,
     min: number,
     max: number,
     breakpoint?: number
@@ -215,7 +216,8 @@ export class Diff {
 
   applyBreakpoint() {
     const diffToBreakpoint =
-      (timeOfDayToPercentage(this.#target[this.#handle]) + this.value) %
+      (timeOfDayToPercentage(new Date(this.#target[this.#handle])) +
+        this.value) %
       this.#breakpoint;
 
     if (diffToBreakpoint > this.#breakpoint / 2)
