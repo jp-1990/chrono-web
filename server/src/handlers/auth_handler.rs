@@ -18,7 +18,7 @@ use crate::models::auth_model::{
     AccessToken, AuthPayload, GoogleCertsResponse, GoogleClaims, RefreshToken, TokenDB,
 };
 use crate::models::state_model::GoogleCerts;
-use crate::models::user_model::RegisterUserPayload;
+use crate::models::user_model::{RegisterUserPayload, UserResponse};
 use crate::utils::utils::generate_password;
 use crate::{AppState, GoogleCertsState};
 
@@ -62,11 +62,12 @@ use crate::{AppState, GoogleCertsState};
 
 // curl -X POST http://localhost:8000/api/v1/auth -H 'Content-Type: application/json' \ -d '{"email":"","pass":""}'
 
+#[debug_handler]
 pub async fn authorize(
     State(app_state): State<AppState>,
     jar: PrivateCookieJar,
     Json(body): Json<AuthPayload>,
-) -> Result<(StatusCode, PrivateCookieJar), AuthError> {
+) -> Result<(PrivateCookieJar, (StatusCode, Json<UserResponse>)), AuthError> {
     // Check if the user sent the credentials
     if body.email.is_empty() || body.pass.is_empty() {
         return Err(AuthError::MissingCredentials);
@@ -105,11 +106,19 @@ pub async fn authorize(
         .create_token(TokenDB::from(&refresh_token))
         .await;
 
+    let user = match app_state.db.get_user_by_email(&body.email).await {
+        Ok(user) => match user {
+            Some(u) => Ok(u),
+            None => Err(AuthError::InternalError),
+        },
+        Err(_) => Err(AuthError::InternalError),
+    }?;
+
     // create cookies
     Ok((
-        StatusCode::OK,
         jar.add(Cookie::from(&access_token))
             .add(Cookie::from(&refresh_token)),
+        (StatusCode::OK, Json(UserResponse::from(user))),
     ))
 }
 
@@ -141,7 +150,7 @@ pub async fn authorize_oauth(
     Extension(google_certs): Extension<GoogleCertsState>,
     jar: PrivateCookieJar,
     headers: HeaderMap,
-) -> Result<(StatusCode, PrivateCookieJar), AuthError> {
+) -> Result<(PrivateCookieJar, (StatusCode, Json<UserResponse>)), AuthError> {
     // get jwt from headers and decode it
     let jwt = match headers.get("Authorization") {
         Some(v) => match v.to_str() {
@@ -285,11 +294,23 @@ pub async fn authorize_oauth(
         .create_token(TokenDB::from(&refresh_token))
         .await;
 
+    let user = match app_state
+        .db
+        .get_user_by_email(&decoded_token.claims.email)
+        .await
+    {
+        Ok(user) => match user {
+            Some(u) => Ok(u),
+            None => Err(AuthError::InternalError),
+        },
+        Err(_) => Err(AuthError::InternalError),
+    }?;
+
     // create cookies
     Ok((
-        StatusCode::OK,
         jar.add(Cookie::from(&access_token))
             .add(Cookie::from(&refresh_token)),
+        (StatusCode::OK, Json(UserResponse::from(user))),
     ))
 }
 
@@ -351,11 +372,12 @@ pub async fn logout(
     Ok((StatusCode::OK, updated_jar))
 }
 
+#[debug_handler]
 pub async fn register_user(
     State(app_state): State<AppState>,
     jar: PrivateCookieJar,
     Json(body): Json<RegisterUserPayload>,
-) -> Result<(StatusCode, PrivateCookieJar), AuthError> {
+) -> Result<(PrivateCookieJar, (StatusCode, Json<UserResponse>)), AuthError> {
     // create user account
     let new_user = match app_state.db.create_user(body).await {
         Ok(user) => match user {
@@ -381,9 +403,9 @@ pub async fn register_user(
 
     // create cookies
     Ok((
-        StatusCode::OK,
         jar.add(Cookie::from(&access_token))
             .add(Cookie::from(&refresh_token)),
+        (StatusCode::OK, Json(UserResponse::from(new_user))),
     ))
 }
 

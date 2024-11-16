@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::{u32, usize};
 
 use axum::http::StatusCode;
 use mongodb::bson::oid::ObjectId;
+use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use mongodb::bson::Bson;
 use serde::{Deserialize, Serialize};
 
@@ -60,6 +62,7 @@ pub struct User {
     pub pass: String,
     pub role: Role,
     pub active: bool,
+    pub activities: HashMap<String, String>,
     pub verified: bool,
     #[serde(rename = "givenName")]
     pub given_name: String,
@@ -88,6 +91,7 @@ impl User {
                 pass: hash,
                 role: Role::User,
                 active: true,
+                activities: HashMap::new(),
                 verified: false,
                 img: String::from(""),
                 created_at: mongodb::bson::DateTime::now(),
@@ -97,6 +101,36 @@ impl User {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "failed to create user",
             )),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserResponse {
+    #[serde(rename = "id", serialize_with = "serialize_object_id_as_hex_string")]
+    pub _id: ObjectId,
+    pub email: String,
+    pub role: Role,
+    pub activities: HashMap<String, String>,
+    pub verified: bool,
+    #[serde(rename = "givenName")]
+    pub given_name: String,
+    #[serde(rename = "familyName")]
+    pub family_name: String,
+    pub img: String,
+}
+
+impl From<User> for UserResponse {
+    fn from(value: User) -> Self {
+        UserResponse {
+            _id: value.id,
+            email: value.email,
+            role: value.role,
+            activities: value.activities,
+            verified: value.verified,
+            given_name: value.given_name,
+            family_name: value.family_name,
+            img: value.img,
         }
     }
 }

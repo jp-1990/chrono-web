@@ -128,6 +128,7 @@ pub async fn update_activity_handler(
         end: body.end,
         timezone: body.timezone,
         data: body.data,
+        color: body.color,
     };
     match app_state
         .db

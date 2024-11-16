@@ -163,7 +163,7 @@ impl RefreshClaims {
         let iat = (Utc::now().naive_utc()).and_utc().timestamp() as usize;
         let exp = match exp {
             Some(v) => v,
-            None => (Utc::now().naive_utc() + chrono::Duration::minutes(5))
+            None => (Utc::now().naive_utc() + chrono::Duration::minutes(60))
                 .and_utc()
                 .timestamp() as usize,
         };

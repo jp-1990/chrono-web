@@ -153,7 +153,21 @@ impl MongoDatabase {
             user_id.clone(),
         );
 
-        let new_id = match self.activities.insert_one(activity).await {
+        let field_key = format!("activities.{}", activity.title);
+        let update = doc! {
+            "$set": { field_key: payload.color }
+        };
+
+        let filter = doc! {
+            "_id": ObjectId::parse_str(user_id.clone()).expect("failed to parse string to ObjectId"),
+        };
+
+        let (new_activity, _update_user) = tokio::join!(
+            self.activities.insert_one(activity),
+            self.users.update_one(filter, update)
+        );
+
+        let new_id = match new_activity {
             Ok(res) => match res.inserted_id {
                 Bson::ObjectId(oid) => oid,
                 _ => panic!("failed to retrieve objectid"),
@@ -187,7 +201,7 @@ impl MongoDatabase {
         };
 
         insert_optional(&mut update_doc, "variant", payload.variant);
-        insert_optional(&mut update_doc, "title", payload.title);
+        insert_optional(&mut update_doc, "title", payload.title.clone());
         insert_optional(&mut update_doc, "group", payload.group);
         insert_optional(&mut update_doc, "notes", payload.notes);
         insert_optional(&mut update_doc, "timezone", payload.timezone);
@@ -198,12 +212,27 @@ impl MongoDatabase {
             }
         }
 
+        match payload.title {
+            Some(title) => {
+                let filter = doc! {
+                    "_id": ObjectId::parse_str(user_id.clone()).expect("failed to parse string to ObjectId"),
+                };
+
+                let mut update_doc = Document::new();
+
+                let field_key = format!("activities.{}", title);
+                insert_optional(&mut update_doc, &field_key, payload.color);
+
+                let update = doc! { "$set": update_doc };
+                let _ = self.users.update_one(filter, update).await;
+            }
+            None => (),
+        }
+
         if !update_doc.is_empty() {
             let update = doc! { "$set": update_doc };
-            Some(self.activities.update_one(filter, update).await)
-        } else {
-            None
-        };
+            let _ = self.activities.update_one(filter, update).await;
+        }
 
         self.get_activity_doc(ObjectId::parse_str(payload.id).unwrap(), user_id)
             .await
@@ -255,16 +284,21 @@ impl MongoDatabase {
 
         if let Some(start) = payload.start {
             let start = mongodb::bson::DateTime::parse_rfc3339_str(start).unwrap();
-            filter.insert("start", doc! { "$gte": start });
+            filter.insert("end", doc! { "$gte": start });
         };
 
         if let Some(end) = payload.end {
             let end = mongodb::bson::DateTime::parse_rfc3339_str(end).unwrap();
-            filter.insert("end", doc! { "$lte": end });
+            filter.insert("start", doc! { "$lte": end });
         };
 
-        let cursor = self.activities.find(filter).await?;
+        let cursor = self
+            .activities
+            .find(filter)
+            .sort(doc! { "start": 1 })
+            .await?;
         let res = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
+
         Ok(res)
     }
 }
@@ -310,6 +344,7 @@ mod tests {
             end: "2000-01-01T09:30:00.000Z".to_string(),
             timezone: 0,
             data: None,
+            color: None,
         };
 
         let activity = Activity::new(
@@ -384,6 +419,7 @@ mod tests {
             start: "2000-01-01T09:00:00.000Z".to_string(),
             end: "2000-01-01T09:30:00.000Z".to_string(),
             timezone: 0,
+            color: None,
             data: Some(ActivityData {
                 exercise: Some(vec![
                     Exercise::Strength(StrengthExercise {
@@ -476,6 +512,7 @@ mod tests {
                 end: x.1.clone(),
                 timezone: 0,
                 data: None,
+                color: None,
             };
             db.create_activity(data, user_id.clone())
         });
@@ -491,6 +528,7 @@ mod tests {
         }
 
         let filters = GetActivitiesPayload {
+            timezone: None,
             variant: None,
             title: Some("get many".to_string()),
             group: None,
@@ -506,6 +544,7 @@ mod tests {
         assert!(activities.len() == 1);
 
         let filters = GetActivitiesPayload {
+            timezone: None,
             variant: None,
             title: Some("get many".to_string()),
             group: None,
@@ -521,6 +560,7 @@ mod tests {
         assert!(activities.len() == 3);
 
         let filters = GetActivitiesPayload {
+            timezone: None,
             variant: None,
             title: Some("get many".to_string()),
             group: None,
@@ -555,6 +595,7 @@ mod tests {
             end: Some("2000-01-01T10:30:00.000Z".to_string()),
             timezone: Some(0),
             data: None,
+            color: None,
         };
 
         let updated_activity = db
@@ -590,6 +631,7 @@ mod tests {
             start: None,
             end: None,
             timezone: None,
+            color: None,
             data: Some(ActivityData {
                 exercise: Some(vec![]),
             }),
@@ -624,6 +666,7 @@ mod tests {
             start: None,
             end: None,
             timezone: None,
+            color: None,
             data: Some(ActivityData {
                 exercise: Some(vec![
                     Exercise::Strength(StrengthExercise {
@@ -684,6 +727,7 @@ mod tests {
             start: None,
             end: None,
             timezone: None,
+            color: None,
             data: Some(ActivityData {
                 exercise: Some(vec![Exercise::Strength(StrengthExercise {
                     title: "pressups3".to_string(),

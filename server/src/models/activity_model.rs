@@ -130,6 +130,8 @@ pub struct GetActivityPayload {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetActivitiesPayload {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub timezone: Option<i16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub variant: Option<ActivityVariant>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
@@ -149,8 +151,9 @@ pub struct PostActivityPayload {
     pub notes: Option<String>,
     pub start: String,
     pub end: String,
-    pub timezone: i8,
+    pub timezone: i16,
     pub data: Option<ActivityData>,
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -161,8 +164,9 @@ pub struct PatchActivityBody {
     pub notes: Option<String>,
     pub start: Option<String>,
     pub end: Option<String>,
-    pub timezone: Option<i8>,
+    pub timezone: Option<i16>,
     pub data: Option<ActivityData>,
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -175,8 +179,9 @@ pub struct PatchActivityPayload {
     pub notes: Option<String>,
     pub start: Option<String>,
     pub end: Option<String>,
-    pub timezone: Option<i8>,
+    pub timezone: Option<i16>,
     pub data: Option<ActivityData>,
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -196,7 +201,7 @@ pub struct Activity {
     pub notes: String,
     pub start: mongodb::bson::DateTime,
     pub end: mongodb::bson::DateTime,
-    pub timezone: i8,
+    pub timezone: i16,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<ActivityData>,
     #[serde(rename = "createdAt")]
@@ -214,7 +219,7 @@ impl Activity {
         notes: String,
         start: String,
         end: String,
-        timezone: i8,
+        timezone: i16,
         data: Option<ActivityData>,
         user: String,
     ) -> Self {
@@ -240,8 +245,8 @@ impl Activity {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ActivityResponse {
-    #[serde(rename = "_id", serialize_with = "serialize_object_id_as_hex_string")]
-    pub id: ObjectId,
+    #[serde(rename = "id", serialize_with = "serialize_object_id_as_hex_string")]
+    pub _id: ObjectId,
     pub variant: ActivityVariant,
     pub title: String,
     pub group: String,
@@ -250,7 +255,7 @@ pub struct ActivityResponse {
     pub start: mongodb::bson::DateTime,
     #[serde(serialize_with = "serialize_bson_datetime_as_rfc3339_string")]
     pub end: mongodb::bson::DateTime,
-    pub timezone: i8,
+    pub timezone: i16,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<ActivityData>,
     #[serde(
@@ -260,14 +265,14 @@ pub struct ActivityResponse {
     pub created_at: mongodb::bson::DateTime,
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub user: ObjectId,
-    #[serde(rename = "__v")]
-    pub v: u32,
+    #[serde(rename = "v")]
+    pub __v: u32,
 }
 
 impl From<Activity> for ActivityResponse {
     fn from(activity: Activity) -> ActivityResponse {
         ActivityResponse {
-            id: activity.id,
+            _id: activity.id,
             variant: activity.variant,
             title: activity.title,
             group: activity.group,
@@ -278,7 +283,7 @@ impl From<Activity> for ActivityResponse {
             data: activity.data,
             created_at: activity.created_at,
             user: activity.user,
-            v: activity.v,
+            __v: activity.v,
         }
     }
 }
@@ -286,7 +291,7 @@ impl From<Activity> for ActivityResponse {
 impl From<&Activity> for ActivityResponse {
     fn from(activity: &Activity) -> ActivityResponse {
         ActivityResponse {
-            id: activity.id,
+            _id: activity.id,
             variant: activity.variant,
             title: activity.title.clone(),
             group: activity.group.clone(),
@@ -297,7 +302,7 @@ impl From<&Activity> for ActivityResponse {
             data: activity.data.clone(),
             created_at: activity.created_at,
             user: activity.user,
-            v: activity.v,
+            __v: activity.v,
         }
     }
 }
