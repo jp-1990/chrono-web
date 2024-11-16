@@ -1,10 +1,12 @@
 export type User = {
   id: string;
-  name: string;
   email: string;
-  photo: string;
   role: string;
-  active: boolean;
+  activities: Record<string, string>;
+  verified: boolean;
+  givenName: string;
+  familyName: string;
+  img: string;
 };
 
 export type LoginArgs = {

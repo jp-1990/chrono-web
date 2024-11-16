@@ -22,6 +22,7 @@ import {
   GoogleSignInButton,
   type CredentialResponse,
 } from "vue3-google-signin";
+import { useUserState } from "~/composables/state";
 useAuthCheck();
 
 // handle success event
@@ -44,6 +45,14 @@ const handleLoginSuccess = async (response: CredentialResponse) => {
     }
   );
   console.log('response', res);
+
+
+  const user = await res.json()
+
+  const userState = useUserState();
+  userState.value = user;
+
+  window.localStorage.setItem('userState', JSON.stringify(user));
 };
 
 // handle an error event
