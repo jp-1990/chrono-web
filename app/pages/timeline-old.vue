@@ -713,7 +713,7 @@ const computedBreakpoint = computed(() => {
 });
 
 const { onMouseDown, onMouseMove, onMouseUp, dragTime, mouseDownState } =
-  useStartEndDrag(computedBreakpoint.value);
+  useStartEndDragOld(computedBreakpoint.value);
 
 const openCreateTaskModalListener = (e) => {
   if (e.key === 'i' && taskModal.value.open === undefined) {
