@@ -31,9 +31,17 @@ export const apiRequest = async <
     }
 
     return output;
-  } catch (err) {
+  } catch (err: any) {
     // todo:: do something with this
     console.log('err', err);
+    const statusCode = parseInt(err.message.match(/status:(\d+)/)[1], 10);
+
+    switch (statusCode) {
+      case 401:
+      case 403: {
+        await navigateTo('/login');
+      }
+    }
 
     output.data = undefined;
     output.error = err;

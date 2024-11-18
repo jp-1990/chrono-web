@@ -151,6 +151,25 @@ const toggleUserMenu = () => (userMenu.value = !userMenu.value);
 
 async function logout() {
   // todo: logout 
+  // todo: refactor
+  // todo: handle response
+  const response = await fetch(
+    'http://localhost:8000/api/v1/logout',
+    {
+      credentials: 'include',
+      method: 'Post',
+      headers: {
+        // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+        'Content-Type': 'application/json',
+        'access-control-request-headers': 'content-type'
+        //   'Access-Control-Request-Headers': 'application/json'
+        //   authorization: `${window.localStorage.getItem('token')}`
+      },
+    }
+  );
+
+  window.localStorage.removeItem('userState');
+
   await navigateTo('/login')
   userMenu.value = false;
 };

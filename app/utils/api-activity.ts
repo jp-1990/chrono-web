@@ -97,7 +97,5 @@ export async function getActivities({ start, end }: GetActivitiesParams) {
   });
 
   const response: TypedResponse<Activity[]> = await fetch(request);
-  const res = await response.json();
-
-  return res;
+  return response;
 }
