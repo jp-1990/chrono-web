@@ -1,24 +1,27 @@
 <template>
-  <label :for="`${props.label}-input`" class="text-xs mt-2 mb-1">{{ props.label }}{{ props.required ? '*' : ''
+  <label :for="`${props.id ? props.id : `${props.label.toLowerCase().replace(' ', '-')}-input`}`"
+    class="text-xs mt-2 mb-1">{{ props.label }}{{ props.required ? '*' : ''
     }}</label>
   <input ref="inputRef" @blur="onBlur"
     :id="`${props.id ? props.id : `${props.label.toLowerCase().replace(' ', '-')}-input`}`"
-    :class="[props.valid === false ? 'border-red-600' : '']"
+    :placeholder="props.placeholder" :name="props.label" v-model="value" :type="props.type || 'text'"
     class="border py-1 px-2 rounded-[3px] focus:outline-none focus:border-slate-500 text-sm/[24px] text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
-    :placeholder="props.placeholder" :name="props.label" v-model="value" />
+    :class="[props.valid === false ? 'border-red-600' : '']" />
 </template>
 
 <script setup lang="ts">
+import type { InputTypeHTMLAttribute } from 'vue';
 import { required } from '~/utils/form/validation';
-const value = defineModel('value');
+const value = defineModel<string>('value');
 
 const props = defineProps<{
-  id?: string,
   label: string,
+  id?: string,
   placeholder?: string,
   required?: boolean,
+  type?: InputTypeHTMLAttribute,
   valid?: boolean,
-  validators?: ((v: string) => boolean)[],
+  validators?: ((v: string | undefined) => boolean)[],
 }>();
 
 const emit = defineEmits<{
@@ -46,7 +49,7 @@ function onBlur() {
 }
 
 function focus() {
-  inputRef.value.focus()
+  if (inputRef.value) inputRef.value.focus()
 }
 
 defineExpose({ focus });

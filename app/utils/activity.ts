@@ -1,4 +1,4 @@
-import { add, differenceInDays, startOfDay, sub } from 'date-fns';
+import { add, differenceInDays, startOfDay } from 'date-fns';
 import type {
   Activity,
   FormattedActivities,
@@ -98,7 +98,7 @@ export function formatActivities(dates: Date[], activities: Activity[] | null) {
 export class DerivedActivities {
   activities: FormattedActivities = {};
   #idToDateId: Record<FormattedActivity['id'], DateId[]> = {};
-  constructor(dates: Date[], activities: Activity[] | null) {
+  constructor(dates: Date[], activities: Activity[] | undefined | null) {
     this.createActivity = this.createActivity.bind(this);
     this.replaceTempIdWithId = this.replaceTempIdWithId.bind(this);
     this.deleteActivity = this.deleteActivity.bind(this);
@@ -136,6 +136,13 @@ export class DerivedActivities {
           this.activities[dateId].items[tempId];
         delete this.activities[dateId].items[tempId];
         this.activities[dateId].items[id].id = id;
+
+        this.activities[dateId].ids.sort((a, b) => {
+          const itemA = this.activities[dateId].items[a];
+          const itemB = this.activities[dateId].items[b];
+
+          return itemA.startPercentage - itemB.startPercentage;
+        });
       }
     }
 
@@ -162,6 +169,13 @@ export class DerivedActivities {
       this.activities[part.dateId].items[activity.id] = part;
       this.#idToDateId[activity.id] ??= [];
       this.#idToDateId[activity.id].push(part.dateId);
+
+      this.activities[part.dateId].ids.sort((a, b) => {
+        const itemA = this.activities[part.dateId].items[a];
+        const itemB = this.activities[part.dateId].items[b];
+
+        return itemA.startPercentage - itemB.startPercentage;
+      });
     }
   }
 
