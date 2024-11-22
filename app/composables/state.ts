@@ -1,6 +1,8 @@
 import type { User } from '~/types/user';
 
-export const useUserState = () => {
+export const db = await new IndexedDB().init();
+
+export function useUserState() {
   return useState<User>('userState', () => {
     return {
       id: '',
@@ -13,4 +15,4 @@ export const useUserState = () => {
       img: ''
     };
   });
-};
+}
