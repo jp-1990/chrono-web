@@ -3,8 +3,8 @@ use std::usize;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::{Extension, Json};
-use axum_extra::extract::cookie::Cookie;
-use axum_extra::extract::PrivateCookieJar;
+use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_extra::extract::{CookieJar, PrivateCookieJar};
 use axum_macros::debug_handler;
 use chrono::Utc;
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
@@ -65,9 +65,17 @@ use crate::{AppState, GoogleCertsState};
 #[debug_handler]
 pub async fn authorize(
     State(app_state): State<AppState>,
-    jar: PrivateCookieJar,
+    private_jar: PrivateCookieJar,
+    public_jar: CookieJar,
     Json(body): Json<AuthPayload>,
-) -> Result<(PrivateCookieJar, (StatusCode, Json<UserResponse>)), AuthError> {
+) -> Result<
+    (
+        PrivateCookieJar,
+        CookieJar,
+        (StatusCode, Json<UserResponse>),
+    ),
+    AuthError,
+> {
     // Check if the user sent the credentials
     if body.email.is_empty() || body.pass.is_empty() {
         return Err(AuthError::MissingCredentials);
@@ -115,9 +123,19 @@ pub async fn authorize(
     }?;
 
     // create cookies
+    let refresh_check_cookie = Cookie::build(("refresh-check", "1"))
+        // .domain("localhost")
+        .path("/")
+        .expires(OffsetDateTime::from_unix_timestamp(refresh_token.claims.exp as i64).unwrap())
+        .same_site(SameSite::Lax)
+        .secure(false) // todo:: in prod = true
+        .build();
+
     Ok((
-        jar.add(Cookie::from(&access_token))
+        private_jar
+            .add(Cookie::from(&access_token))
             .add(Cookie::from(&refresh_token)),
+        public_jar.add(refresh_check_cookie),
         (StatusCode::OK, Json(UserResponse::from(user))),
     ))
 }
@@ -148,9 +166,17 @@ pub async fn authorize(
 pub async fn authorize_oauth(
     State(app_state): State<AppState>,
     Extension(google_certs): Extension<GoogleCertsState>,
-    jar: PrivateCookieJar,
+    private_jar: PrivateCookieJar,
+    public_jar: CookieJar,
     headers: HeaderMap,
-) -> Result<(PrivateCookieJar, (StatusCode, Json<UserResponse>)), AuthError> {
+) -> Result<
+    (
+        PrivateCookieJar,
+        CookieJar,
+        (StatusCode, Json<UserResponse>),
+    ),
+    AuthError,
+> {
     // get jwt from headers and decode it
     let jwt = match headers.get("Authorization") {
         Some(v) => match v.to_str() {
@@ -307,19 +333,30 @@ pub async fn authorize_oauth(
     }?;
 
     // create cookies
+    let refresh_check_cookie = Cookie::build(("refresh-check", "1"))
+        // .domain("localhost")
+        .path("/")
+        .expires(OffsetDateTime::from_unix_timestamp(refresh_token.claims.exp as i64).unwrap())
+        .same_site(SameSite::Lax)
+        .secure(false) // todo:: in prod = true
+        .build();
+
     Ok((
-        jar.add(Cookie::from(&access_token))
+        private_jar
+            .add(Cookie::from(&access_token))
             .add(Cookie::from(&refresh_token)),
+        public_jar.add(refresh_check_cookie),
         (StatusCode::OK, Json(UserResponse::from(user))),
     ))
 }
 
 pub async fn logout(
     State(app_state): State<AppState>,
-    jar: PrivateCookieJar,
-) -> Result<(StatusCode, PrivateCookieJar), AuthError> {
+    private_jar: PrivateCookieJar,
+    public_jar: CookieJar,
+) -> Result<(StatusCode, PrivateCookieJar, CookieJar), AuthError> {
     // extract tokens from cookies
-    let refresh_token = RefreshToken::try_from(&jar)?;
+    let refresh_token = RefreshToken::try_from(&private_jar)?;
 
     // blacklist all associated user tokens
     let _ = app_state
@@ -340,13 +377,13 @@ pub async fn logout(
     }
     .unwrap();
 
-    let access_token = match AccessToken::try_from(&jar) {
+    let access_token = match AccessToken::try_from(&private_jar) {
         Ok(token) => Ok(Some(token)),
         Err(err) if err == AuthError::MissingToken => Ok(None),
         Err(err) => Err(err),
     }?;
 
-    let mut updated_jar = jar;
+    let mut updated_jar = private_jar;
 
     // invalidate cookies
     match access_token {
@@ -369,15 +406,27 @@ pub async fn logout(
     updated_jar = updated_jar.remove(Cookie::from(&refresh_token));
     updated_jar = updated_jar.add(invalid_refresh_cookie);
 
-    Ok((StatusCode::OK, updated_jar))
+    Ok((
+        StatusCode::OK,
+        updated_jar,
+        public_jar.remove("refresh-check"),
+    ))
 }
 
 #[debug_handler]
 pub async fn register_user(
     State(app_state): State<AppState>,
-    jar: PrivateCookieJar,
+    private_jar: PrivateCookieJar,
+    public_jar: CookieJar,
     Json(body): Json<RegisterUserPayload>,
-) -> Result<(PrivateCookieJar, (StatusCode, Json<UserResponse>)), AuthError> {
+) -> Result<
+    (
+        PrivateCookieJar,
+        CookieJar,
+        (StatusCode, Json<UserResponse>),
+    ),
+    AuthError,
+> {
     // create user account
     let new_user = match app_state.db.create_user(body).await {
         Ok(user) => match user {
@@ -402,9 +451,19 @@ pub async fn register_user(
         .await;
 
     // create cookies
+    let refresh_check_cookie = Cookie::build(("refresh-check", "1"))
+        // .domain("localhost")
+        .path("/")
+        .expires(OffsetDateTime::from_unix_timestamp(refresh_token.claims.exp as i64).unwrap())
+        .same_site(SameSite::Lax)
+        .secure(false) // todo:: in prod = true
+        .build();
+
     Ok((
-        jar.add(Cookie::from(&access_token))
+        private_jar
+            .add(Cookie::from(&access_token))
             .add(Cookie::from(&refresh_token)),
+        public_jar.add(refresh_check_cookie),
         (StatusCode::OK, Json(UserResponse::from(new_user))),
     ))
 }
