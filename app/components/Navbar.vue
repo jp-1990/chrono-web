@@ -12,15 +12,26 @@
 
       <nav class="flex flex-1 overflow-x-hidden w-64 bg-slate-600">
         <ul class="text-slate-300 font-light text-lg w-full">
-          <NavItem v-for="route in routes" :id="route.id" :url="route.url" :text="route.text" :icon="route.icon"
-            :subroutes="route.subroutes" :selected="route.id === openList" @toggle="toggleOpenList" />
+          <NavItem
+            v-for="route in routes"
+            :id="route.id"
+            :url="route.url"
+            :text="route.text"
+            :icon="route.icon"
+            :subroutes="route.subroutes"
+            :selected="route.id === openList"
+            @toggle="toggleOpenList"
+          />
         </ul>
       </nav>
     </div>
 
-    <div class="relative flex flex-col w-full h-screen overflow-y-auto overflow-x-hidden">
+    <div
+      class="relative flex flex-col w-full h-screen overflow-y-auto overflow-x-hidden"
+    >
       <nav
-        class="relative flex basis-auto items-center justify-between sm:justify-end h-14 bg-slate-800 border-b border-slate-800">
+        class="relative flex basis-auto items-center justify-between sm:justify-end h-14 bg-slate-800 border-b border-slate-800"
+      >
         <NuxtLink to="/" class="flex sm:hidden">
           <div class="flex items-center h-14 bg-slate-800">
             <span class="text-slate-100 font-bold text-lg pl-4">
@@ -30,7 +41,11 @@
           </div>
         </NuxtLink>
 
-        <ul ref="userMenuButtonEl" @click="toggleUserMenu" class="flex h-14 items-center mr-1">
+        <ul
+          ref="userMenuButtonEl"
+          @click="toggleUserMenu"
+          class="flex h-14 items-center mr-1"
+        >
           <user-icon />
         </ul>
       </nav>
@@ -39,18 +54,31 @@
         <slot />
       </div>
 
-      <nav class="flex flex-row items-center justify-center sm:hidden w-screen h-14 bg-slate-800">
+      <nav
+        class="flex flex-row items-center justify-center sm:hidden w-screen h-14 bg-slate-800"
+      >
         <ul class="flex text-slate-300 font-light text-lg mx-1">
-          <NavItemMobile v-for="route in mobileRoutes" :url="route.url" :text="route.text" :icon="route.icon" />
+          <NavItemMobile
+            v-for="route in mobileRoutes"
+            :url="route.url"
+            :text="route.text"
+            :icon="route.icon"
+          />
         </ul>
       </nav>
     </div>
 
-
-    <div ref="userMenuEl" v-if="userMenu"
-      class="absolute right-0 top-14 z-20 mt-0.5 py-1 px-3 w-32 bg-white border border-slate-300 border-r-0 rounded-r-none rounded-sm">
+    <div
+      ref="userMenuEl"
+      v-if="userMenu"
+      class="absolute right-0 top-14 z-20 mt-0.5 py-1 px-3 w-32 bg-white border border-slate-300 border-r-0 rounded-r-none rounded-sm"
+    >
       <ul class="flex flex-col text-slate-800">
-        <NuxtLink @click="toggleUserMenu" to="/settings" class="flex items-center my-1">
+        <NuxtLink
+          @click="toggleUserMenu"
+          to="/settings"
+          class="flex items-center my-1"
+        >
           <component :size="20" :is="Settings" />
           <li class="ml-2">Settings</li>
         </NuxtLink>
@@ -61,7 +89,6 @@
         </NuxtLink>
       </ul>
     </div>
-
   </div>
 </template>
 
@@ -86,7 +113,7 @@ const mobileRoutes = [
     text: 'Test',
     icon: Dashboard
   }
-]
+];
 
 const routes = [
   {
@@ -150,29 +177,26 @@ const userMenu = ref(false);
 const toggleUserMenu = () => (userMenu.value = !userMenu.value);
 
 async function logout() {
-  // todo: logout 
+  // todo: logout
   // todo: refactor
   // todo: handle response
-  const response = await fetch(
-    'http://localhost:8000/api/v1/logout',
-    {
-      credentials: 'include',
-      method: 'Post',
-      headers: {
-        // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
-        'Content-Type': 'application/json',
-        'access-control-request-headers': 'content-type'
-        //   'Access-Control-Request-Headers': 'application/json'
-        //   authorization: `${window.localStorage.getItem('token')}`
-      },
+  const response = await fetch('http://localhost:8000/api/v1/logout', {
+    credentials: 'include',
+    method: 'Post',
+    headers: {
+      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+      'Content-Type': 'application/json',
+      'access-control-request-headers': 'content-type'
+      //   'Access-Control-Request-Headers': 'application/json'
+      //   authorization: `${window.localStorage.getItem('token')}`
     }
-  );
+  });
 
   window.localStorage.removeItem('userState');
 
-  await navigateTo('/login')
+  await navigateTo('/login');
   userMenu.value = false;
-};
+}
 
 const userMenuEl = ref(null);
 const userMenuButtonEl = ref(null);

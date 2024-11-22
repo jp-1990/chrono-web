@@ -6,16 +6,11 @@ export default defineNuxtRouteMiddleware((to, from) => {
 
   if (AUTH_ROUTES.includes(to.path)) return;
 
-  const token = window.localStorage.getItem('token');
-  const tokenExpires = window.localStorage.getItem('tokenExpires');
+  const hasRefreshCheck = document.cookie
+    .split(';')
+    .some((c) => c.trim().includes('refresh-check='));
 
-  const now = new Date().getTime();
-  const tokenValid = token && tokenExpires && +tokenExpires > now;
-
-  if (!tokenValid) {
-    window.localStorage.removeItem('token');
-    window.localStorage.removeItem('tokenExpires');
-
+  if (!hasRefreshCheck) {
     if (AUTH_ROUTES.includes(from.path)) return abortNavigation();
     return navigateTo('/login');
   }
