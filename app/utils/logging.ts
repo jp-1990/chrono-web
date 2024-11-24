@@ -19,7 +19,7 @@ type LogData = Record<
 >;
 
 type Log = {
-  userId: string;
+  userId?: string;
   timestamp: number;
   severity: LogSeverity;
   env: string;
@@ -31,6 +31,7 @@ type Log = {
 };
 
 class Logging {
+  userId?: string;
   constructor() {}
 
   #internal_sanitizeObject<T extends LogError | LogData>(obj: T): T {
@@ -59,14 +60,12 @@ class Logging {
     error?: LogError,
     data?: LogData
   ): Log {
-    const user = useUserState();
-
     const sanitizedError = error && this.#internal_sanitizeObject(error);
     const sanitizedData = data && this.#internal_sanitizeObject(data);
 
     const log: Log = {
       severity,
-      userId: user.value.id,
+      userId: this.userId,
       timestamp: Date.now(),
       env: process.env.NODE_ENV ?? 'unknown',
       url: window.location.href,

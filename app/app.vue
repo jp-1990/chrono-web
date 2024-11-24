@@ -12,7 +12,9 @@ const userState = useUserState();
 const storedUser = window.localStorage.getItem('userState');
 
 if (storedUser) {
-  userState.value = JSON.parse(storedUser);
+  const user = JSON.parse(storedUser);
+  userState.value = user;
+  logging.userId = user.id;
 }
 
 useEventListener('online', async () => {
