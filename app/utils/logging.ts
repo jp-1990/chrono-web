@@ -8,9 +8,9 @@ const SEVERITY = {
 type LogSeverity = (typeof SEVERITY)[keyof typeof SEVERITY];
 
 type LogError = {
-  code?: string | number;
   message: string;
-  stacktrace: string;
+  stacktrace?: string;
+  code?: string | number;
 };
 
 type LogData = Record<

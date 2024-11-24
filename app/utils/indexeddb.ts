@@ -67,7 +67,7 @@ export class IndexedDB {
     find: async (filters: StoreFilters['activities']) => {
       return new Promise<Activity[]>((res, rej) => {
         if (!this.#db) {
-          console.error('Database not initialized');
+          logging.error({ message: 'IndexedDB Database not initialized' });
           return rej();
         }
 
@@ -132,12 +132,17 @@ export class IndexedDB {
       ...args: Parameters<T>
     ) => {
       const datetime = new Date().toISOString();
+      logging.info(undefined, {
+        message: 'queuing request',
+        fn: fn.name,
+        id: datetime
+      });
+
       const fnName = fn.name;
       const JSONArgs = JSON.stringify(args);
       const exp = add(new Date(), { hours: 24 }).toISOString();
 
-      console.log(args, JSONArgs);
-      return await this.#add(storeKeys.reqQueue, [
+      const result = await this.#add(storeKeys.reqQueue, [
         {
           id: datetime,
           args: JSONArgs,
@@ -146,13 +151,16 @@ export class IndexedDB {
           exp
         }
       ]);
+
+      logging.info(undefined, { message: 'request queued', fn: fn.name });
+      return result;
     },
     process: async () => {
+      logging.info(undefined, { message: 'processing request queue' });
       const pendingRequests = await new Promise<PendingRequest[]>(
         (res, rej) => {
-          console.log('started processing request queue');
           if (!this.#db) {
-            console.error('Database not initialized');
+            logging.error({ message: 'IndexedDB Database not initialized' });
             return rej();
           }
 
@@ -171,9 +179,12 @@ export class IndexedDB {
             const cursor = event.target.result;
             if (cursor) {
               const request = cursor.value;
-              console.log('request', request);
 
               if (!navigator.onLine) {
+                logging.info(undefined, {
+                  message: 'cancelled processing request queue',
+                  reason: 'connectivity lost'
+                });
                 rej('offline');
               }
 
@@ -188,7 +199,7 @@ export class IndexedDB {
           };
 
           cursorRequest.onerror = (event: any) => {
-            rej(event.target.request);
+            rej(event.target.result);
           };
         }
       );
@@ -198,20 +209,38 @@ export class IndexedDB {
 
       for (const request of pendingRequests) {
         try {
+          logging.info(undefined, {
+            message: 'processing request',
+            fn: request.fnName,
+            id: request.id
+          });
+
           await handlerNameToRequest.get(request.fnName)(
             ...JSON.parse(request.args)
           );
           success.push({ id: request.id });
-        } catch (_err) {
+        } catch (err: any) {
+          logging.error(
+            { message: err.message, stacktrace: err.stacktrace },
+            {
+              message: 'processing request failed',
+              fn: request.fnName,
+              id: request.id
+            }
+          );
           error.push({ id: request.id });
         }
       }
 
-      console.log(pendingRequests);
       this.#delete(storeKeys.reqQueue, success);
       // todo: DLQ?
       this.#delete(storeKeys.reqQueue, error);
-      console.log('finished processing request queue');
+
+      logging.info(undefined, {
+        message: 'processed request queue',
+        success: success.map(({ id }) => id),
+        error: error.map(({ id }) => id)
+      });
     }
   };
 
@@ -229,13 +258,13 @@ export class IndexedDB {
       const openedDB = new Promise<IDBDatabase>((res, rej) => {
         const request = window.indexedDB.open('CHRONO_DB', this.version);
 
-        request.onerror = (event) => {
-          console.error('Failed to open CHRONO_DB', event);
+        request.onerror = (_event) => {
+          logging.error({ message: 'Failed to open CHRONO_DB' });
           rej();
         };
 
         request.onsuccess = (event: any) => {
-          console.log('IndexedDB db connected');
+          logging.info(undefined, { message: 'IndexedDB db connected' });
           // db instance
           res(event.target.result);
         };
@@ -269,12 +298,17 @@ export class IndexedDB {
       this.#db = await openedDB;
 
       this.#db.onerror = (event: any) => {
-        console.error(`Database error: ${event.target.error?.message}`);
+        logging.error({
+          message: `Database error: ${event.target.error?.message}`
+        });
       };
 
       return this;
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      logging.error({
+        message: err.message,
+        stacktrace: err.stacktrace
+      });
       return this;
     }
   }
@@ -285,7 +319,7 @@ export class IndexedDB {
   ): Promise<StoreTypes[T][]> {
     return new Promise<StoreTypes[T][]>((res, rej) => {
       if (!this.#db) {
-        console.error('Database not initialized');
+        logging.error({ message: 'IndexedDB Database not initialized' });
         return rej();
       }
 
@@ -296,15 +330,20 @@ export class IndexedDB {
         return new Promise((res) => {
           const request = objectStore.add(v);
           request.onsuccess = (event: any) => {
-            // return the id of the inserted item
-            console.log('[add] onsuccess', event);
+            logging.info(undefined, {
+              message: '[indexedDB:add] success',
+              id: event.target.result
+            });
             res(v);
           };
         });
       });
 
-      transaction.oncomplete = async (event) => {
-        console.log('[add] Transaction complete', event);
+      transaction.oncomplete = async (event: any) => {
+        logging.info(undefined, {
+          message: '[indexedDB:add] transaction complete',
+          result: event.target.result
+        });
         const results = await Promise.all(promises);
         res(results);
       };
@@ -317,7 +356,7 @@ export class IndexedDB {
   ): Promise<StoreTypes[T][]> {
     return new Promise<StoreTypes[T][]>((res, rej) => {
       if (!this.#db) {
-        console.error('Database not initialized');
+        logging.error({ message: 'IndexedDB Database not initialized' });
         return rej();
       }
 
@@ -328,15 +367,20 @@ export class IndexedDB {
         return new Promise((res) => {
           const request = objectStore.put(v);
           request.onsuccess = (event: any) => {
-            // return the id of the inserted item
-            console.log('[put] onsuccess', event);
+            logging.info(undefined, {
+              message: '[indexedDB:put] success',
+              id: event.target.result
+            });
             res(v);
           };
         });
       });
 
-      transaction.oncomplete = async (event) => {
-        console.log('[put] Transaction complete', event);
+      transaction.oncomplete = async (event: any) => {
+        logging.info(undefined, {
+          message: '[indexedDB:put] transaction complete',
+          result: event.target.result
+        });
         const results = await Promise.all(promises);
         res(results);
       };
@@ -346,7 +390,7 @@ export class IndexedDB {
   async #delete<T extends StoreKeys>(store: T, values: { id: string }[]) {
     return new Promise<string[]>((resolve, reject) => {
       if (!this.#db) {
-        console.error('Database not initialized');
+        logging.error({ message: 'IndexedDB Database not initialized' });
         return reject();
       }
 
@@ -357,15 +401,20 @@ export class IndexedDB {
         return new Promise((res) => {
           const request = objectStore.delete(v.id);
           request.onsuccess = (event: any) => {
-            // return the id of the inserted item
-            console.log('[delete] onsuccess', event);
+            logging.info(undefined, {
+              message: '[indexedDB:delete] success',
+              id: event.target.result
+            });
             res(event.target.result);
           };
         });
       });
 
-      transaction.oncomplete = async (event) => {
-        console.log('[delete] Transaction complete', event);
+      transaction.oncomplete = async (event: any) => {
+        logging.info(undefined, {
+          message: '[indexedDB:delete] transaction complete',
+          result: event.target.result
+        });
         const results = await Promise.all(promises);
         resolve(results);
       };
@@ -375,7 +424,7 @@ export class IndexedDB {
   async #findById<T extends StoreKeys>(store: T, value: { id: string }) {
     return new Promise<Activity>((res, rej) => {
       if (!this.#db) {
-        console.error('Database not initialized');
+        logging.error({ message: 'IndexedDB Database not initialized' });
         return rej();
       }
 
@@ -392,8 +441,11 @@ export class IndexedDB {
         rej(event.target.error);
       };
 
-      transaction.oncomplete = (event) => {
-        console.log('[findById] Transaction complete', event);
+      transaction.oncomplete = (event: any) => {
+        logging.info(undefined, {
+          message: '[indexedDB:findById] transaction complete',
+          result: event.target.result
+        });
       };
     });
   }
