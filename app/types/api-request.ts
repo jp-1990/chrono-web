@@ -3,4 +3,6 @@ export type TypedResponse<T = any> = Omit<Response, 'json'> & {
     (): Promise<T>;
     (): Promise<T>;
   };
+  fromCache?: boolean;
+  data?: T;
 };

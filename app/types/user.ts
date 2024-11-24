@@ -9,6 +9,14 @@ export type User = {
   img: string;
 };
 
+export type PostLoginParams = {
+  email: string;
+  password: string;
+};
+
+// ------------------------------------------------------
+// todo: old - remove
+
 export type LoginArgs = {
   email: string;
   password: string;

@@ -109,20 +109,8 @@ const errors = ref<string[]>([]);
 // todo: refactor
 // handle success event
 async function handleGoogleLoginSuccess(response: CredentialResponse) {
-  const { credential } = response;
-
   // set token to auth header: bearer <token>
-  const res = await fetch('http://localhost:8000/api/v1/oauth', {
-    credentials: 'include',
-    method: 'Post',
-    headers: {
-      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
-      'Content-Type': 'application/json',
-      'access-control-request-headers': 'content-type',
-      //   'Access-Control-Request-Headers': 'application/json'
-      Authorization: `${credential}`
-    }
-  });
+  const res = await postOAuth(response);
   console.log('response', res);
 
   const user = await res.json();
@@ -145,21 +133,7 @@ function handleGoogleLoginError() {
 // todo: refactor
 async function handleEmailLogin(fields: { email: string; password: string }) {
   errors.value = [];
-  const response = await fetch('http://localhost:8000/api/v1/login', {
-    credentials: 'include',
-    method: 'Post',
-    headers: {
-      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
-      'Content-Type': 'application/json',
-      'access-control-request-headers': 'content-type'
-      //   'Access-Control-Request-Headers': 'application/json'
-      //   authorization: `${window.localStorage.getItem('token')}`
-    },
-    body: JSON.stringify({
-      email: fields.email,
-      pass: fields.password
-    })
-  });
+  const response = await postLogin(fields);
 
   if (!response) {
     errors.value = ['Incorrect email or password'];

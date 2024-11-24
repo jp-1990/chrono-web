@@ -219,9 +219,9 @@ import { getActivities } from '~/utils/api-activity';
 import { useUserState } from '~/composables/state';
 import type { FormattedActivity } from '~/types/activity';
 
-const userState = useUserState();
-// todo: do we need this? refactor?
 useAuthCheck();
+
+const userState = useUserState();
 
 const hoursInDay = getAllHoursInDay();
 
@@ -240,19 +240,28 @@ const {
 
 const { data, pending, error, refresh } = await useAsyncData(
   getActivities.name,
-  async () =>
-    apiRequest(getActivities, {
-      start: [
-        startDate.value.getFullYear(),
-        startDate.value.getMonth(),
-        startDate.value.getDate()
-      ],
-      end: [
-        endDate.value.getFullYear(),
-        endDate.value.getMonth(),
-        endDate.value.getDate()
-      ]
-    }),
+  async () => {
+    const start = [
+      startDate.value.getFullYear(),
+      startDate.value.getMonth(),
+      startDate.value.getDate()
+    ] as const;
+    const end = [
+      endDate.value.getFullYear(),
+      endDate.value.getMonth(),
+      endDate.value.getDate()
+    ] as const;
+
+    const startString = new Date(buildLocalDatetime(...start)).toISOString();
+    const endString = new Date(
+      buildLocalDatetime(...end, '23:59:59.999')
+    ).toISOString();
+
+    return await apiRequest(getActivities, {
+      start: startString,
+      end: endString
+    });
+  },
   {
     watch: [startDate, endDate],
     server: false,
@@ -404,4 +413,37 @@ const openCreateTaskModalListener = (e: KeyboardEvent) => {
 };
 
 useEventListener('keydown', openCreateTaskModalListener);
+useEventListener('online', async () => {
+  await db.reqQueue.process();
+  await refresh();
+
+  const start = [
+    startDate.value.getFullYear(),
+    startDate.value.getMonth(),
+    startDate.value.getDate()
+  ] as const;
+  const end = [
+    endDate.value.getFullYear(),
+    endDate.value.getMonth(),
+    endDate.value.getDate()
+  ] as const;
+
+  const startString = new Date(buildLocalDatetime(...start)).toISOString();
+  const endString = new Date(
+    buildLocalDatetime(...end, '23:59:59.999')
+  ).toISOString();
+
+  const cachedActivities = await db.activities.find({
+    start: startString,
+    end: endString
+  });
+
+  const idsToRemove: string[] = [];
+  for (const cachedActivity of cachedActivities) {
+    !data.value?.ids.has(cachedActivity.id) &&
+      idsToRemove.push(cachedActivity.id);
+  }
+
+  if (idsToRemove.length) db.activities.delete(idsToRemove);
+});
 </script>

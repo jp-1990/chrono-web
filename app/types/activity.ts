@@ -154,7 +154,12 @@ export type PatchActivityPayload = Pick<
     >
   > & { color: string };
 
-export type DeleteActivityPayload = Pick<Activity, 'id'>;
+export type DeleteActivityParams = Pick<Activity, 'id'>;
+
+export type GetActivitiesParams = {
+  start: Activity['start'];
+  end: Activity['end'];
+};
 
 export type ActivityPayload<
   T extends 'create' | 'update' | 'delete' | undefined = undefined
@@ -163,5 +168,5 @@ export type ActivityPayload<
   : T extends 'update'
   ? PatchActivityPayload
   : T extends 'delete'
-  ? DeleteActivityPayload
+  ? DeleteActivityParams
   : any;

@@ -14,4 +14,8 @@ const storedUser = window.localStorage.getItem('userState');
 if (storedUser) {
   userState.value = JSON.parse(storedUser);
 }
+
+useEventListener('online', async () => {
+  // await db.reqQueue.process();
+});
 </script>

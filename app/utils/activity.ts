@@ -97,6 +97,7 @@ export function formatActivities(dates: Date[], activities: Activity[] | null) {
 
 export class DerivedActivities {
   activities: FormattedActivities = {};
+  ids: Set<string> = new Set();
   #idToDateId: Record<FormattedActivity['id'], DateId[]> = {};
   constructor(dates: Date[], activities: Activity[] | undefined | null) {
     this.createActivity = this.createActivity.bind(this);
@@ -112,6 +113,7 @@ export class DerivedActivities {
     }
 
     for (const activity of activities ?? []) {
+      this.ids.add(activity.id);
       this.#internal_create(activity);
     }
   }

@@ -1,11 +1,58 @@
 import {
   type LoginArgs,
   type LoginRes,
+  type PostLoginParams,
   type SignupArgs,
-  type SignupRes
+  type SignupRes,
+  type User
 } from '~/types/user';
+import { type CredentialResponse } from 'vue3-google-signin';
+import type { TypedResponse } from '~/types/api-request';
 
-export const login = async (user: LoginArgs): Promise<LoginRes> => {
+const API_URL = import.meta.env.VITE_API_BASE_URL;
+
+export async function postOAuth(credentialResponse: CredentialResponse) {
+  const { credential } = credentialResponse;
+
+  const url = new URL(`${API_URL}/v1/oauth`);
+  const request = new Request(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+      'Content-Type': 'application/json',
+      'access-control-request-headers': 'content-type',
+      //   'Access-Control-Request-Headers': 'application/json'
+      Authorization: `${credential}`
+    }
+  });
+
+  const response: TypedResponse<User> = await fetch(request);
+  return response;
+}
+
+export async function postLogin(params: PostLoginParams) {
+  const url = new URL(`${API_URL}/v1/login`);
+  const request = new Request(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+      'Content-Type': 'application/json',
+      'access-control-request-headers': 'content-type'
+      //   'Access-Control-Request-Headers': 'application/json'
+    },
+    body: JSON.stringify({
+      email: params.email,
+      pass: params.password
+    })
+  });
+
+  const response: TypedResponse<User> = await fetch(request);
+  return response;
+}
+
+export const loginOld = async (user: LoginArgs): Promise<LoginRes> => {
   const response = await fetch('http://localhost:4000/graphql', {
     method: 'POST',
     headers: {
@@ -37,7 +84,7 @@ export const login = async (user: LoginArgs): Promise<LoginRes> => {
   return data.signIn;
 };
 
-export const signup = async (user: SignupArgs): Promise<SignupRes> => {
+export const signupOld = async (user: SignupArgs): Promise<SignupRes> => {
   const response = await fetch('http://localhost:4000/graphql', {
     method: 'POST',
     headers: {

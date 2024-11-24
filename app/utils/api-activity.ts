@@ -2,7 +2,8 @@ import type {
   Activity,
   PostActivityPayload,
   PatchActivityPayload,
-  DeleteActivityPayload
+  DeleteActivityParams,
+  GetActivitiesParams
 } from '~/types/activity';
 import type { TypedResponse } from '~/types/api-request';
 
@@ -51,8 +52,8 @@ export async function patchActivity(payload: PatchActivityPayload) {
   return response;
 }
 
-export async function deleteActivity(payload: DeleteActivityPayload) {
-  const url = new URL(`${API_URL}/v1/activity/${payload.id}`);
+export async function deleteActivity(params: DeleteActivityParams) {
+  const url = new URL(`${API_URL}/v1/activity/${params.id}`);
   const request = new Request(url, {
     method: 'DELETE',
     credentials: 'include'
@@ -69,22 +70,11 @@ export async function deleteActivity(payload: DeleteActivityPayload) {
   return response;
 }
 
-export type GetActivitiesParams = {
-  start: [year: number, month: number, date: number];
-  end: [year: number, month: number, date: number];
-};
-
-export async function getActivities({ start, end }: GetActivitiesParams) {
+export async function getActivities(params: GetActivitiesParams) {
   const url = new URL(`${API_URL}/v1/activity`);
 
-  url.searchParams.set(
-    'start',
-    new Date(buildLocalDatetime(...start)).toISOString()
-  );
-  url.searchParams.set(
-    'end',
-    new Date(buildLocalDatetime(...end, '23:59:59.999')).toISOString()
-  );
+  url.searchParams.set('start', params.start);
+  url.searchParams.set('end', params.end);
 
   // todo:: filters
   const request = new Request(url, {
