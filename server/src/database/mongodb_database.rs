@@ -144,7 +144,7 @@ impl MongoDatabase {
         let activity = Activity::new(
             payload.variant,
             payload.title.to_string(),
-            payload.group.unwrap_or(String::from("")).into(),
+            payload.group.to_string(),
             payload.notes.unwrap_or(String::from("")).into(),
             payload.start,
             payload.end,
@@ -310,13 +310,39 @@ mod tests {
         StrengthExercise,
     };
     use crate::models::state_model::EnvironmentVariables;
-    use crate::utils::utils::generate_test_email;
 
     use super::*;
     use core::panic;
     use mongodb::bson::datetime::DateTime;
     use mongodb::bson::Bson;
+    use rand::distributions::Alphanumeric;
+    use rand::seq::SliceRandom;
+    use rand::{thread_rng, Rng};
+    use std::iter;
     extern crate dotenv;
+
+    pub fn generate_test_email() -> String {
+        let special_chars = b"!@#$%^&*()_+-=[]{}|;:,.<>?";
+        let mut rng = thread_rng();
+
+        // Start with random alphanumeric characters
+        let mut email: String = iter::repeat_with(|| rng.sample(Alphanumeric))
+            .take(12 - 2) // Reserve space for special characters
+            .map(char::from)
+            .collect();
+
+        // Add two random special characters to ensure complexity
+        email.push(*special_chars.choose(&mut rng).unwrap() as char);
+        email.push(*special_chars.choose(&mut rng).unwrap() as char);
+
+        // Shuffle the password to mix special characters into the string
+        (email
+            .chars()
+            .collect::<Vec<_>>()
+            .into_iter()
+            .collect::<String>())
+            + "@test.com"
+    }
 
     async fn init_db() -> MongoDatabase {
         let env = EnvironmentVariables::from_env();
@@ -338,7 +364,7 @@ mod tests {
         let payload = PostActivityPayload {
             title: "test get".to_string(),
             variant: "default".into(),
-            group: Some("test group".to_string()),
+            group: "test group".to_string(),
             notes: Some("insert 2".to_string()),
             start: "2000-01-01T09:00:00.000Z".to_string(),
             end: "2000-01-01T09:30:00.000Z".to_string(),
@@ -350,7 +376,7 @@ mod tests {
         let activity = Activity::new(
             payload.variant,
             payload.title.to_string(),
-            payload.group.unwrap_or(String::from("")).into(),
+            payload.group.to_string(),
             payload.notes.unwrap_or(String::from("")).into(),
             payload.start,
             payload.end,
@@ -414,7 +440,7 @@ mod tests {
         let data = PostActivityPayload {
             title: "test create".to_string(),
             variant: "exercise".into(),
-            group: Some("test group".to_string()),
+            group: "test group".to_string(),
             notes: Some("insert 1".to_string()),
             start: "2000-01-01T09:00:00.000Z".to_string(),
             end: "2000-01-01T09:30:00.000Z".to_string(),
@@ -446,6 +472,7 @@ mod tests {
                         title: "running".to_string(),
                         duration: 30,
                         distance: 5000,
+                        splits: None,
                     }),
                 ]),
             }),
@@ -506,7 +533,7 @@ mod tests {
             let data = PostActivityPayload {
                 title: "get many".to_string(),
                 variant: "default".into(),
-                group: None,
+                group: "group".to_string(),
                 notes: None,
                 start: x.0.clone(),
                 end: x.1.clone(),
@@ -693,6 +720,7 @@ mod tests {
                         title: "running".to_string(),
                         duration: 30,
                         distance: 5000,
+                        splits: None,
                     }),
                 ]),
             }),

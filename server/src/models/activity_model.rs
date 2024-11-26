@@ -89,6 +89,15 @@ pub struct Set {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Split {
+    pub idx: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distance: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration: Option<u32>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StrengthExercise {
     pub title: String,
     pub sets: Vec<Set>,
@@ -105,6 +114,7 @@ pub struct CardioExercise {
     pub title: String,
     pub duration: u32,
     pub distance: u32,
+    pub splits: Option<Vec<Split>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -147,7 +157,7 @@ pub struct GetActivitiesPayload {
 pub struct PostActivityPayload {
     pub title: String,
     pub variant: ActivityVariant,
-    pub group: Option<String>,
+    pub group: String,
     pub notes: Option<String>,
     pub start: String,
     pub end: String,
