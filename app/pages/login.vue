@@ -118,7 +118,7 @@ async function handleGoogleLoginSuccess(response: CredentialResponse) {
   const userState = useUserState();
   userState.value = user;
 
-  window.localStorage.setItem('userState', JSON.stringify(user));
+  db.users.add(user);
 
   await navigateTo('/timeline');
 }
@@ -146,7 +146,7 @@ async function handleEmailLogin(fields: { email: string; password: string }) {
     const userState = useUserState();
     userState.value = user;
 
-    window.localStorage.setItem('userState', JSON.stringify(user));
+    db.users.add(user);
 
     await navigateTo('/timeline');
   }

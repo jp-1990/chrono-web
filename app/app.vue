@@ -9,12 +9,11 @@
 import { useUserState } from './composables/state';
 
 const userState = useUserState();
-const storedUser = window.localStorage.getItem('userState');
+const storedUser = await db.users.getAll();
 
-if (storedUser) {
-  const user = JSON.parse(storedUser);
-  userState.value = user;
-  logging.userId = user.id;
+if (!Array.isArray(storedUser) && storedUser) {
+  userState.value = storedUser;
+  logging.userId = storedUser.id;
 }
 
 useEventListener('online', async () => {

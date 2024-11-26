@@ -32,17 +32,21 @@ writeHandlerToDBMap.set(deleteActivity.name, db.activities.delete);
 
 */
 
+type ApiRequestResponse<
+  T extends (...args: Parameters<T>) => Promise<TypedResponse>
+> = {
+  data: Awaited<ReturnType<Awaited<ReturnType<T>>['json']>> | undefined;
+  status: number | undefined;
+  error: unknown;
+};
+
 export const apiRequest = async <
   T extends (...args: Parameters<T>) => Promise<TypedResponse>
 >(
   fn: T,
   ...args: Parameters<T>
-) => {
-  const output: {
-    data: Awaited<ReturnType<Awaited<ReturnType<T>>['json']>> | undefined;
-    status: number | undefined;
-    error: unknown;
-  } = {
+): Promise<ApiRequestResponse<T>> => {
+  const output: ApiRequestResponse<T> = {
     data: undefined,
     status: undefined,
     error: undefined
@@ -62,16 +66,24 @@ export const apiRequest = async <
 
       // if mutation - perform action on cache
       if (isMutation) {
-        if (!dbFn) return;
-        console.log('ONLINE: writing mutation to cache', fn.name);
-        dbFn(...(args as any));
+        if (dbFn) {
+          logging.info(undefined, {
+            message: 'ONLINE: writing mutation to cache',
+            fn: fn.name
+          });
+          dbFn(...(args as any));
+        }
       }
     } else {
       // if offline use the cache
-      if (!dbFn) return;
-
-      console.log('OFFLINE: using cache', fn.name);
-      const cachedActivities = await dbFn(...(args as any));
+      let cachedData: any;
+      if (dbFn) {
+        logging.info(undefined, {
+          message: 'OFFLINE: using cache',
+          fn: fn.name
+        });
+        cachedData = await dbFn(...(args as any));
+      }
 
       // if mutation - queue request
       if (isMutation) {
@@ -79,7 +91,7 @@ export const apiRequest = async <
       }
 
       response = {
-        data: cachedActivities,
+        data: cachedData ?? undefined,
         status: 200,
         ok: true,
         fromCache: true
@@ -102,17 +114,27 @@ export const apiRequest = async <
       // if get - update cache
       if (/get/g.test(fn.name) && output.data) {
         const cacheUpdater = writeHandlerToDBMap.get(fn.name);
-        if (!cacheUpdater) return;
-        console.log('ONLINE: writing update to cache', fn.name);
-        cacheUpdater(output.data);
+        if (cacheUpdater) {
+          logging.info(undefined, {
+            message: 'ONLINE: writing update to cache',
+            fn: fn.name
+          });
+          cacheUpdater(output.data);
+        }
       }
     }
 
     return output;
   } catch (err: any) {
-    // todo:: do something with this
-    console.log('err', err);
     const statusCode = parseInt(err.message.match(/status:(\d+)/)[1], 10);
+
+    logging.error(
+      { code: statusCode, message: err.message, stacktrace: err.stacktrace },
+      {
+        message: 'apiRequest error',
+        fn: fn.name
+      }
+    );
 
     switch (statusCode) {
       case 401:

@@ -100,6 +100,8 @@ import Logo from 'vue-material-design-icons/TimerCheckOutline.vue';
 import Timeline from 'vue-material-design-icons/ChartGantt.vue';
 const currentRoute = useRoute();
 
+const userState = useUserState();
+
 const mobileRoutes = [
   {
     id: 0,
@@ -192,7 +194,7 @@ async function logout() {
     }
   });
 
-  window.localStorage.removeItem('userState');
+  db.users.delete(userState.value.id);
 
   await navigateTo('/login');
   userMenu.value = false;

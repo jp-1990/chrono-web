@@ -266,6 +266,7 @@ const { data, pending, error, refresh } = await useAsyncData(
     watch: [startDate, endDate],
     server: false,
     transform: (activities) => {
+      if (!activities) return;
       const dates = getDatesInMonthYear(
         selectedMonth.value.getMonth(),
         selectedMonth.value.getFullYear()
@@ -438,10 +439,10 @@ useEventListener('online', async () => {
     end: endString
   });
 
-  const idsToRemove: string[] = [];
+  const idsToRemove: { id: string }[] = [];
   for (const cachedActivity of cachedActivities) {
     !data.value?.ids.has(cachedActivity.id) &&
-      idsToRemove.push(cachedActivity.id);
+      idsToRemove.push({ id: cachedActivity.id });
   }
 
   if (idsToRemove.length) db.activities.delete(idsToRemove);

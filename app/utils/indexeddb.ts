@@ -46,23 +46,59 @@ export class IndexedDB {
   #storeKeys = storeKeys;
 
   activities = {
-    add: async (values: Activity | Activity[]) => {
+    add: async (
+      values:
+        | (Activity & { color?: string })
+        | (Activity & { color?: string })[]
+    ) => {
       const { v, many } = prepareArgs(values);
-      const res = await this.#add('activities', v);
-      return many ? res : res[0];
+      const [activities, user] = await Promise.all([
+        this.#add(storeKeys.activities, v),
+        this.users.getAll()
+      ]);
+
+      if (!Array.isArray(user)) {
+        for (const activity of v) {
+          if (activity.color) {
+            user.activities[activity.title] = activity.color;
+          }
+        }
+        await this.users.put(user);
+      }
+
+      return many ? activities : activities[0];
     },
-    put: async (values: Activity | Activity[]) => {
+    put: async (
+      values:
+        | (Activity & { color?: string })
+        | (Activity & { color?: string })[]
+    ) => {
       const { v, many } = prepareArgs(values);
-      const res = await this.#put('activities', v);
-      return many ? res : res[0];
+      const [activities, user] = await Promise.all([
+        this.#put(storeKeys.activities, v),
+        this.users.getAll()
+      ]);
+
+      if (!Array.isArray(user)) {
+        for (const activity of v) {
+          if (activity.color) {
+            user.activities[activity.title] = activity.color;
+          }
+        }
+        await this.users.put(user);
+      }
+      return many ? activities : activities[0];
     },
     delete: async (values: Pick<Activity, 'id'> | Pick<Activity, 'id'>[]) => {
       const { v, many } = prepareArgs(values);
-      const res = await this.#delete('activities', v);
+      const res = await this.#delete(
+        'activities',
+        v.map((v) => v.id)
+      );
       return many ? res : res[0];
     },
     findById: async (value: Pick<Activity, 'id'>) => {
-      return await this.#findById('activities', value);
+      return await this.#findById('activities', value.id);
     },
     find: async (filters: StoreFilters['activities']) => {
       return new Promise<Activity[]>((res, rej) => {
@@ -116,12 +152,16 @@ export class IndexedDB {
       const res = await this.#put('users', v);
       return many ? res : res[0];
     },
-    delete: async (values: Pick<User, 'id'> | Pick<User, 'id'>[]) => {
+    delete: async (values: User['id'] | User['id'][]) => {
       const { v, many } = prepareArgs(values);
       const res = await this.#delete('users', v);
       return many ? res : res[0];
     },
-    findById: async (value: Pick<User, 'id'>) => {
+    getAll: async () => {
+      const res = await this.#getAll('users');
+      return res.length > 1 ? res : res[0];
+    },
+    findById: async (value: User['id']) => {
       return await this.#findById('users', value);
     }
   };
@@ -204,9 +244,10 @@ export class IndexedDB {
         }
       );
 
-      const success: { id: string }[] = [];
-      const error: { id: string }[] = [];
+      const success: string[] = [];
+      const error: string[] = [];
 
+      const tempIdToIdMap = {};
       for (const request of pendingRequests) {
         try {
           logging.info(undefined, {
@@ -215,10 +256,28 @@ export class IndexedDB {
             id: request.id
           });
 
-          await handlerNameToRequest.get(request.fnName)(
-            ...JSON.parse(request.args)
+          let args = JSON.parse(request.args);
+
+          if (
+            request.fnName === patchActivity.name ||
+            request.fnName === deleteActivity.name
+          ) {
+            const tempId = args[0].id;
+            const id = tempIdToIdMap[tempId];
+            if (id) args[0].id = id;
+          }
+
+          const response = await handlerNameToRequest.get(request.fnName)(
+            ...args
           );
-          success.push({ id: request.id });
+
+          if (request.fnName === postActivity.name) {
+            const tempId = `${args[0].id}-offline`;
+            const data = await response.json();
+            tempIdToIdMap[tempId] = data.id;
+          }
+
+          success.push(request.id);
         } catch (err: any) {
           logging.error(
             { message: err.message, stacktrace: err.stacktrace },
@@ -228,7 +287,7 @@ export class IndexedDB {
               id: request.id
             }
           );
-          error.push({ id: request.id });
+          error.push(request.id);
         }
       }
 
@@ -238,8 +297,8 @@ export class IndexedDB {
 
       logging.info(undefined, {
         message: 'processed request queue',
-        success: success.map(({ id }) => id),
-        error: error.map(({ id }) => id)
+        success: success,
+        error: error
       });
     }
   };
@@ -387,7 +446,7 @@ export class IndexedDB {
     });
   }
 
-  async #delete<T extends StoreKeys>(store: T, values: { id: string }[]) {
+  async #delete<T extends StoreKeys>(store: T, values: string[]) {
     return new Promise<string[]>((resolve, reject) => {
       if (!this.#db) {
         logging.error({ message: 'IndexedDB Database not initialized' });
@@ -399,7 +458,7 @@ export class IndexedDB {
 
       const promises: Promise<string>[] = values.map((v) => {
         return new Promise((res) => {
-          const request = objectStore.delete(v.id);
+          const request = objectStore.delete(v);
           request.onsuccess = (event: any) => {
             logging.info(undefined, {
               message: '[indexedDB:delete] success',
@@ -421,8 +480,8 @@ export class IndexedDB {
     });
   }
 
-  async #findById<T extends StoreKeys>(store: T, value: { id: string }) {
-    return new Promise<Activity>((res, rej) => {
+  async #findById<T extends StoreKeys>(store: T, value: string) {
+    return new Promise<StoreTypes[T]>((res, rej) => {
       if (!this.#db) {
         logging.error({ message: 'IndexedDB Database not initialized' });
         return rej();
@@ -431,7 +490,7 @@ export class IndexedDB {
       const transaction = this.#db.transaction(store, 'readonly');
       const objectStore = transaction.objectStore(store);
 
-      const result = objectStore.get(value.id);
+      const result = objectStore.get(value);
 
       result.onsuccess = (event: any) => {
         res(event.target.result);
@@ -444,6 +503,35 @@ export class IndexedDB {
       transaction.oncomplete = (event: any) => {
         logging.info(undefined, {
           message: '[indexedDB:findById] transaction complete',
+          result: event.target.result
+        });
+      };
+    });
+  }
+
+  async #getAll<T extends StoreKeys>(store: T) {
+    return new Promise<StoreTypes[T][]>((res, rej) => {
+      if (!this.#db) {
+        logging.error({ message: 'IndexedDB Database not initialized' });
+        return rej();
+      }
+
+      const transaction = this.#db.transaction(store, 'readonly');
+      const objectStore = transaction.objectStore(store);
+
+      const result = objectStore.getAll();
+
+      result.onsuccess = (event: any) => {
+        res(event.target.result);
+      };
+
+      result.onerror = (event: any) => {
+        rej(event.target.error);
+      };
+
+      transaction.oncomplete = (event: any) => {
+        logging.info(undefined, {
+          message: '[indexedDB:getAll] transaction complete',
           result: event.target.result
         });
       };

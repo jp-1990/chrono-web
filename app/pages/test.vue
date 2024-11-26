@@ -53,12 +53,12 @@ const handleLoginSuccess = async (response: CredentialResponse) => {
   });
   console.log('response', res);
 
-  const user = await res.json();
-
-  const userState = useUserState();
-  userState.value = user;
-
-  window.localStorage.setItem('userState', JSON.stringify(user));
+  // const user = await res.json();
+  //
+  // const userState = useUserState();
+  // userState.value = user;
+  //
+  // window.localStorage.setItem('userState', JSON.stringify(user));
 };
 
 // handle an error event

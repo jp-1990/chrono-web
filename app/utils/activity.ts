@@ -2,7 +2,9 @@ import { add, differenceInDays, startOfDay } from 'date-fns';
 import type {
   Activity,
   FormattedActivities,
-  FormattedActivity
+  FormattedActivity,
+  PatchActivityArgs,
+  PostActivityArgs
 } from '~/types/activity';
 import { timeOfDayToPercentage, getDateId } from './date';
 import type { DateId } from '~/types/date';
@@ -118,8 +120,9 @@ export class DerivedActivities {
     }
   }
 
-  createActivity(activity: Activity, tempId: string) {
-    this.#internal_create(activity, tempId);
+  createActivity(activity: PostActivityArgs, tempId: string) {
+    if (!activity.id) activity.id = tempId;
+    this.#internal_create(activity as Activity, tempId);
   }
 
   replaceTempIdWithId(id: string, tempId: string) {
@@ -156,9 +159,9 @@ export class DerivedActivities {
     this.#internal_delete(id);
   }
 
-  updateActivity(activity: Activity) {
+  updateActivity(activity: PatchActivityArgs) {
     this.#internal_delete(activity.id);
-    this.#internal_create(activity);
+    this.#internal_create(activity as Activity);
   }
 
   #internal_create(activity: Activity, tempId?: string) {

@@ -1,112 +1,149 @@
 import type { DateId } from './date';
 
-export enum ExerciseType {
-  WORKOUT = 'workout',
+export enum ExerciseVariant {
+  STRENGTH = 'strength',
   CARDIO = 'cardio',
   MOBILITY = 'mobility'
 }
-
-export enum ActivityContext {
-  FORM = 'form'
-}
-
-type ExerciseSet<T extends ActivityContext.FORM | undefined = undefined> =
-  T extends undefined
-    ? {
-        idx: number;
-        reps?: number;
-        weight?: number;
-        rest?: number;
-        duration?: number;
-      }
-    : {
-        reps?: string;
-        weight?: string;
-        rest?: string;
-        duration?: string;
-      };
-
-type ExerciseSplit<T extends ActivityContext.FORM | undefined = undefined> =
-  T extends undefined
-    ? {
-        idx: number;
-        pace: number;
-      }
-    : {
-        pace: string;
-      };
-
-export type ExerciseWorkout<
-  T extends ActivityContext.FORM | undefined = undefined
-> = {
-  title: string;
-  sets: ExerciseSet<T>[];
-};
-
-export type ExerciseCardio<
-  T extends ActivityContext.FORM | undefined = undefined
-> = {
-  title: string;
-  duration: T extends undefined ? number : string;
-  distance: T extends undefined ? number : string;
-  splits: ExerciseSplit<T>[];
-};
-
-export type ExerciseMobility<
-  T extends ActivityContext.FORM | undefined = undefined
-> = {
-  title: string;
-  sets: ExerciseSet<T>[];
-};
 
 export enum ActivityVariant {
   DEFAULT = 'Default',
   EXERCISE = 'Exercise'
 }
 
-type Exercise<T extends ActivityContext.FORM | undefined = undefined> =
-  | ExerciseWorkout<T>[]
-  | ExerciseCardio<T>
-  | ExerciseMobility<T>[]
-  | undefined;
+type ExerciseSet = {
+  idx: number;
+  reps?: number;
+  weight?: number;
+  rest?: number;
+  duration?: number;
+};
 
-type ServerProperties = {
+type ExerciseSplit = {
+  idx: number;
+  distance: number;
+  duration: number;
+};
+
+type ExerciseStrength = {
+  title: string;
+  sets: ExerciseSet[];
+};
+
+type ExerciseMobility = {
+  title: string;
+  sets: ExerciseSet[];
+};
+
+type ExerciseCardio = {
+  title: string;
+  duration: number;
+  distance: number;
+  splits: ExerciseSplit[];
+};
+
+type Exercise = ExerciseStrength | ExerciseMobility | ExerciseCardio;
+
+type ActivityData = {
+  exercise?: Exercise[];
+};
+
+export type Activity = {
+  id: string;
+  title: string;
+  variant: ActivityVariant;
+  group: string;
+  notes?: string;
+  start: string;
+  end: string;
+  timezone: number;
+  data?: ActivityData;
   createdAt: string;
   user: string;
   v: number;
 };
 
-export type ActivityBase<
-  T extends Exercise<U> | undefined = undefined,
-  U extends ActivityContext.FORM | undefined = undefined
-> = {
-  id: string;
+export type ActivityDefaultForm = {
+  title: string;
+  variant: ActivityVariant.DEFAULT;
+  group: string;
+  notes: string;
+  start: string;
+  end: string;
+  timezone: number;
+  color: string;
+};
+
+export type GetActivitiesParams = {
+  variant?: ActivityVariant;
+  title?: string;
+  group?: string;
+  start?: string;
+  end?: string;
+  timezone?: number;
+};
+
+export type PostActivityArgs = {
   title: string;
   variant: ActivityVariant;
-  group?: string;
+  group: string;
   notes?: string;
   start: string;
   end: string;
   timezone: number;
-} & (T extends undefined
-  ? {}
-  : {
-      data: { exercise: T };
-    }) &
-  (U extends undefined ? ServerProperties : {});
+  data?: ActivityData;
+  color?: string;
+  createdAt?: string;
+  user?: string;
+  id?: string;
+  v?: number;
+};
 
-export type Activity<
-  T extends ExerciseType | undefined = undefined,
-  U extends ActivityContext.FORM | undefined = undefined
-> = T extends ExerciseType.WORKOUT
-  ? ActivityBase<ExerciseWorkout<U>[], U>
-  : T extends ExerciseType.CARDIO
-  ? ActivityBase<ExerciseCardio<U>, U>
-  : T extends ExerciseType.MOBILITY
-  ? ActivityBase<ExerciseMobility<U>[], U>
-  : ActivityBase<undefined, U>;
+export type PostActivityPayload = {
+  title: string;
+  variant: ActivityVariant;
+  group: string;
+  notes?: string;
+  start: string;
+  end: string;
+  timezone: number;
+  data?: ActivityData;
+  color?: string;
+};
 
-type ExtraProperties = {
+export type PatchActivityArgs = {
+  id: string;
+  title: string;
+  variant: ActivityVariant;
+  group: string;
+  notes?: string;
+  start: string;
+  end: string;
+  timezone: number;
+  data?: ActivityData;
+  color?: string;
+  createdAt?: string;
+  user?: string;
+  v?: number;
+};
+
+export type PatchActivityParams = string;
+export type PatchActivityPayload = {
+  title: string;
+  variant: ActivityVariant;
+  group: string;
+  notes?: string;
+  start: string;
+  end: string;
+  timezone: number;
+  data?: ActivityData;
+  color?: string;
+  v?: number;
+};
+
+export type DeleteActivityParams = { id: string };
+
+type DerivedProperties = {
   dateId: DateId;
   startPercentage: number;
   endPercentage: number;
@@ -116,11 +153,7 @@ type ExtraProperties = {
   isEnd: boolean;
 };
 
-export type FormattedActivity<
-  T extends ExerciseType | undefined = undefined,
-  U extends ActivityContext.FORM | undefined = undefined
-> = Activity<T, U> &
-  (U extends ActivityContext.FORM ? Partial<ExtraProperties> : ExtraProperties);
+export type FormattedActivity = Activity & DerivedProperties;
 
 export type FormattedActivities = {
   [key: DateId]: {
@@ -128,45 +161,3 @@ export type FormattedActivities = {
     items: Record<FormattedActivity['id'], FormattedActivity>;
   };
 };
-
-export type PostActivityPayload = Omit<
-  | Activity<undefined, ActivityContext.FORM>
-  | Activity<ExerciseType.CARDIO, ActivityContext.FORM>
-  | Activity<ExerciseType.MOBILITY, ActivityContext.FORM>
-  | Activity<ExerciseType.WORKOUT, ActivityContext.FORM>,
-  'id'
-> & { color: string };
-
-export type PatchActivityPayload = Pick<
-  | Activity<undefined, ActivityContext.FORM>
-  | Activity<ExerciseType.CARDIO, ActivityContext.FORM>
-  | Activity<ExerciseType.MOBILITY, ActivityContext.FORM>
-  | Activity<ExerciseType.WORKOUT, ActivityContext.FORM>,
-  'id'
-> &
-  Partial<
-    Omit<
-      | Activity<undefined, ActivityContext.FORM>
-      | Activity<ExerciseType.CARDIO, ActivityContext.FORM>
-      | Activity<ExerciseType.MOBILITY, ActivityContext.FORM>
-      | Activity<ExerciseType.WORKOUT, ActivityContext.FORM>,
-      'id'
-    >
-  > & { color: string };
-
-export type DeleteActivityParams = Pick<Activity, 'id'>;
-
-export type GetActivitiesParams = {
-  start: Activity['start'];
-  end: Activity['end'];
-};
-
-export type ActivityPayload<
-  T extends 'create' | 'update' | 'delete' | undefined = undefined
-> = T extends 'create'
-  ? PostActivityPayload
-  : T extends 'update'
-  ? PatchActivityPayload
-  : T extends 'delete'
-  ? DeleteActivityParams
-  : any;

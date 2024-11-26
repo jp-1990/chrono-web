@@ -100,9 +100,11 @@ import DeleteIcon from 'vue-material-design-icons/Delete.vue';
 import { watch } from 'vue';
 import { add } from 'date-fns';
 import {
-  ActivityContext,
   ActivityVariant,
-  type FormattedActivity
+  type ActivityDefaultForm,
+  type FormattedActivity,
+  type PatchActivityArgs,
+  type PostActivityArgs
 } from '~/types/activity';
 import type { Validation } from '~/types/form';
 import { DEFAULT_COLOR } from '~/constants/colors';
@@ -134,24 +136,22 @@ watch(props, (props) => {
     titleRef.value?.focus();
 
     if (props.mode === 'update' && props.data) {
-      formState.value.data = {
-        ...formState.value.data,
-        ...props.data,
-        start: applyTZOffset(new Date(props.data.start))
-          .toISOString()
-          .slice(0, -8),
-        end: applyTZOffset(new Date(props.data.end)).toISOString().slice(0, -8),
-        color: userState.value.activities[props.data.title] ?? DEFAULT_COLOR
-      };
+      formState.value.data.title = props.data.title;
+      formState.value.data.group = props.data.group;
+      formState.value.data.start = applyTZOffset(new Date(props.data.start))
+        .toISOString()
+        .slice(0, -8);
+      formState.value.data.end = applyTZOffset(new Date(props.data.end))
+        .toISOString()
+        .slice(0, -8);
+      formState.value.data.color =
+        userState.value.activities[props.data.title] ?? DEFAULT_COLOR;
     }
   }
 });
 
 const formState = ref<{
-  data: Omit<
-    FormattedActivity<undefined, ActivityContext.FORM> & { color: string },
-    'id'
-  >;
+  data: ActivityDefaultForm;
   valid: Validation;
 }>({
   data: {
@@ -213,72 +213,154 @@ function onTitleBlur() {
 
 function validateStartDate(v: string) {
   // todo:: validate
-  console.log('called: validateStartDate', 'with', v);
   return true;
 }
 
 function validateEndDate(v: string) {
   // todo:: validate
-  console.log('called: validateEndDate', 'with', v);
   return true;
 }
 
 const onSubmit = async (event: MouseEvent | KeyboardEvent) => {
   // todo: validate & prepare payload
   const unrefedData = toRaw(unref(formState)).data;
-  const payload = {
-    title: unrefedData.title,
-    variant: unrefedData.variant,
-    group: unrefedData.group,
-    notes: unrefedData.notes,
-    timezone: unrefedData.timezone,
-    start: new Date(unrefedData.start).toISOString(),
-    end: new Date(unrefedData.end).toISOString(),
-    color: unrefedData.color,
-    id: ''
-  };
 
   switch (props.mode) {
     case 'create': {
-      const tempId = `temp-${Date.now().toString()}`;
-      // todo: do we need the serverside properties in the type?
-      props.activities?.createActivity(payload as any, tempId);
+      const payload: PostActivityArgs = {
+        title: unrefedData.title,
+        variant: unrefedData.variant,
+        group: unrefedData.group,
+        notes: unrefedData.notes,
+        timezone: unrefedData.timezone,
+        start: new Date(unrefedData.start).toISOString().replace('.000Z', 'Z'),
+        end: new Date(unrefedData.end).toISOString().replace('.000Z', 'Z'),
+        color: unrefedData.color,
+        createdAt: new Date().toISOString(),
+        user: userState.value.id,
+        id: '',
+        v: 1
+      };
 
-      // todo: add to local cache
-      userState.value.activities[unrefedData.title] = unrefedData.color;
-      // todo: this is shit - race conditions
-      window.localStorage.setItem('userState', JSON.stringify(userState.value));
+      const tempId = `temp-${payload.start}${payload.end}`;
+      payload.id = tempId;
+
+      props.activities?.createActivity(payload, tempId);
+
+      const prevColor = userState.value.activities[unrefedData.title];
+      if (prevColor !== unrefedData.color) {
+        userState.value.activities[unrefedData.title] = unrefedData.color;
+      }
 
       const response = await apiRequest(postActivity, payload);
-      console.log('create::response', response);
-
-      // todo: confirm that the response from the server matches what we sent
-      // update local state again if necessary?
-      // todo: deal with unsuccessful response
 
       if (response.data) {
-        props.activities?.replaceTempIdWithId(response.data.id, tempId);
+        let dataDrift = false;
+        if (navigator.onLine) {
+          // confirm that the response from the server matches what we sent
+          for (const key of Object.keys(response.data)) {
+            if (key === 'createdAt' || key === 'id') continue;
+            if (response.data[key] !== payload[key]) {
+              dataDrift = true;
+              break;
+            }
+          }
+
+          if (dataDrift) {
+            // todo: now what?
+            logging.error(
+              {
+                message:
+                  '[ActivityDefault:onSubmit]: response does not match payload'
+              },
+              {
+                fn: postActivity.name
+              }
+            );
+          }
+        }
+        if (!navigator.onLine) {
+          response.data.id = `${response.data.id}-offline`;
+        }
+
+        if (!dataDrift) {
+          props.activities?.replaceTempIdWithId(response.data.id, tempId);
+          db.activities.delete({ id: tempId });
+          db.activities.add(response.data);
+        }
+      }
+
+      if (response.error) {
+        // rollback local changes
+        props.activities?.deleteActivity(tempId);
+        db.activities.delete({ id: tempId });
+        if (prevColor !== unrefedData.color) {
+          userState.value.activities[unrefedData.title] = unrefedData.color;
+        }
       }
 
       break;
     }
     case 'update': {
       if (!props.data?.id) return;
-      payload.id = props.data.id;
 
-      // todo: do we need the serverside properties in the type?
-      props.activities?.updateActivity(payload as any);
-      // todo: update item in local cache
-      userState.value.activities[unrefedData.title] = unrefedData.color;
-      // todo: this is shit - race conditions
-      window.localStorage.setItem('userState', JSON.stringify(userState.value));
+      const prevValue = await db.activities.findById({ id: props.data.id });
+
+      const payload: PatchActivityArgs = {
+        title: unrefedData.title,
+        variant: unrefedData.variant,
+        group: unrefedData.group,
+        notes: unrefedData.notes,
+        timezone: unrefedData.timezone,
+        start: new Date(unrefedData.start).toISOString().replace('.000Z', 'Z'),
+        end: new Date(unrefedData.end).toISOString().replace('.000Z', 'Z'),
+        color: unrefedData.color,
+        createdAt: new Date().toISOString(),
+        user: userState.value.id,
+        id: props.data.id,
+        v: 1
+      };
+
+      props.activities?.updateActivity(payload);
+
+      const prevColor = userState.value.activities[unrefedData.title];
+      if (prevColor !== unrefedData.color) {
+        userState.value.activities[unrefedData.title] = unrefedData.color;
+      }
 
       const response = await apiRequest(patchActivity, payload);
-      console.log('update::response', response);
 
-      // todo: confirm that the response from the server matches what we sent
-      // update local state again if necessary?
-      // todo: deal with unsuccessful response
+      if (response.data && navigator.onLine) {
+        // confirm that the response from the server matches what we sent
+        let dataDrift = false;
+        for (const key of Object.keys(response.data)) {
+          if (key === 'createdAt' || key === 'id') continue;
+          if (response.data[key] !== payload[key]) {
+            dataDrift = true;
+            break;
+          }
+        }
+
+        if (dataDrift) {
+          // todo: now what?
+          logging.error(
+            {
+              message:
+                '[ActivityDefault:onSubmit]: response does not match payload'
+            },
+            { fn: patchActivity.name }
+          );
+        }
+      }
+
+      // rollback local changes
+      if (response.error) {
+        props.activities?.updateActivity(prevValue);
+        db.activities.put(prevValue);
+        if (prevColor !== unrefedData.color) {
+          userState.value.activities[unrefedData.title] = unrefedData.color;
+        }
+      }
 
       break;
     }
@@ -290,13 +372,17 @@ const onSubmit = async (event: MouseEvent | KeyboardEvent) => {
 async function onDelete(event: MouseEvent | KeyboardEvent) {
   if (!props.data?.id) return;
 
-  // todo:remove item from local cache
+  const prevValue = await db.activities.findById({ id: props.data.id });
+
   props.activities?.deleteActivity(props.data.id);
 
   const response = await apiRequest(deleteActivity, { id: props.data.id });
-  console.log('deleted::response', response);
 
-  // todo: deal with unsuccessful response
+  // rollback local changes
+  if (response.error) {
+    props.activities?.createActivity(prevValue, prevValue.id);
+    db.activities.add(prevValue);
+  }
 
   emit('onClose', event, 'submit');
 }

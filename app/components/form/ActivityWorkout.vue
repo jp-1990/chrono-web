@@ -190,7 +190,7 @@ const scope = 'form-activity-workout';
 
 const props = defineProps<{
   mode: 'create' | 'update' | undefined;
-  data?: Activity<ExerciseType.WORKOUT, ActivityContext.FORM>;
+  data?: Activity;
   activities?: DerivedActivities | null;
 }>();
 const emit = defineEmits<{
@@ -273,7 +273,7 @@ function removeRepsRow({
 }
 
 const formState = ref<{
-  data: Activity<ExerciseType.WORKOUT, ActivityContext.FORM>;
+  data: Activity;
   valid: Validation;
 }>({
   data: {
@@ -398,7 +398,6 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
     }
     case 'update': {
       if (!props.data?.id) return;
-      payload.id = props.data.id;
 
       // todo: do we need the serverside properties in the type?
       props.activities?.updateActivity(payload as any);
@@ -407,7 +406,11 @@ async function onSubmit(event: MouseEvent | KeyboardEvent) {
       // todo: this is shit - race conditions
       window.localStorage.setItem('userState', JSON.stringify(userState.value));
 
-      const response = await apiRequest(patchActivity, payload);
+      const response = await apiRequest(
+        patchActivity,
+        { id: props.data.id },
+        payload
+      );
       console.log('update::response', response);
 
       // todo: confirm that the response from the server matches what we sent
