@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { login } from '~/utils/api-user';
+import { loginOld } from '~/utils/api-user';
 definePageMeta({
   layout: false
 });
@@ -86,7 +86,7 @@ const errors = ref<string[]>([]);
 
 const onSubmit = async (fields: { email: string; password: string }) => {
   errors.value = [];
-  const response = await login(fields);
+  const response = await loginOld(fields);
 
   if (!response) {
     errors.value = ['Incorrect email or password'];

@@ -1,9 +1,9 @@
 import type { DateId } from './date';
 
 export enum ExerciseVariant {
-  STRENGTH = 'strength',
-  CARDIO = 'cardio',
-  MOBILITY = 'mobility'
+  STRENGTH = 'Strength',
+  CARDIO = 'Cardio',
+  MOBILITY = 'Mobility'
 }
 
 export enum ActivityVariant {
@@ -11,7 +11,7 @@ export enum ActivityVariant {
   EXERCISE = 'Exercise'
 }
 
-type ExerciseSet = {
+export type ExerciseSet = {
   idx: number;
   reps?: number;
   weight?: number;
@@ -19,32 +19,35 @@ type ExerciseSet = {
   duration?: number;
 };
 
-type ExerciseSplit = {
+export type ExerciseSplit = {
   idx: number;
   distance: number;
   duration: number;
 };
 
-type ExerciseStrength = {
+export type ExerciseStrength = {
+  variant: ExerciseVariant.STRENGTH;
   title: string;
   sets: ExerciseSet[];
 };
 
-type ExerciseMobility = {
+export type ExerciseMobility = {
+  variant: ExerciseVariant.MOBILITY;
   title: string;
   sets: ExerciseSet[];
 };
 
-type ExerciseCardio = {
+export type ExerciseCardio = {
+  variant: ExerciseVariant.CARDIO;
   title: string;
   duration: number;
   distance: number;
   splits: ExerciseSplit[];
 };
 
-type Exercise = ExerciseStrength | ExerciseMobility | ExerciseCardio;
+export type Exercise = ExerciseStrength | ExerciseMobility | ExerciseCardio;
 
-type ActivityData = {
+export type ActivityData = {
   exercise?: Exercise[];
 };
 
@@ -61,17 +64,6 @@ export type Activity = {
   createdAt: string;
   user: string;
   v: number;
-};
-
-export type ActivityDefaultForm = {
-  title: string;
-  variant: ActivityVariant.DEFAULT;
-  group: string;
-  notes: string;
-  start: string;
-  end: string;
-  timezone: number;
-  color: string;
 };
 
 export type GetActivitiesParams = {
@@ -92,11 +84,11 @@ export type PostActivityArgs = {
   end: string;
   timezone: number;
   data?: ActivityData;
-  color?: string;
-  createdAt?: string;
-  user?: string;
-  id?: string;
-  v?: number;
+  color: string;
+  createdAt: string;
+  user: string;
+  id: string;
+  v: number;
 };
 
 export type PostActivityPayload = {
@@ -121,10 +113,10 @@ export type PatchActivityArgs = {
   end: string;
   timezone: number;
   data?: ActivityData;
-  color?: string;
-  createdAt?: string;
-  user?: string;
-  v?: number;
+  color: string;
+  createdAt: string;
+  user: string;
+  v: number;
 };
 
 export type PatchActivityParams = string;

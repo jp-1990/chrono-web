@@ -1,18 +1,37 @@
 <template>
   <span class="text-xs mt-2 mb-1">Color</span>
-  <div id="color" :style="`background-color:${selectedColor}`" @click="onToggleColorSelect"
-    @keyup.enter="onToggleColorSelect" role="button" tabindex="0"
+  <div
+    id="color"
+    :style="`background-color:${selectedColor}`"
+    @click="onToggleColorSelect"
+    @keyup.enter="onToggleColorSelect"
+    role="button"
+    tabindex="0"
     class="h-8 w-12 m-px mb-1 rounded-[3px] focus:outline-none focus:border focus:border-slate-500"
-    ref="selectedColorEl" name="color"></div>
+    ref="selectedColorEl"
+    name="color"
+  ></div>
 
-  <div class="flex flex-col" :class="[colorSelectOpen ? 'h-auto' : 'h-0 overflow-hidden']"
-    @keyup.k="onFocus('up', cursor[0], cursor[1])" @keyup.j="onFocus('down', cursor[0], cursor[1])"
-    @keyup.h="onFocus('left', cursor[0], cursor[1])" @keyup.l="onFocus('right', cursor[0], cursor[1])">
+  <div
+    class="flex flex-col"
+    :class="[colorSelectOpen ? 'h-auto' : 'h-0 overflow-hidden']"
+    @keyup.k="onFocus('up', cursor[0], cursor[1])"
+    @keyup.j="onFocus('down', cursor[0], cursor[1])"
+    @keyup.h="onFocus('left', cursor[0], cursor[1])"
+    @keyup.l="onFocus('right', cursor[0], cursor[1])"
+  >
     <div v-for="(colorRow, rowIndex) in colorMatrix" class="flex">
-      <div v-for="(color, colorIndex) in colorRow" :style="`background-color:${color}`"
-        :ref="colorRefs[rowIndex][colorIndex]" :id="color" :tabindex="colorSelectOpen ? 0 : -1"
-        @click="setSelectedColor(color)" @keyup.enter="setSelectedColor(color)" role="button"
-        class="h-8 w-12 m-px rounded-[3px] focus:outline-1 focus:outline-slate-500"></div>
+      <div
+        v-for="(color, colorIndex) in colorRow"
+        :style="`background-color:${color}`"
+        :ref="colorRefs[rowIndex][colorIndex]"
+        :id="color"
+        :tabindex="colorSelectOpen ? 0 : -1"
+        @click="setSelectedColor(color)"
+        @keyup.enter="setSelectedColor(color)"
+        role="button"
+        class="h-8 w-12 m-px rounded-[3px] focus:outline-1 focus:outline-slate-500"
+      ></div>
     </div>
   </div>
 </template>
@@ -30,7 +49,6 @@ const emit = defineEmits<{
   (e: 'onChange', color: string): void;
   (e: 'update', color: string): void;
 }>();
-
 
 const colorSelectOpen = ref(false);
 const onToggleColorSelect = () => {
@@ -98,7 +116,7 @@ const colorMatrix = [
     '#000000', // rgb(0, 0, 0)
     '#003f06', // rgb(0, 63, 6)
     '#007613', // rgb(0, 118, 19)
-    '#04da00'  // rgb(4, 218, 0)
+    '#04da00' // rgb(4, 218, 0)
   ],
   [
     '#ffd600', // rgb(255, 214, 0)
@@ -107,7 +125,7 @@ const colorMatrix = [
     '#561a00', // rgb(86, 26, 0)
     '#000080', // rgb(0, 0, 128)
     '#0000ff', // rgb(0, 0, 255)
-    '#26cbff'  // rgb(38, 203, 255)
+    '#26cbff' // rgb(38, 203, 255)
   ],
   [
     '#ff00c7', // rgb(255, 0, 199)
@@ -116,7 +134,7 @@ const colorMatrix = [
     '#7e0000', // rgb(126, 0, 0)
     '#4b006f', // rgb(75, 0, 111)
     '#9b00fa', // rgb(155, 0, 250)
-    '#008080'  // rgb(0, 128, 128)
+    '#008080' // rgb(0, 128, 128)
   ]
 ];
 

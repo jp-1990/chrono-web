@@ -81,7 +81,7 @@ class Logging {
 
   info(error?: LogError, data?: LogData) {
     const log = this.#internal_buildLog(SEVERITY.INFO, error, data);
-    console.log(log);
+    console.log('LOGGING:', log.data?.message);
   }
 
   warn(error?: LogError, data?: LogData) {

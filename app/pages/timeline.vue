@@ -221,7 +221,7 @@ import type { FormattedActivity } from '~/types/activity';
 
 useAuthCheck();
 
-const userState = useUserState();
+const { user } = useUserState();
 
 const hoursInDay = getAllHoursInDay();
 
@@ -310,7 +310,7 @@ const itemsKey = computed(() => {
 
       key[activity.title] = [
         duration + (key[activity.title]?.[0] ?? 0),
-        userState.value.activities?.[activity.title] ?? DEFAULT_COLOR
+        user.value.activities?.[activity.title] ?? DEFAULT_COLOR
       ];
       seenIds[activity.id] = true;
     }

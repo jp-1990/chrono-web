@@ -113,12 +113,12 @@ async function handleGoogleLoginSuccess(response: CredentialResponse) {
   const res = await postOAuth(response);
   console.log('response', res);
 
-  const user = await res.json();
+  const userRes = await res.json();
 
-  const userState = useUserState();
-  userState.value = user;
+  const { user } = useUserState();
+  user.value = userRes;
 
-  db.users.add(user);
+  db.users.put(userRes);
 
   await navigateTo('/timeline');
 }
@@ -141,12 +141,12 @@ async function handleEmailLogin(fields: { email: string; password: string }) {
   }
 
   if (response) {
-    const user = await response.json();
+    const userRes = await response.json();
 
-    const userState = useUserState();
-    userState.value = user;
+    const { user } = useUserState();
+    user.value = userRes;
 
-    db.users.add(user);
+    db.users.put(userRes);
 
     await navigateTo('/timeline');
   }

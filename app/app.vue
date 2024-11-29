@@ -8,11 +8,11 @@
 <script setup lang="ts">
 import { useUserState } from './composables/state';
 
-const userState = useUserState();
+const { user } = useUserState();
 const storedUser = await db.users.getAll();
 
 if (!Array.isArray(storedUser) && storedUser) {
-  userState.value = storedUser;
+  user.value = storedUser;
   logging.userId = storedUser.id;
 }
 

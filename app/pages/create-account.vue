@@ -124,12 +124,12 @@ const onSubmit = async (fields: {
   });
 
   if (response) {
-    const user = await response.json();
+    const res = await response.json();
 
-    const userState = useUserState();
-    userState.value = user;
+    const { user } = useUserState();
+    user.value = res;
 
-    db.users.add(user);
+    db.users.add(res);
 
     await navigateTo('/timeline');
   }
