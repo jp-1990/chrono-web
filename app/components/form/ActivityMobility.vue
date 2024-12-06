@@ -110,7 +110,7 @@
         :size="20"
         class="text-slate-50 mr-1.5"
       />
-      {{ `${props.mode === 'update' ? 'Update' : 'Create'} Session` }}
+      {{ `${props.mode === 'update' ? 'Update' : 'Create'} Mobility` }}
       <span class="ml-2" />
     </template>
   </side-panel>

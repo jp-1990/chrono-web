@@ -116,8 +116,12 @@ function preparePayload<T extends 'create' | 'update'>(
           (e: any, i: number) => {
             return {
               idx: i,
-              distance: parseInt(e.distance, 10),
-              duration: parseInt(e.duration, 10)
+              distance: isNaN(parseInt(e.distance, 10))
+                ? undefined
+                : parseInt(e.distance, 10),
+              duration: isNaN(parseInt(e.duration, 10))
+                ? undefined
+                : parseInt(e.duration, 10)
             };
           }
         );
@@ -127,10 +131,18 @@ function preparePayload<T extends 'create' | 'update'>(
           (e: any, i: number) => {
             return {
               idx: i,
-              reps: parseInt(e.reps, 10),
-              weight: parseInt(e.weight, 10),
-              rest: parseInt(e.rest, 10),
-              duration: parseInt(e.duration, 10)
+              reps: isNaN(parseInt(e.reps, 10))
+                ? undefined
+                : parseInt(e.reps, 10),
+              weight: isNaN(parseInt(e.weight, 10))
+                ? undefined
+                : parseInt(e.weight, 10),
+              rest: isNaN(parseInt(e.rest, 10))
+                ? undefined
+                : parseInt(e.rest, 10),
+              duration: isNaN(parseInt(e.duration, 10))
+                ? undefined
+                : parseInt(e.duration, 10)
             };
           }
         );
