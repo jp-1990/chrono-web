@@ -110,7 +110,7 @@ const props = defineProps<{
   disableSubmit?: boolean;
   disableExtra?: boolean;
 }>();
-defineEmits<{
+const emit = defineEmits<{
   (e: 'onSubmit', v: MouseEvent): void;
   (e: 'onExtra', v: MouseEvent): void;
   (e: 'onClose', v: MouseEvent | KeyboardEvent): void;
@@ -137,6 +137,13 @@ const handleTab = (event: KeyboardEvent) => {
   }
 };
 
+function onCloseListener(e: KeyboardEvent) {
+  if (e.key === 'Escape' && props.isOpen) {
+    e.preventDefault();
+    emit('onClose', e);
+  }
+}
+
 watch(props, (props) => {
   if (props.isOpen) {
     focusableElements.value = modalEl.value
@@ -147,4 +154,6 @@ watch(props, (props) => {
       .toArray() as any;
   }
 });
+
+useEventListener('keydown', onCloseListener);
 </script>
