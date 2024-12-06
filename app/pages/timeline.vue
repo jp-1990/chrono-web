@@ -193,11 +193,15 @@
 
   <form-activity-cardio
     :mode="activityModal.open?.includes('cardio') ? activityModal.open.split(':')[1] as 'create' | 'update' : undefined"
+    :data="activityModal.data"
+    :activities="data"
     @on-close="onCloseActivityModal"
   />
 
   <form-activity-mobility
     :mode="activityModal.open?.includes('mobility') ? activityModal.open.split(':')[1] as 'create' | 'update' : undefined"
+    :data="activityModal.data"
+    :activities="data"
     @on-close="onCloseActivityModal"
   />
 </template>
@@ -266,7 +270,7 @@ const { data, pending, error, refresh } = await useAsyncData(
     watch: [startDate, endDate],
     server: false,
     transform: (activities) => {
-      if (!activities) return;
+      if (!activities) return null;
       const dates = getDatesInMonthYear(
         selectedMonth.value.getMonth(),
         selectedMonth.value.getFullYear()
@@ -396,9 +400,9 @@ const [
 
 const updateMap = {
   default: onOpenActivityDefaultUpdate,
-  cardio: onOpenActivityCardioUpdate,
-  mobility: onOpenActivityMobilityUpdate,
-  workout: onOpenActivityWorkoutUpdate
+  Cardio: onOpenActivityCardioUpdate,
+  Mobility: onOpenActivityMobilityUpdate,
+  Exercise: onOpenActivityWorkoutUpdate
 };
 
 // MOUSE EVENTS

@@ -3,7 +3,7 @@
     <span class="flex flex-col w-full">
       <form-input-text
         :id="`${scope}-exercise-${index}`"
-        v-model="data.title"
+        v-model:value="data.title"
         label="Exercise"
         placeholder="Exercise"
       >
@@ -15,17 +15,14 @@
         </template>
       </form-input-text>
     </span>
-    <span
-      v-if="index === 0"
-      class="flex items-center w-[18px] ml-2 mr-1 font-bold text-xs"
-    />
     <button
-      v-if="index > 0"
+      v-if="!hideDelete"
       class="flex items-center mt-[32px] ml-1 mb-1 px-1 font-bold rounded-[3px] text-xs focus:outline focus:outline-slate-500 focus:outline-1"
       @click="$emit('removeExercise', index)"
     >
       <close-icon :size="18" class="text-slate-500" />
     </button>
+    <span v-if="hideDelete" class="ml-1 px-1 w-[18px]" />
   </div>
 
   <div
@@ -62,58 +59,11 @@
       <span class="mr-1.5">Add</span>
     </button>
   </div>
-  <div
-    v-if="showAddExercise"
-    class="flex items-center self-start ml-1.5 mt-4 my-2.5"
-  >
-    <button
-      class="relative p-0.5 mr-1.5 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
-      @click="$emit('addExercise', ExerciseVariant.STRENGTH)"
-    >
-      <strength-icon
-        :size="16"
-        class="flex justify-center items-center w-7 h-7 bg-slate-700 text-slate-50 rounded-[3px]"
-      />
-      <add-icon
-        :size="12"
-        class="absolute z-10 top-0 right-0 flex justify-center items-center w-3 h-3 bg-slate-500 text-white border-[0.5px] border-slate-700 rounded-[2px]"
-      />
-    </button>
-    <button
-      class="relative p-0.5 mr-1.5 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
-      @click="$emit('addExercise', ExerciseVariant.CARDIO)"
-    >
-      <cardio-icon
-        :size="18"
-        class="flex justify-center items-center w-7 h-7 bg-slate-700 text-slate-50 rounded-[3px]"
-      />
-      <add-icon
-        :size="12"
-        class="absolute z-10 top-0 right-0 flex justify-center items-center w-3 h-3 bg-slate-500 text-white border-[0.5px] border-slate-700 rounded-[2px]"
-      />
-    </button>
-    <button
-      class="relative p-0.5 mr-1.5 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
-      @click="$emit('addExercise', ExerciseVariant.MOBILITY)"
-    >
-      <mobility-icon
-        :size="20"
-        class="flex justify-center items-center w-7 h-7 bg-slate-700 text-slate-50 rounded-[3px]"
-      />
-      <add-icon
-        :size="12"
-        class="absolute z-10 top-0 right-0 flex justify-center items-center w-3 h-3 bg-slate-500 text-white border-[0.5px] border-slate-700 rounded-[2px]"
-      />
-    </button>
-    <span class="ml-1.5 text-sm text-slate-700">Add another exercise</span>
-  </div>
 </template>
 
 <script setup lang="ts">
 import AddIcon from 'vue-material-design-icons/Plus.vue';
 import CloseIcon from 'vue-material-design-icons/Close.vue';
-import StrengthIcon from 'vue-material-design-icons/Dumbbell.vue';
-import CardioIcon from 'vue-material-design-icons/Run.vue';
 import MobilityIcon from 'vue-material-design-icons/Meditation.vue';
 import { ExerciseVariant, type ExerciseMobility } from '~/types/activity';
 
@@ -122,6 +72,7 @@ const props = defineProps<{
   data: ExerciseMobility;
   showAddExercise?: boolean;
   scope?: string;
+  hideDelete?: boolean;
 }>();
 
 defineEmits<{

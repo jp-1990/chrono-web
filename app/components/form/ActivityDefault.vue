@@ -102,8 +102,6 @@ import { DEFAULT_COLOR } from '~/constants/colors';
 import { useUserState } from '#imports';
 import type { DerivedActivities } from '~/utils/activity';
 
-const { user } = useUserState();
-
 const props = defineProps<{
   mode: 'create' | 'update' | undefined;
   data?: FormattedActivity;
@@ -117,18 +115,27 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const mode = computed(() => props.mode);
-const activity = computed(() => props.data);
+watch(props, (props) => {
+  if (!!props.mode) {
+    titleRef.value?.focus();
+  }
+});
 
-const scope = 'form-activity-default';
+const { user } = useUserState();
 
 const titleRef = ref<HTMLElement | null>(null);
+
+const mode = computed(() => props.mode);
+const activity = computed(() => props.data);
+const derivedActivities = computed(() => props.activities);
+
+const scope = 'form-activity-default';
 
 const { formState, formStateValid, resetFormState, onDelete, onSubmit } =
   useActivityForm({
     activity,
     mode,
-    derivedActivities: props.activities,
+    derivedActivities,
     variant: ActivityVariant.DEFAULT,
     onClose
   });

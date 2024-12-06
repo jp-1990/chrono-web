@@ -74,11 +74,11 @@ export function formatActivity(activity: Activity, tzOffset: number = 0) {
 }
 
 export function formatActivities(dates: Date[], activities: Activity[] | null) {
-  const structure: FormattedActivities = {};
+  const structure: any = {};
 
   for (const date of dates) {
     structure[getDateId(date)] = {
-      ids: [],
+      ids: ref([]),
       items: {}
     };
   }
@@ -89,7 +89,7 @@ export function formatActivities(dates: Date[], activities: Activity[] | null) {
 
     for (const item of formattedActivity) {
       if (!structure[item.dateId]) continue;
-      structure[item.dateId].ids.push(item.id);
+      structure[item.dateId].ids.value.push(item.id);
       structure[item.dateId].items[item.id] = item;
     }
   }
@@ -109,7 +109,7 @@ export class DerivedActivities {
 
     for (const date of dates) {
       this.activities[getDateId(date)] = {
-        ids: [],
+        ids: ref([]) as any,
         items: {}
       };
     }
@@ -120,8 +120,8 @@ export class DerivedActivities {
     }
   }
 
-  createActivity(activity: PostActivityArgs, tempId: string) {
-    if (!activity.id) activity.id = tempId;
+  createActivity(activity: PostActivityArgs, tempId?: string) {
+    if (!activity.id && tempId) activity.id = tempId;
     this.#internal_create(activity as Activity, tempId);
   }
 
@@ -132,22 +132,24 @@ export class DerivedActivities {
     for (const dateId of dateIds) {
       const hasTarget = this.activities[dateId].items[tempId] !== undefined;
       if (hasTarget) {
-        this.activities[dateId].ids = this.activities[dateId].ids.filter(
-          (id_) => id_ !== tempId
-        );
-        this.activities[dateId].ids.push(id);
+        (this as any).activities[dateId].ids.value = (this as any).activities[
+          dateId
+        ].ids.value.filter((id_: string) => id_ !== tempId);
+        (this as any).activities[dateId].ids.value.push(id);
 
         this.activities[dateId].items[id] =
           this.activities[dateId].items[tempId];
         delete this.activities[dateId].items[tempId];
         this.activities[dateId].items[id].id = id;
 
-        this.activities[dateId].ids.sort((a, b) => {
-          const itemA = this.activities[dateId].items[a];
-          const itemB = this.activities[dateId].items[b];
+        (this as any).activities[dateId].ids.value.sort(
+          (a: string, b: string) => {
+            const itemA = this.activities[dateId].items[a];
+            const itemB = this.activities[dateId].items[b];
 
-          return itemA.startPercentage - itemB.startPercentage;
-        });
+            return itemA.startPercentage - itemB.startPercentage;
+          }
+        );
       }
     }
 
@@ -170,17 +172,24 @@ export class DerivedActivities {
 
     for (const part of formattedActivity) {
       if (!this.activities[part.dateId]) continue;
-      this.activities[part.dateId].ids.push(activity.id);
+      const newActivityIds = [
+        ...(this as any).activities[part.dateId].ids.value
+      ];
+      newActivityIds.push(activity.id);
+
+      (this as any).activities[part.dateId].ids.value = newActivityIds;
       this.activities[part.dateId].items[activity.id] = part;
       this.#idToDateId[activity.id] ??= [];
       this.#idToDateId[activity.id].push(part.dateId);
 
-      this.activities[part.dateId].ids.sort((a, b) => {
-        const itemA = this.activities[part.dateId].items[a];
-        const itemB = this.activities[part.dateId].items[b];
+      (this as any).activities[part.dateId].ids.value.sort(
+        (a: string, b: string) => {
+          const itemA = this.activities[part.dateId].items[a];
+          const itemB = this.activities[part.dateId].items[b];
 
-        return itemA.startPercentage - itemB.startPercentage;
-      });
+          return itemA.startPercentage - itemB.startPercentage;
+        }
+      );
     }
   }
 
@@ -191,9 +200,9 @@ export class DerivedActivities {
     for (const dateId of dateIds) {
       const hasTarget = this.activities[dateId].items[id] !== undefined;
       if (hasTarget) {
-        this.activities[dateId].ids = this.activities[dateId].ids.filter(
-          (id_) => id_ !== id
-        );
+        (this as any).activities[dateId].ids.value = (this as any).activities[
+          dateId
+        ].ids.value.filter((id_: string) => id_ !== id);
         delete this.activities[dateId].items[id];
       }
     }

@@ -1,12 +1,14 @@
 import type { DerivedActivities } from '#build/imports';
 import { add } from 'date-fns';
+import type { UnwrapRef } from 'vue';
 import { DEFAULT_COLOR } from '~/constants/colors';
-import type {
-  Activity,
-  ActivityData,
+import {
   ActivityVariant,
-  PatchActivityArgs,
-  PostActivityArgs
+  ExerciseVariant,
+  type Activity,
+  type ActivityData,
+  type PatchActivityArgs,
+  type PostActivityArgs
 } from '~/types/activity';
 
 type FormStateData = {
@@ -48,41 +50,117 @@ function getTimezoneOffset() {
   return new Date().getTimezoneOffset();
 }
 
-function validatePayload<T extends 'create' | 'update'>(
+function unrefFormState<T extends Ref<any>>(input: T): UnwrapRef<T> {
+  const output: any = { data: {}, valid: {} };
+
+  const primativeKeys = [
+    'id',
+    'title',
+    'variant',
+    'group',
+    'notes',
+    'start',
+    'end',
+    'timezone',
+    'color'
+  ];
+
+  const objectKeys = ['data'];
+
+  for (const key of primativeKeys) {
+    const value = input.value.data[key];
+    output.data[key] = value;
+  }
+
+  for (const key of objectKeys) {
+    const value = toRaw(input.value.data)[key];
+    if (value?.exercise) {
+      output.data.data ??= {};
+      output.data.data.exercise = structuredClone(value.exercise);
+    }
+  }
+
+  for (const key of Object.keys(input.value.valid)) {
+    const value = input.value.valid[key];
+    output.valid[key] = value;
+  }
+
+  return output;
+}
+
+function preparePayload<T extends 'create' | 'update'>(
   mode: T,
   payload: FormState,
   userId: string
 ) {
-  const formStateValid = !Object.values(payload.valid).some((e) => e === false);
-  if (!formStateValid) {
-    logging.error({
-      message: '[ActivityDefault:onSubmit]: response does not match payload'
-    });
-    return;
+  const output = payload.data as any;
+  output.start = new Date(output.start).toISOString().replace('.000Z', 'Z');
+  output.end = new Date(output.end).toISOString().replace('.000Z', 'Z');
+  output.createdAt = new Date().toISOString();
+  output.user = userId;
+  output.v = 1;
+
+  if (payload.data.data?.exercise) {
+    const preparedExercises: any[] = [];
+
+    for (const exercise of payload.data.data.exercise) {
+      const preparedExercise = { ...exercise } as any;
+      if (preparedExercise.duration) {
+        preparedExercise.duration = parseInt(preparedExercise.duration, 10);
+      }
+      if (preparedExercise.distance) {
+        preparedExercise.distance = parseInt(preparedExercise.distance, 10);
+      }
+      if (preparedExercise.splits) {
+        preparedExercise.splits = preparedExercise.splits.map(
+          (e: any, i: number) => {
+            return {
+              idx: i,
+              distance: parseInt(e.distance, 10),
+              duration: parseInt(e.duration, 10)
+            };
+          }
+        );
+      }
+      if (preparedExercise.sets) {
+        preparedExercise.sets = preparedExercise.sets.map(
+          (e: any, i: number) => {
+            return {
+              idx: i,
+              reps: parseInt(e.reps, 10),
+              weight: parseInt(e.weight, 10),
+              rest: parseInt(e.rest, 10),
+              duration: parseInt(e.duration, 10)
+            };
+          }
+        );
+      }
+
+      preparedExercises.push(preparedExercise);
+    }
+
+    output.data.exercise = preparedExercises;
   }
 
   switch (mode) {
     case 'create': {
-      const output = payload.data as any as PostActivityArgs;
-      output.start = new Date(output.start).toISOString().replace('.000Z', 'Z');
-      output.end = new Date(output.end).toISOString().replace('.000Z', 'Z');
-      output.createdAt = new Date().toISOString();
-      output.user = userId;
-      output.v = 1;
-
-      return output;
+      return output as PostActivityArgs;
     }
     case 'update': {
-      const output = payload.data as any as PatchActivityArgs;
-      output.start = new Date(output.start).toISOString().replace('.000Z', 'Z');
-      output.end = new Date(output.end).toISOString().replace('.000Z', 'Z');
-      output.createdAt = new Date().toISOString();
-      output.user = userId;
-      output.v = 1;
-
-      return output;
+      return output as PatchActivityArgs;
     }
   }
+}
+
+function validatePayload(payload: FormState) {
+  const formStateValid = !Object.values(payload.valid).some((e) => e === false);
+  if (!formStateValid) {
+    logging.error({
+      message: '[ActivityDefault:onSubmit]: invalid form state'
+    });
+    return false;
+  }
+  return true;
 }
 
 // todo: how do we handle this?
@@ -105,12 +183,39 @@ function detectDrift(a: Object, b: Object) {
   return drift;
 }
 
+export const getExerciseDefaultValue = {
+  [ExerciseVariant.STRENGTH]: function () {
+    return {
+      variant: ExerciseVariant.STRENGTH,
+      title: undefined,
+      sets: [{ idx: 0, reps: undefined, weight: undefined }]
+    };
+  },
+  [ExerciseVariant.MOBILITY]: function () {
+    return {
+      variant: ExerciseVariant.MOBILITY,
+      title: undefined,
+      sets: [{ idx: 0, duration: undefined }]
+    };
+  },
+  [ExerciseVariant.CARDIO]: function () {
+    return {
+      variant: ExerciseVariant.CARDIO,
+      title: undefined,
+      duration: undefined,
+      distance: undefined,
+      splits: [{ idx: 0, duration: undefined, distance: undefined }]
+    };
+  }
+} as const;
+
 type UseActivityFormArgs = {
   activity: ComputedRef<Activity | undefined>;
-  derivedActivities: DerivedActivities | null | undefined;
+  derivedActivities: ComputedRef<DerivedActivities | null | undefined>;
   mode: ComputedRef<'create' | 'update' | undefined>;
   onClose: (event: MouseEvent | KeyboardEvent) => void;
   variant: ActivityVariant;
+  exerciseVariant?: ExerciseVariant;
 };
 
 export function useActivityForm({
@@ -118,12 +223,12 @@ export function useActivityForm({
   derivedActivities,
   mode,
   onClose,
-  variant
+  variant,
+  exerciseVariant
 }: UseActivityFormArgs) {
   const { user, updateUserActivityColor } = useUserState();
 
   watch(activity, (activity) => {
-    resetFormState();
     if (activity && mode.value !== undefined) {
       formState.value.data.id = activity.id;
       formState.value.data.title = activity.title;
@@ -139,6 +244,17 @@ export function useActivityForm({
       formState.value.data.end = applyTZOffset(new Date(activity.end))
         .toISOString()
         .slice(0, -8);
+    }
+  });
+
+  watch(mode, (mode) => {
+    resetFormState();
+    if (mode === 'create' || mode === 'update') {
+      if (exerciseVariant && !formState.value.data.data?.exercise?.length) {
+        formState.value.data.data!.exercise = [
+          getExerciseDefaultValue[exerciseVariant]() as any
+        ];
+      }
     }
   });
 
@@ -164,6 +280,14 @@ export function useActivityForm({
     }
   });
 
+  function setExerciseDefaultState() {
+    formState.value.data.color = user.value.activities['Exercise'];
+    formState.value.data.title = exerciseVariant ?? 'Exercise';
+    formState.value.data.variant = ActivityVariant.EXERCISE;
+    formState.value.data.group = 'Exercise';
+    formState.value.data.data = { exercise: [] };
+  }
+
   function resetFormState() {
     formState.value.data.id = undefined;
     formState.value.data.title = undefined;
@@ -175,6 +299,16 @@ export function useActivityForm({
     formState.value.data.timezone = getTimezoneOffset();
     formState.value.data.color = DEFAULT_COLOR;
     formState.value.data.data = undefined;
+
+    if (variant === ActivityVariant.EXERCISE) {
+      setExerciseDefaultState();
+    }
+
+    formState.value.valid.title = undefined;
+    formState.value.valid.group = undefined;
+    formState.value.valid.notes = undefined;
+    formState.value.valid.start = undefined;
+    formState.value.valid.end = undefined;
   }
 
   const formStateValid = computed(() => {
@@ -182,53 +316,54 @@ export function useActivityForm({
   });
 
   async function onSubmit(event: MouseEvent | KeyboardEvent) {
-    // todo: validate & prepare payload
-    const unrefedData = {
-      data: { ...unref(formState).data },
-      valid: { ...unref(formState).valid }
-    };
+    // todo: validate payload
+    const unrefedData = unrefFormState(formState);
 
     switch (mode.value) {
       case 'create': {
-        const validPayload = validatePayload(
+        const validPayload = validatePayload(unrefedData);
+        if (!validPayload) return;
+
+        const preparedPayload = preparePayload(
           'create',
           unrefedData,
           user.value.id
         );
-        if (!validPayload) return;
+        if (!preparedPayload) return;
 
-        const tempId = `temp-${validPayload.start}${validPayload.end}`;
-        validPayload.id = tempId;
+        const tempId = `temp-${preparedPayload.start}${preparedPayload.end}`;
+        preparedPayload.id = tempId;
 
-        derivedActivities?.createActivity(validPayload, tempId);
-        const prevColor = user.value.activities[validPayload.title];
-        updateUserActivityColor(validPayload.title, validPayload.color);
+        derivedActivities.value?.createActivity(preparedPayload, tempId);
+        const prevColor = user.value.activities[preparedPayload.title];
+        updateUserActivityColor(preparedPayload.title, preparedPayload.color);
 
-        const response = await apiRequest(postActivity, validPayload);
+        apiRequest(postActivity, preparedPayload).then((response) => {
+          if (response.data) {
+            // todo: what do we do if there is drift?
+            let dataDrift = false;
+            if (navigator.onLine) {
+              dataDrift = detectDrift(response.data, preparedPayload);
+            }
+            if (!navigator.onLine) {
+              response.data.id = `${response.data.id}-offline`;
+            }
 
-        if (response.data) {
-          // todo: what do we do if there is drift?
-          let dataDrift = false;
-          if (navigator.onLine) {
-            dataDrift = detectDrift(response.data, validPayload);
+            if (!dataDrift) {
+              derivedActivities.value?.deleteActivity(tempId);
+              derivedActivities.value?.createActivity(response.data as any);
+              db.activities.delete({ id: tempId });
+              db.activities.add(response.data);
+            }
           }
-          if (!navigator.onLine) {
-            response.data.id = `${response.data.id}-offline`;
-          }
 
-          if (!dataDrift) {
-            derivedActivities?.replaceTempIdWithId(response.data.id, tempId);
+          // rollback local changes
+          if (response.error) {
+            derivedActivities.value?.deleteActivity(tempId);
             db.activities.delete({ id: tempId });
-            db.activities.add(response.data);
+            updateUserActivityColor(preparedPayload.title, prevColor);
           }
-        }
-
-        // rollback local changes
-        if (response.error) {
-          derivedActivities?.deleteActivity(tempId);
-          db.activities.delete({ id: tempId });
-          updateUserActivityColor(validPayload.title, prevColor);
-        }
+        });
 
         break;
       }
@@ -239,36 +374,38 @@ export function useActivityForm({
           id: unrefedData.data.id
         });
 
-        const validPayload = validatePayload(
+        const validPayload = validatePayload(unrefedData);
+        if (!validPayload) return;
+
+        const preparedPayload = preparePayload(
           'update',
           unrefedData,
           user.value.id
         );
-        if (!validPayload) return;
+        if (!preparedPayload) return;
 
-        derivedActivities?.updateActivity(validPayload);
-        const prevColor = user.value.activities[validPayload.title];
-        updateUserActivityColor(validPayload.title, validPayload.color);
+        derivedActivities.value?.updateActivity(preparedPayload);
+        const prevColor = user.value.activities[preparedPayload.title];
+        updateUserActivityColor(preparedPayload.title, preparedPayload.color);
 
-        const response = await apiRequest(patchActivity, validPayload);
+        apiRequest(patchActivity, preparedPayload).then((response) => {
+          // todo: what do we do if there is drift?
+          // if (response.data && navigator.onLine) {
+          //   // confirm that the response from the server matches what we sent
+          //   const dataDrift = detectDrift(response.data, validPayload);
+          // }
 
-        // todo: what do we do if there is drift?
-        // if (response.data && navigator.onLine) {
-        //   // confirm that the response from the server matches what we sent
-        //   const dataDrift = detectDrift(response.data, validPayload);
-        // }
-
-        // rollback local changes
-        if (response.error) {
-          derivedActivities?.updateActivity(prevValues as any);
-          db.activities.put(prevValues);
-          updateUserActivityColor(validPayload.title, prevColor);
-        }
+          // rollback local changes
+          if (response.error) {
+            derivedActivities.value?.updateActivity(prevValues as any);
+            db.activities.put(prevValues);
+            updateUserActivityColor(preparedPayload.title, prevColor);
+          }
+        });
 
         break;
       }
     }
-
     onClose(event);
   }
 
@@ -279,17 +416,20 @@ export function useActivityForm({
       id: formState.value.data.id
     });
 
-    derivedActivities?.deleteActivity(formState.value.data.id);
+    derivedActivities.value?.deleteActivity(formState.value.data.id);
 
-    const response = await apiRequest(deleteActivity, {
+    apiRequest(deleteActivity, {
       id: formState.value.data.id
+    }).then((response) => {
+      // rollback local changes
+      if (response.error) {
+        derivedActivities.value?.createActivity(
+          prevValues as any,
+          prevValues.id
+        );
+        db.activities.add(prevValues);
+      }
     });
-
-    // rollback local changes
-    if (response.error) {
-      derivedActivities?.createActivity(prevValues as any, prevValues.id);
-      db.activities.add(prevValues);
-    }
 
     onClose(event);
   }
