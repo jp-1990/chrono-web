@@ -2,6 +2,11 @@
 # docker build -t jp/chrono-server .
 # docker run -p 8000:8000 --env-file ./.env -t jp/chrono-server
 
+# get projectid: gcloud config get-value project
+# artifact repo: us-east1-docker.pkg.dev/chrono-439913/chrono-docker
+# build cmd: gcloud builds submit --region=europe-west1 --tag europe-west1-docker.pkg.dev/chrono-439913/chrono-docker/chrono-image:tag1 --timeout 2000
+# cached with kaniko: https://cloud.google.com/build/docs/optimize-builds/kaniko-cache#docker-build
+
 # rust = official docker rust image
 # gcr.io/distroless/cc-debian12
 
