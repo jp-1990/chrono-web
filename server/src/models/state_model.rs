@@ -57,8 +57,8 @@ impl EnvironmentVariables {
                 Err(_) => panic!("Fatal: ensure HMAC_KEY env var is set"),
             },
             port: match dotenv::var("PORT") {
-                Ok(port) => port.parse().unwrap_or(8000),
-                _ => 8000,
+                Ok(port) => port.parse().unwrap_or(8080),
+                _ => 8080,
             },
         }
     }
