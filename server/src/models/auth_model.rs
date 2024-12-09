@@ -89,14 +89,24 @@ impl AccessToken {
 
 impl From<&AccessToken> for Cookie<'_> {
     fn from(value: &AccessToken) -> Self {
-        Cookie::build(("access", value.token.clone()))
+        let env = match env::var("ENVIRONMENT") {
+            Ok(v) => v,
+            Err(_) => "dev".to_string(),
+        };
+
+        let mut cookie = Cookie::build(("access", value.token.clone()))
             // .domain("localhost")
             .path("/")
             .expires(OffsetDateTime::from_unix_timestamp(value.claims.exp as i64).unwrap())
-            .same_site(SameSite::Lax)
-            .secure(false) // todo:: in prod = true
-            .http_only(true)
-            .build()
+            .http_only(true);
+
+        cookie = match env.as_str() {
+            "dev" => cookie.same_site(SameSite::Lax).secure(false),
+            "prod" => cookie.same_site(SameSite::None).secure(true),
+            _ => cookie,
+        };
+
+        cookie.build()
     }
 }
 
@@ -204,14 +214,24 @@ impl RefreshToken {
 
 impl From<&RefreshToken> for Cookie<'_> {
     fn from(value: &RefreshToken) -> Self {
-        Cookie::build(("refresh", value.token.clone()))
+        let env = match env::var("ENVIRONMENT") {
+            Ok(v) => v,
+            Err(_) => "dev".to_string(),
+        };
+
+        let mut cookie = Cookie::build(("refresh", value.token.clone()))
             // .domain("localhost")
             .path("/")
             .expires(OffsetDateTime::from_unix_timestamp(value.claims.exp as i64).unwrap())
-            .same_site(SameSite::Lax)
-            .secure(false) // todo:: in prod = true
-            .http_only(true)
-            .build()
+            .http_only(true);
+
+        cookie = match env.as_str() {
+            "dev" => cookie.same_site(SameSite::Lax).secure(false),
+            "prod" => cookie.same_site(SameSite::None).secure(true),
+            _ => cookie,
+        };
+
+        cookie.build()
     }
 }
 

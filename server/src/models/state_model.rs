@@ -21,6 +21,7 @@ pub struct EnvironmentVariables {
     pub google_token_aud: Cow<'static, str>,
     pub hmac_key: Cow<'static, str>,
     pub port: u16,
+    pub env: String,
 }
 
 impl EnvironmentVariables {
@@ -59,6 +60,10 @@ impl EnvironmentVariables {
             port: match dotenv::var("PORT") {
                 Ok(port) => port.parse().unwrap_or(8080),
                 _ => 8080,
+            },
+            env: match dotenv::var("ENVIRONMENT") {
+                Ok(env) => env.parse().unwrap_or("dev".to_string()),
+                _ => "dev".to_string(),
             },
         }
     }
