@@ -103,24 +103,11 @@ const onSubmit = async (fields: {
     return;
   }
 
-  // todo: use apirequest
-  // todo: refactor
-  const response = await fetch('http://localhost:8000/api/v1/register', {
-    credentials: 'include',
-    method: 'Post',
-    headers: {
-      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
-      'Content-Type': 'application/json',
-      'access-control-request-headers': 'content-type'
-      //   'Access-Control-Request-Headers': 'application/json'
-      //   authorization: `${window.localStorage.getItem('token')}`
-    },
-    body: JSON.stringify({
-      email: fields.email,
-      pass: fields.password,
-      givenName: fields.givenName,
-      familyName: fields.familyName
-    })
+  const response = await postRegister({
+    email: fields.email,
+    password: fields.password,
+    givenName: fields.givenName,
+    familyName: fields.familyName
   });
 
   if (response) {
@@ -129,6 +116,7 @@ const onSubmit = async (fields: {
     const { user } = useUserState();
     user.value = res;
 
+    // await db.init();
     db.users.add(res);
 
     await navigateTo('/timeline');

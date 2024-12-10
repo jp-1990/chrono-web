@@ -111,9 +111,9 @@ const errors = ref<string[]>([]);
 async function handleGoogleLoginSuccess(response: CredentialResponse) {
   // set token to auth header: bearer <token>
   const res = await postOAuth(response);
-  console.log('response', res);
 
   const userRes = await res.json();
+  userRes._refreshCheck = Date.now() + 60 * 60 * 1000;
 
   const { user } = useUserState();
   user.value = userRes;
@@ -142,6 +142,7 @@ async function handleEmailLogin(fields: { email: string; password: string }) {
 
   if (response) {
     const userRes = await response.json();
+    userRes._refreshCheck = Date.now() + 60 * 60 * 1000;
 
     const { user } = useUserState();
     user.value = userRes;

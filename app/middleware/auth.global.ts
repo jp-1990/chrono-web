@@ -1,17 +1,14 @@
 import { AUTH_ROUTES } from '~/constants/routes';
 
-export default defineNuxtRouteMiddleware((to, from) => {
-  // skip middleware on server
-  if (process.server) return;
-
+export default defineNuxtRouteMiddleware(async (to, from) => {
   if (AUTH_ROUTES.includes(to.path)) return;
 
-  const hasRefreshCheck = document.cookie
-    .split(';')
-    .some((c) => c.trim().includes('refresh-check='));
+  const now = Date.now();
+  const { id, refreshCheck } = await db.users.refreshCheck();
 
-  if (!hasRefreshCheck) {
+  if ((refreshCheck ?? 0) < now) {
     if (AUTH_ROUTES.includes(from.path)) return abortNavigation();
+    db.users.delete(id);
     return navigateTo('/login');
   }
 });

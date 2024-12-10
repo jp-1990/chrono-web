@@ -2,6 +2,11 @@ import type { User } from '~/types/user';
 
 export const db = await new IndexedDB().init();
 
+// export function useIndexedDB() {
+//   const db = new IndexedDB().init();
+//   return db;
+// }
+
 export function useUserState() {
   const user = useState<User>('userState', () => {
     return {

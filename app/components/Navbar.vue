@@ -108,13 +108,13 @@ const mobileRoutes = [
     url: '/timeline',
     text: 'Timeline',
     icon: Timeline
-  },
-  {
-    id: 1,
-    url: '/test',
-    text: 'Test',
-    icon: Dashboard
   }
+  // {
+  //   id: 1,
+  //   url: '/test',
+  //   text: 'Test',
+  //   icon: Dashboard
+  // }
 ];
 
 const routes = [
@@ -123,13 +123,13 @@ const routes = [
     url: '/timeline',
     text: 'Timeline',
     icon: Timeline
-  },
-  {
-    id: 1,
-    url: '/test',
-    text: 'Test',
-    icon: Dashboard
   }
+  // {
+  //   id: 1,
+  //   url: '/test',
+  //   text: 'Test',
+  //   icon: Dashboard
+  // }
   // {
   //   id: 1,
   //   url: `/company`,
@@ -179,20 +179,7 @@ const userMenu = ref(false);
 const toggleUserMenu = () => (userMenu.value = !userMenu.value);
 
 async function logout() {
-  // todo: logout
-  // todo: refactor
-  // todo: handle response
-  const response = await fetch('http://localhost:8000/api/v1/logout', {
-    credentials: 'include',
-    method: 'Post',
-    headers: {
-      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
-      'Content-Type': 'application/json',
-      'access-control-request-headers': 'content-type'
-      //   'Access-Control-Request-Headers': 'application/json'
-      //   authorization: `${window.localStorage.getItem('token')}`
-    }
-  });
+  await postLogout();
 
   db.users.delete(user.value.id);
 

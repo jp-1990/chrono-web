@@ -2,6 +2,7 @@ import {
   type LoginArgs,
   type LoginRes,
   type PostLoginParams,
+  type PostRegisterParams,
   type SignupArgs,
   type SignupRes,
   type User
@@ -19,7 +20,7 @@ export async function postOAuth(credentialResponse: CredentialResponse) {
     method: 'POST',
     credentials: 'include',
     headers: {
-      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+      // 'Access-Control-Allow-Origin': 'where?/api/v1'
       'Content-Type': 'application/json',
       'access-control-request-headers': 'content-type',
       //   'Access-Control-Request-Headers': 'application/json'
@@ -37,7 +38,7 @@ export async function postLogin(params: PostLoginParams) {
     method: 'POST',
     credentials: 'include',
     headers: {
-      // 'Access-Control-Allow-Origin': 'http://localhost:8000/api/v1'
+      // 'Access-Control-Allow-Origin': 'where?/api/v1'
       'Content-Type': 'application/json',
       'access-control-request-headers': 'content-type'
       //   'Access-Control-Request-Headers': 'application/json'
@@ -49,6 +50,46 @@ export async function postLogin(params: PostLoginParams) {
   });
 
   const response: TypedResponse<User> = await fetch(request);
+  return response;
+}
+
+export async function postLogout() {
+  const url = new URL(`${API_URL}/v1/logout`);
+  const request = new Request(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      // 'Access-Control-Allow-Origin': 'where?/api/v1'
+      'Content-Type': 'application/json',
+      'access-control-request-headers': 'content-type'
+      //   'Access-Control-Request-Headers': 'application/json'
+    }
+  });
+
+  const response = await fetch(request);
+  return response;
+}
+
+export async function postRegister(params: PostRegisterParams) {
+  const url = new URL(`${API_URL}/v1/register`);
+  const request = new Request(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      // 'Access-Control-Allow-Origin': 'where?/api/v1'
+      'Content-Type': 'application/json',
+      'access-control-request-headers': 'content-type'
+      //   'Access-Control-Request-Headers': 'application/json'
+    },
+    body: JSON.stringify({
+      email: params.email,
+      pass: params.password,
+      givenName: params.givenName,
+      familyName: params.familyName
+    })
+  });
+
+  const response = await fetch(request);
   return response;
 }
 

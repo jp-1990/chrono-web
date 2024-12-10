@@ -163,6 +163,10 @@ export class IndexedDB {
     },
     findById: async (value: User['id']) => {
       return await this.#findById('users', value);
+    },
+    refreshCheck: async () => {
+      const res = await this.#getAll('users');
+      return { id: res[0]?.id ?? '', refreshCheck: res[0]?._refreshCheck ?? 0 };
     }
   };
 

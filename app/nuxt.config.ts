@@ -6,10 +6,20 @@ const themeColor = '#1E293B';
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   ssr: false,
+  vite: {
+    build: {
+      target: 'esnext'
+    }
+  },
   typescript: {
     strict: true,
     shim: false
   },
+  // hooks: {
+  //   'prerender:routes'({ routes }) {
+  //     routes.clear();
+  //   }
+  // },
   modules: [
     '@nuxtjs/tailwindcss',
     '@formkit/nuxt',
@@ -90,13 +100,16 @@ export default defineNuxtConfig({
   build: {
     transpile: ['@vuepic/vue-datepicker']
   },
+
   googleSignIn: {
     clientId: process.env.GOOGLE_CLIENT_ID
   },
+
   fonts: {
     defaults: {
       weights: [300, 400, 500, 600, 700]
     }
   },
-  compatibilityDate: '2024-11-03'
+
+  compatibilityDate: '2024-12-10'
 });

@@ -1,15 +1,15 @@
 import { AUTH_ROUTES } from '~/constants/routes';
 
-const authCheck = () => {
+const authCheck = async () => {
   const router = useRouter();
   const route = useRoute();
 
-  const hasRefreshCheck = document.cookie
-    .split(';')
-    .some((c) => c.trim().includes('refresh-check='));
+  const now = Date.now();
+  const { id, refreshCheck } = await db.users.refreshCheck();
 
-  if (!hasRefreshCheck) {
+  if ((refreshCheck ?? 0) < now) {
     if (AUTH_ROUTES.includes(route.path ?? '')) return;
+    db.users.delete(id);
     router.push({ path: '/login' });
   }
 };
