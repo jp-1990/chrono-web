@@ -4,8 +4,8 @@
     @keydown.tab="handleTab"
     @keyup.escape="isOpen && $emit('onClose', $event)"
     tabindex="0"
-    :class="[isOpen ? '' : 'translate-x-96']"
-    class="fixed z-40 w-screen max-w-96 top-0 right-0 flex flex-col h-screen overflow-hidden bg-slate-50 duration-200 overflow-y-auto"
+    :class="[isOpen ? '' : 'translate-x-full md:translate-x-96']"
+    class="fixed z-40 w-screen md:w-96 top-0 right-0 flex flex-col h-screen overflow-hidden bg-slate-50 duration-200 overflow-y-auto"
   >
     <!-- title -->
     <header
@@ -113,8 +113,16 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'onSubmit', v: MouseEvent): void;
   (e: 'onExtra', v: MouseEvent): void;
-  (e: 'onClose', v: MouseEvent | KeyboardEvent): void;
+  (e: 'onClose', v: MouseEvent | KeyboardEvent | undefined): void;
 }>();
+
+const router = useRouter();
+router.beforeEach((_args) => {
+  if (props.isOpen) {
+    emit('onClose', undefined);
+    return false;
+  }
+});
 
 const modalEl = ref<HTMLElement | null>(null);
 const focusableElements = ref<HTMLInputElement[] | undefined>(undefined);
@@ -137,13 +145,6 @@ const handleTab = (event: KeyboardEvent) => {
   }
 };
 
-function onCloseListener(e: KeyboardEvent) {
-  if (e.key === 'Escape' && props.isOpen) {
-    e.preventDefault();
-    emit('onClose', e);
-  }
-}
-
 watch(props, (props) => {
   if (props.isOpen) {
     focusableElements.value = modalEl.value
@@ -155,5 +156,47 @@ watch(props, (props) => {
   }
 });
 
-useEventListener('keydown', onCloseListener);
+function onCloseListener(e: KeyboardEvent) {
+  if (e.key === 'Escape' && props.isOpen) {
+    e.preventDefault();
+    emit('onClose', e);
+  }
+}
+
+const startX = ref<number | undefined>(undefined);
+const startFocusType = ref<string | undefined>(undefined);
+
+function onTouchStartListener(e: TouchEvent) {
+  e.preventDefault();
+
+  startX.value = e.changedTouches[0].pageX;
+  startFocusType.value = (document.activeElement as any)?.type;
+}
+
+function onTouchMoveListener(e: TouchEvent) {
+  e.preventDefault();
+
+  const closeThreshold = window.innerWidth / 3;
+  const currentX = e.changedTouches[0].pageX;
+  if (currentX - closeThreshold > 0) {
+    let keyboardInputs = [
+      'text',
+      'password',
+      'number',
+      'email',
+      'tel',
+      'url',
+      'search'
+    ];
+    if (startFocusType.value && keyboardInputs.includes(startFocusType.value)) {
+      hideKeyboard();
+    }
+
+    emit('onClose', undefined);
+  }
+}
+
+useWindowEventListener('keydown', onCloseListener);
+useElementEventListener(modalEl.value, 'touchstart', onTouchStartListener);
+useElementEventListener(modalEl.value, 'touchmove', onTouchMoveListener);
 </script>
