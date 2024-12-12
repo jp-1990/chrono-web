@@ -74,42 +74,42 @@
 
         <div class="flex items-center self-start ml-1.5 mt-4 my-2.5">
           <button
-            class="relative p-0.5 mr-1.5 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
+            class="relative p-1 sm:p-0.5 mr-1.5 rounded-[4px] focus:outline focus:outline-slate-500 focus:outline-1"
             @click="() => addExercise(ExerciseVariant.STRENGTH)"
           >
             <strength-icon
-              :size="16"
-              class="flex justify-center items-center w-7 h-7 bg-slate-700 text-slate-50 rounded-[3px]"
+              :size="20"
+              class="flex justify-center items-center w-9 h-9 sm:w-7 sm:h-7 bg-slate-700 text-slate-50 rounded-[5px] sm:rounded-[3px]"
             />
             <add-icon
               :size="12"
-              class="absolute z-10 top-0 right-0 flex justify-center items-center w-3 h-3 bg-slate-500 text-white border-[0.5px] border-slate-700 rounded-[2px]"
+              class="absolute z-10 top-0 right-0 flex justify-center items-center w-4 h-4 sm:w-3 sm:h-3 bg-slate-500 text-white border-[0.5px] border-slate-700 rounded-[3px] sm:rounded-[2px]"
             />
           </button>
           <button
-            class="relative p-0.5 mr-1.5 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
+            class="relative p-1 sm:p-0.5 mr-1.5 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
             @click="() => addExercise(ExerciseVariant.CARDIO)"
           >
             <cardio-icon
-              :size="18"
-              class="flex justify-center items-center w-7 h-7 bg-slate-700 text-slate-50 rounded-[3px]"
+              :size="22"
+              class="flex justify-center items-center w-9 h-9 sm:w-7 sm:h-7 bg-slate-700 text-slate-50 rounded-[5px] sm:rounded-[3px]"
             />
             <add-icon
               :size="12"
-              class="absolute z-10 top-0 right-0 flex justify-center items-center w-3 h-3 bg-slate-500 text-white border-[0.5px] border-slate-700 rounded-[2px]"
+              class="absolute z-10 top-0 right-0 flex justify-center items-center w-4 h-4 sm:w-3 sm:h-3 bg-slate-500 text-white border-[0.5px] border-slate-700 rounded-[3px] sm:rounded-[2px]"
             />
           </button>
           <button
-            class="relative p-0.5 mr-1.5 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
+            class="relative p-1 sm:p-0.5 mr-1.5 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
             @click="() => addExercise(ExerciseVariant.MOBILITY)"
           >
             <mobility-icon
-              :size="20"
-              class="flex justify-center items-center w-7 h-7 bg-slate-700 text-slate-50 rounded-[3px]"
+              :size="24"
+              class="flex justify-center items-center w-9 h-9 sm:w-7 sm:h-7 bg-slate-700 text-slate-50 rounded-[5px] sm:rounded-[3px]"
             />
             <add-icon
               :size="12"
-              class="absolute z-10 top-0 right-0 flex justify-center items-center w-3 h-3 bg-slate-500 text-white border-[0.5px] border-slate-700 rounded-[2px]"
+              class="absolute z-10 top-0 right-0 flex justify-center items-center w-4 h-4 sm:w-3 sm:h-3 bg-slate-500 text-white border-[0.5px] border-slate-700 rounded-[3px] sm:rounded-[2px]"
             />
           </button>
           <span class="ml-1.5 text-sm text-slate-700">Add an exercise</span>
@@ -173,7 +173,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (
     e: 'onClose',
-    v: MouseEvent | KeyboardEvent,
+    v: MouseEvent | KeyboardEvent | undefined,
     reason: 'submit' | 'cancel'
   ): void;
 }>();
@@ -236,7 +236,7 @@ function validateEndDate(v: string) {
   return true;
 }
 
-function onClose(event: MouseEvent | KeyboardEvent) {
+function onClose(event: MouseEvent | KeyboardEvent | undefined) {
   resetFormState();
   emit('onClose', event, 'cancel');
 }

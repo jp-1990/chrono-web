@@ -61,7 +61,7 @@
             ? 'bg-slate-400 text-slate-200'
             : 'bg-gradient-to-r from-slate-700 to-slate-800 text-slate-50 '
         ]"
-        class="flex flex-1 justify-center items-center min-w-[calc(50%_-_0.5rem)] h-10 mx-4 rounded-[3px] text-sm focus:outline-slate-400"
+        class="flex flex-1 justify-center items-center min-w-[calc(50%_-_0.5rem)] h-12 sm:h-10 mx-4 rounded-[3px] sm:text-sm focus:outline-slate-400"
       >
         <slot name="submit-text">submit-text</slot>
       </button>
@@ -77,7 +77,7 @@
               : 'bg-white border-slate-700 text-slate-700',
             !!slots['extra-button-text'] ? 'flex' : 'hidden'
           ]"
-          class="flex-1 justify-center items-center h-10 mr-4 rounded-[3px] border text-sm focus:outline-slate-700"
+          class="flex-1 justify-center items-center h-12 sm:h-10 mr-4 rounded-[3px] border text-sm focus:outline-slate-700"
         >
           <slot name="extra-button-text">extra-button-text</slot>
         </button>
