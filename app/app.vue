@@ -16,7 +16,7 @@ if (!Array.isArray(storedUser) && storedUser) {
   logging.userId = storedUser.id;
 }
 
-useEventListener('online', async () => {
+useWindowEventListener('online', async () => {
   // await db.reqQueue.process();
 });
 </script>

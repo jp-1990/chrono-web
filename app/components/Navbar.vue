@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex w-screen h-screen">
+  <div class="relative flex w-screen h-dvh">
     <div class="flex-col hidden sm:flex h-screen">
       <NuxtLink to="/">
         <div class="flex items-center h-14 bg-slate-800">
@@ -27,7 +27,7 @@
     </div>
 
     <div
-      class="relative flex flex-col w-full h-screen overflow-y-auto overflow-x-hidden"
+      class="relative flex flex-col w-full h-dvh overflow-y-auto overflow-x-hidden"
     >
       <nav
         class="relative flex basis-auto items-center justify-between sm:justify-end h-14 bg-slate-800 border-b border-slate-800"
@@ -199,5 +199,5 @@ const closeUserMenuListener = (event) => {
   }
 };
 
-useEventListener('click', closeUserMenuListener);
+useWindowEventListener('click', closeUserMenuListener);
 </script>

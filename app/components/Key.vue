@@ -115,5 +115,5 @@ function closeKeyListener(event: KeyboardEvent | MouseEvent) {
   }
 }
 
-useEventListener('click', closeKeyListener);
+useWindowEventListener('click', closeKeyListener);
 </script>

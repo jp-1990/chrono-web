@@ -906,5 +906,5 @@ const openCreateTaskModalListener = (e) => {
   }
 };
 
-useEventListener('keydown', openCreateTaskModalListener);
+useWindowEventListener('keydown', openCreateTaskModalListener);
 </script>

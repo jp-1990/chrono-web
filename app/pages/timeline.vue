@@ -417,8 +417,8 @@ const openCreateTaskModalListener = (e: KeyboardEvent) => {
   }
 };
 
-useEventListener('keydown', openCreateTaskModalListener);
-useEventListener('online', async () => {
+useWindowEventListener('keydown', openCreateTaskModalListener);
+useWindowEventListener('online', async () => {
   await db.reqQueue.process();
   await refresh();
 

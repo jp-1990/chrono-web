@@ -5,7 +5,7 @@
     @keyup.escape="isOpen && $emit('onClose', $event)"
     tabindex="0"
     :class="[isOpen ? '' : 'translate-x-full md:translate-x-96']"
-    class="fixed z-40 w-screen md:w-96 top-0 right-0 flex flex-col h-screen overflow-hidden bg-slate-50 duration-200 overflow-y-auto"
+    class="fixed z-40 w-screen md:w-96 top-0 right-0 flex flex-col h-dvh overflow-hidden bg-slate-50 duration-200 overflow-y-auto"
   >
     <!-- title -->
     <header
@@ -167,18 +167,15 @@ const startX = ref<number | undefined>(undefined);
 const startFocusType = ref<string | undefined>(undefined);
 
 function onTouchStartListener(e: TouchEvent) {
-  e.preventDefault();
-
   startX.value = e.changedTouches[0].pageX;
   startFocusType.value = (document.activeElement as any)?.type;
 }
 
 function onTouchMoveListener(e: TouchEvent) {
-  e.preventDefault();
-
-  const closeThreshold = window.innerWidth / 3;
+  if (!startX.value) return;
+  const closeThreshold = 140; // window.innerWidth / 3;
   const currentX = e.changedTouches[0].pageX;
-  if (currentX - closeThreshold > 0) {
+  if (currentX - startX.value > closeThreshold) {
     let keyboardInputs = [
       'text',
       'password',
@@ -197,6 +194,14 @@ function onTouchMoveListener(e: TouchEvent) {
 }
 
 useWindowEventListener('keydown', onCloseListener);
-useElementEventListener(modalEl.value, 'touchstart', onTouchStartListener);
-useElementEventListener(modalEl.value, 'touchmove', onTouchMoveListener);
+
+onMounted(() => {
+  modalEl.value?.addEventListener('touchstart', onTouchStartListener);
+  modalEl.value?.addEventListener('touchmove', onTouchMoveListener);
+});
+
+onUnmounted(() => {
+  modalEl.value?.removeEventListener('touchstart', onTouchStartListener);
+  modalEl.value?.removeEventListener('touchmove', onTouchMoveListener);
+});
 </script>

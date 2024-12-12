@@ -119,5 +119,5 @@ function closeCalendarListener(event) {
   }
 }
 
-useEventListener('click', closeCalendarListener);
+useWindowEventListener('click', closeCalendarListener);
 </script>

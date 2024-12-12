@@ -277,7 +277,10 @@ pub async fn authorize_oauth(
                 }
             }
         },
-        Err(_) => Err(AuthError::InternalError),
+        Err(e) => {
+            println!("{:?}", e);
+            Err(AuthError::InternalError)
+        }
     }?;
 
     // create tokens
@@ -293,18 +296,6 @@ pub async fn authorize_oauth(
         .db
         .create_token(TokenDB::from(&refresh_token))
         .await;
-
-    let user = match app_state
-        .db
-        .get_user_by_email(&decoded_token.claims.email)
-        .await
-    {
-        Ok(user) => match user {
-            Some(u) => Ok(u),
-            None => Err(AuthError::InternalError),
-        },
-        Err(_) => Err(AuthError::InternalError),
-    }?;
 
     Ok((
         private_jar
