@@ -53,7 +53,7 @@
           :class="[
             month.valueOf() === selectedMonth.valueOf()
               ? 'bg-slate-700 text-slate-100'
-              : 'bg-slate-50/50 text-slate-600 border border-slate-50'
+              : 'text-slate-600'
           ]"
           class="flex items-center justify-center m-0.5 h-8 w-14 text-sm font-mono font-light cursor-pointer rounded-sm"
         >
