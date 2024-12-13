@@ -93,7 +93,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (
     e: 'onClose',
-    v: MouseEvent | KeyboardEvent,
+    v: MouseEvent | KeyboardEvent | undefined,
     reason: 'submit' | 'cancel'
   ): void;
 }>();
@@ -120,6 +120,18 @@ const { formState, resetFormState, onDelete, onSubmit } = useActivityForm({
   onClose
 });
 
+watch(formState.value.data, (form) => {
+  if (form.start && form.end) {
+    if (form.data?.exercise?.[0]) {
+      const startDate = new Date(form.start).getTime();
+      const endDate = new Date(form.end).getTime();
+
+      const duration = endDate - startDate;
+      (form as any).data.exercise[0].duration = Math.max(duration / 1000, 0);
+    }
+  }
+});
+
 const duration = computed(() => {
   return millisecondsToHoursAndMinutes(
     new Date(formState.value.data.end).getTime() -
@@ -127,17 +139,17 @@ const duration = computed(() => {
   );
 });
 
-function validateStartDate(v: string) {
+function validateStartDate(v: string | undefined) {
   // todo:: validate
   return true;
 }
 
-function validateEndDate(v: string) {
+function validateEndDate(v: string | undefined) {
   // todo:: validate
   return true;
 }
 
-function onClose(event: MouseEvent | KeyboardEvent) {
+function onClose(event: MouseEvent | KeyboardEvent | undefined) {
   resetFormState();
   emit('onClose', event, 'cancel');
 }

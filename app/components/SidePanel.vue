@@ -33,7 +33,7 @@
           </h1>
         </span>
         <h6
-          class="ml-5 text-sm/[16px] sm:text-xs/[14px] text-slate-300/80 font-light"
+          class="ml-5 text-sm/[18px] sm:text-xs/[14px] text-slate-300/80 font-light"
         >
           <slot name="description-text">descrtiption_text</slot>
         </h6>

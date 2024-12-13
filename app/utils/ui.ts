@@ -21,3 +21,7 @@ export function hideKeyboard() {
     field.focus();
   }, 50);
 }
+
+export function preventNonNumericInput(e) {
+  if (!e.key.match(/^[\d\.]$/)) e.preventDefault();
+}

@@ -51,7 +51,8 @@
         :id="`${scope}-exercise-weight-${index}-${rowIndex}`"
         class="border w-9 h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
         v-model="row.weight"
-      /><span class="font-light text-[10px] text-slate-300 ml-0.5">kg</span>
+      />
+      <span class="font-light text-[10px] text-slate-300 ml-0.5">kg</span>
     </div>
 
     <button

@@ -33,79 +33,103 @@
         >
         <input
           :id="`${scope}-distance-${index}`"
-          class="border w-10 h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
+          class="border w-10 h-7 sm:h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
           v-model="data.distance"
+          @keypress="preventNonNumericInput"
         />
-      </div>
-      <div class="flex items-center ml-4 mt-2">
-        <label :for="`${scope}-duration-${index}`" class="text-xs w-16"
-          >Time</label
+        <span
+          class="font-light text-xs sm:text-[10px] text-slate-300 ml-1 sm:ml-0.5"
+          >km</span
         >
-        <input
-          :id="`${scope}-duration-${index}`"
-          class="border w-10 h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
+      </div>
+      <div class="flex items-center w-full justify-between ml-4 mt-2">
+        <form-input-duration
+          :id="`${scope}-exercise-${index}`"
           v-model="data.duration"
+          label="Time"
         />
+
+        <button
+          v-if="data.splits.length === 0"
+          class="flex items-center mt-2 px-1 mr-[18px] h-6 text-xs text-slate-800 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
+          @click="addSplitsRow()"
+        >
+          <add-icon :size="18" class="text-slate-800 mr-px" />
+          <span class="mr-1.5">Add Splits</span>
+        </button>
+        <button
+          v-if="data.splits.length > 0"
+          class="flex items-center mt-2 px-1 mr-[18px] h-6 text-xs text-red-500 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
+          @click="removeAllSplits()"
+        >
+          <close-icon :size="18" class="text-red-500 mr-px" />
+          <span class="mr-1.5">Remove Splits</span>
+        </button>
       </div>
     </div>
   </section>
 
-  <div class="flex mt-4 justify-between">
-    <label class="text-xs">Splits</label>
-    <span class="ml-1 mr-7 text-xs font-light text-slate-500"
-      >[ Avg. pace: TODO ]</span
-    >
-  </div>
-
-  <div
-    v-for="(row, rowIndex) in data.splits"
-    :class="[rowIndex === 0 ? 'mt-1.5' : 'mt-2.5']"
-    class="flex items-center ml-4 last-of-type:mb-1"
-  >
-    <div class="flex items-center mr-4">
-      <label
-        :for="`${scope}-distance-${index}-${rowIndex}`"
-        class="text-xs ml-1 mr-1.5"
-        >Distance</label
-      >
-      <input
-        :id="`${scope}-distance-${index}-${rowIndex}`"
-        class="border w-10 h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
-        v-model="row.distance"
-      />
-      <label
-        :for="`${scope}-time-${index}-${rowIndex}`"
-        class="text-xs ml-1 mr-1.5"
-        >Time</label
-      >
-      <input
-        :id="`${scope}-time-${index}-${rowIndex}`"
-        class="border w-10 h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
-        v-model="row.duration"
-      />
+  <section v-if="data.splits.length">
+    <div class="flex mt-4 justify-between">
+      <label class="text-xs">Splits</label>
+      <!-- <span class="ml-1 mr-7 text-xs font-light text-slate-500" -->
+      <!--   >[ Avg. pace: TODO ]</span -->
+      <!-- > -->
     </div>
 
-    <button
-      v-if="rowIndex !== data.splits.length - 1"
-      class="flex items-center px-1 py-0.5 rounded-[3px] font-bold text-xs focus:outline focus:outline-slate-500 focus:outline-1"
-      @click="
-        removeSplitsRow({
-          rowIndex
-        })
-      "
+    <div
+      v-for="(row, rowIndex) in data.splits"
+      :class="[rowIndex === 0 ? 'mt-1.5' : 'mt-2.5']"
+      class="flex items-center ml-4 last-of-type:mb-1"
     >
-      <close-icon :size="18" class="text-red-500 mr-px" />
-    </button>
+      <div class="flex items-center mr-4">
+        <label
+          :for="`${scope}-distance-${index}-${rowIndex}`"
+          class="text-xs ml-1 mr-1.5"
+          >Distance</label
+        >
+        <input
+          :id="`${scope}-distance-${index}-${rowIndex}`"
+          class="border w-10 h-7 sm:h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
+          v-model="row.distance"
+          @keypress="preventNonNumericInput"
+        />
+        <span
+          class="font-light text-xs sm:text-[10px] text-slate-300 ml-1 sm:ml-0.5"
+          >km</span
+        >
 
-    <button
-      v-if="rowIndex === data.splits.length - 1"
-      class="flex items-center px-1 py-0.5 text-xs text-slate-800 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
-      @click="addSplitsRow()"
-    >
-      <add-icon :size="18" class="text-slate-800 mr-px" />
-      <span class="mr-1.5">Add</span>
-    </button>
-  </div>
+        <div class="[&_div_>_label]:w-auto [&_div_>_label]:mr-1.5 ml-4">
+          <form-input-duration
+            :id="`${scope}-exercise-${index}`"
+            v-model="row.duration"
+            label="Time"
+          />
+        </div>
+      </div>
+
+      <button
+        v-if="rowIndex !== data.splits.length - 1"
+        class="flex items-center px-1 py-0.5 rounded-[3px] font-bold text-xs focus:outline focus:outline-slate-500 focus:outline-1"
+        @click="
+          removeSplitsRow({
+            rowIndex
+          })
+        "
+      >
+        <close-icon :size="18" class="text-red-500 mr-px" />
+      </button>
+
+      <button
+        v-if="rowIndex === data.splits.length - 1"
+        class="flex items-center px-1 py-0.5 text-xs text-slate-800 rounded-[3px] focus:outline focus:outline-slate-500 focus:outline-1"
+        @click="addSplitsRow()"
+      >
+        <add-icon :size="18" class="text-slate-800 mr-px" />
+        <span class="mr-1.5">Add</span>
+      </button>
+    </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -113,6 +137,7 @@ import AddIcon from 'vue-material-design-icons/Plus.vue';
 import CloseIcon from 'vue-material-design-icons/Close.vue';
 import CardioIcon from 'vue-material-design-icons/Run.vue';
 import { ExerciseVariant, type ExerciseCardio } from '~/types/activity';
+import { preventNonNumericInput } from '~/utils/ui';
 
 const props = defineProps<{
   index: number;
@@ -130,8 +155,8 @@ async function addSplitsRow() {
   const prevRow = props.data.splits[props.data.splits.length - 1];
   props.data.splits.push({
     idx: props.data.splits.length,
-    distance: prevRow.distance,
-    duration: prevRow.duration
+    distance: prevRow?.distance ?? undefined,
+    duration: prevRow?.duration ?? undefined
   });
   await nextTick();
   const el: HTMLInputElement | null = document.querySelector(
@@ -148,4 +173,8 @@ const removeSplitsRow = ({ rowIndex }: { rowIndex: number }) => {
       return e;
     });
 };
+
+function removeAllSplits() {
+  props.data.splits = [];
+}
 </script>

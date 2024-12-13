@@ -216,7 +216,7 @@ export const getExerciseDefaultValue = {
       title: undefined,
       duration: undefined,
       distance: undefined,
-      splits: [{ idx: 0, duration: undefined, distance: undefined }]
+      splits: []
     };
   }
 } as const;

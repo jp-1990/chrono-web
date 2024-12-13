@@ -8,7 +8,7 @@ import { type Validation } from '../../types/form';
 import { getDateId } from '../date';
 import { add } from 'date-fns';
 
-export function required(v: string | undefined) {
+export function required(v: string | number | undefined) {
   return !!v;
 }
 
