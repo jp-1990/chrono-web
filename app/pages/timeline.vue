@@ -27,60 +27,41 @@
 
     <button
       id="create-item-mobile"
-      @click="onOpenActivityDefaultCreate"
-      class="fixed z-20 right-2 bottom-16 flex justify-center items-center h-12 w-12 rounded-full bg-slate-700 drop-shadow-lg focus:outline-slate-700"
+      @click="toggleAddOptions"
+      class="fixed z-20 right-2 bottom-16 flex justify-center items-center h-14 w-14 rounded-full bg-slate-900 drop-shadow-lg focus:outline-slate-700"
     >
-      <add-icon :size="24" class="text-slate-50" />
+      <add-icon :size="32" class="text-slate-50" />
     </button>
-    <button
-      id="create-item-mobile"
-      @click="onOpenActivityDefaultUpdate"
-      class="fixed z-20 right-16 bottom-16 flex justify-center items-center h-12 w-12 rounded-full bg-slate-700 drop-shadow-lg focus:outline-slate-700"
-    >
-      <add-icon :size="24" class="text-slate-50" />
-    </button>
-    <button
-      id="create-session-mobile"
-      @click="onOpenActivityWorkoutCreate"
-      class="fixed z-20 right-2 bottom-32 flex justify-center items-center h-12 w-12 rounded-full bg-blue-500 drop-shadow-lg focus:outline-slate-700"
-    >
-      <add-icon :size="24" class="text-slate-100" />
-    </button>
-    <button
-      id="update-session-mobile"
-      @click="onOpenActivityWorkoutUpdate"
-      class="fixed z-20 right-2 bottom-48 flex justify-center items-center h-12 w-12 rounded-full bg-blue-300 drop-shadow-lg focus:outline-slate-700"
-    >
-      <add-icon :size="24" class="text-slate-100" />
-    </button>
-    <button
-      id="create-cardio-mobile"
-      @click="onOpenActivityCardioCreate"
-      class="fixed z-20 right-16 bottom-32 flex justify-center items-center h-12 w-12 rounded-full bg-orange-500 drop-shadow-lg focus:outline-slate-700"
-    >
-      <add-icon :size="24" class="text-slate-100" />
-    </button>
-    <button
-      id="update-cardio-mobile"
-      @click="onOpenActivityCardioUpdate"
-      class="fixed z-20 right-16 bottom-48 flex justify-center items-center h-12 w-12 rounded-full bg-orange-300 drop-shadow-lg focus:outline-slate-700"
-    >
-      <add-icon :size="24" class="text-slate-100" />
-    </button>
-    <button
-      id="create-cardio-mobile"
-      @click="onOpenActivityMobilityCreate"
-      class="fixed z-20 right-32 bottom-32 flex justify-center items-center h-12 w-12 rounded-full bg-purple-500 drop-shadow-lg focus:outline-slate-700"
-    >
-      <add-icon :size="24" class="text-slate-100" />
-    </button>
-    <button
-      id="update-cardio-mobile"
-      @click="onOpenActivityMobilityUpdate"
-      class="fixed z-20 right-32 bottom-48 flex justify-center items-center h-12 w-12 rounded-full bg-purple-300 drop-shadow-lg focus:outline-slate-700"
-    >
-      <add-icon :size="24" class="text-slate-100" />
-    </button>
+    <div v-if="addOptions" class="flex gap-3 fixed z-20 right-2 bottom-[132px]">
+      <button
+        id="create-cardio-mobile"
+        @click="onOpenActivityMobilityCreate"
+        class="flex justify-center items-center h-14 w-14 rounded-full bg-slate-500 drop-shadow-lg focus:outline-slate-700"
+      >
+        <mobility-icon :size="38" class="text-slate-100" />
+      </button>
+      <button
+        id="create-cardio-mobile"
+        @click="onOpenActivityCardioCreate"
+        class="flex justify-center items-center h-14 w-14 rounded-full bg-slate-600 drop-shadow-lg focus:outline-slate-700"
+      >
+        <cardio-icon :size="32" class="text-slate-100" />
+      </button>
+      <button
+        id="create-session-mobile"
+        @click="onOpenActivityWorkoutCreate"
+        class="flex justify-center items-center h-14 w-14 rounded-full bg-slate-700 drop-shadow-lg focus:outline-slate-700"
+      >
+        <strength-icon :size="32" class="text-slate-100" />
+      </button>
+      <button
+        id="create-item-mobile"
+        @click="onOpenActivityDefaultCreate"
+        class="flex justify-center items-center h-14 w-14 rounded-full bg-slate-800 drop-shadow-lg focus:outline-slate-700"
+      >
+        <add-icon :size="32" class="text-slate-50" />
+      </button>
+    </div>
 
     <section class="flex flex-col bg-slate-white pl-1 pr-2 sm:p-4 pt-2">
       <!-- times row -->
@@ -210,6 +191,9 @@
 import { format } from 'date-fns';
 import { ref, computed } from 'vue';
 import AddIcon from 'vue-material-design-icons/Plus.vue';
+import StrengthIcon from 'vue-material-design-icons/Dumbbell.vue';
+import CardioIcon from 'vue-material-design-icons/Run.vue';
+import MobilityIcon from 'vue-material-design-icons/Meditation.vue';
 import {
   getDatesInMonthYear,
   getAllHoursInDay,
@@ -325,6 +309,16 @@ const itemsKey = computed(() => {
 
 // MODAL
 
+const addOptions = ref<boolean>(false);
+
+function toggleAddOptions() {
+  addOptions.value = !addOptions.value;
+}
+
+function closeAddOptions() {
+  addOptions.value = false;
+}
+
 const activityModal = ref<{
   open:
     | 'default:create'
@@ -351,7 +345,7 @@ const activityModal = ref<{
 const modalVariants = ['default', 'workout', 'cardio', 'mobility'];
 
 function onCloseActivityModal(
-  _e: MouseEvent | KeyboardEvent,
+  _e: MouseEvent | KeyboardEvent | undefined,
   reason: 'submit' | 'cancel'
 ) {
   if (
@@ -380,6 +374,7 @@ const [
   [onOpenActivityMobilityCreate, onOpenActivityMobilityUpdate]
 ] = modalVariants.map((variant) => {
   function openCreate() {
+    closeAddOptions();
     activityModal.value.open = `${variant}:create` as any;
   }
   function openUpdate(
@@ -389,6 +384,7 @@ const [
     prevStart?: string,
     prevEnd?: string
   ) {
+    closeAddOptions();
     activityModal.value.data = data;
     activityModal.value.prevStyle = prevStyle;
     activityModal.value.prevStart = prevStart;
