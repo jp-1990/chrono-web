@@ -6,6 +6,7 @@
         v-model:value="data.title"
         label="Exercise"
         placeholder="Exercise"
+        :required="true"
       >
         <template v-slot:start-icon>
           <strength-icon
@@ -20,7 +21,7 @@
       class="flex items-center mt-[32px] ml-1 mb-1 px-1 font-bold rounded-[3px] text-xs focus:outline focus:outline-slate-500 focus:outline-1"
       @click="$emit('removeExercise', index)"
     >
-      <close-icon :size="18" class="text-slate-500" />
+      <close-icon :size="18" class="text-red-500" />
     </button>
     <span v-if="hideDelete" class="ml-1 px-1 w-[18px]" />
   </div>
@@ -37,8 +38,9 @@
       >
       <input
         :id="`${scope}-exercise-reps-${index}-${rowIndex}`"
-        class="border w-9 h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
+        class="border w-9 h-7 sm:h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
         v-model="row.reps"
+        @keypress="preventNonNumericInput"
       />
     </div>
     <div class="flex items-center mr-4">
@@ -49,10 +51,13 @@
       >
       <input
         :id="`${scope}-exercise-weight-${index}-${rowIndex}`"
-        class="border w-9 h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
+        class="border w-9 h-7 sm:h-6 py-1 px-1.5 rounded-[3px] focus:outline-none focus:border-slate-500 text-xs text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
         v-model="row.weight"
+        @keypress="preventNonNumericInput"
       />
-      <span class="font-light text-[10px] text-slate-300 ml-0.5">kg</span>
+      <span class="font-light text-xs sm:text-[10px] text-slate-300 ml-0.5"
+        >kg</span
+      >
     </div>
 
     <button
@@ -83,6 +88,7 @@ import {
   type ExerciseMobility,
   type ExerciseStrength
 } from '~/types/activity';
+import { preventNonNumericInput } from '~/utils/ui';
 
 const props = defineProps<{
   index: number;

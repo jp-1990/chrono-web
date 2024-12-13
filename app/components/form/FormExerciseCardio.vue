@@ -8,6 +8,7 @@
             v-model:value="data.title"
             label="Exercise"
             placeholder="Exercise"
+            :required="true"
           >
             <template v-slot:start-icon>
               <cardio-icon
@@ -22,7 +23,7 @@
           class="flex items-center mt-[32px] ml-1 mb-1 px-1 font-bold rounded-[3px] text-xs focus:outline focus:outline-slate-500 focus:outline-1"
           @click="$emit('removeExercise', index)"
         >
-          <close-icon :size="18" class="text-slate-500" />
+          <close-icon :size="18" class="text-red-500" />
         </button>
         <span v-if="hideDelete" class="ml-1 px-1 w-[18px]" />
       </div>
@@ -45,7 +46,7 @@
       <div class="flex items-center w-full justify-between ml-4 mt-2">
         <form-input-duration
           :id="`${scope}-exercise-${index}`"
-          v-model="data.duration"
+          v-model="data.duration as any"
           label="Time"
         />
 
@@ -102,7 +103,7 @@
         <div class="[&_div_>_label]:w-auto [&_div_>_label]:mr-1.5 ml-4">
           <form-input-duration
             :id="`${scope}-exercise-${index}`"
-            v-model="row.duration"
+            v-model="row.duration as any"
             label="Time"
           />
         </div>

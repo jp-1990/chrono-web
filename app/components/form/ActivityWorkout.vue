@@ -242,12 +242,12 @@ const duration = computed(() => {
   );
 });
 
-function validateStartDate(v: string) {
+function validateStartDate(v: string | undefined) {
   // todo:: validate
   return true;
 }
 
-function validateEndDate(v: string) {
+function validateEndDate(v: string | undefined) {
   // todo:: validate
   return true;
 }
