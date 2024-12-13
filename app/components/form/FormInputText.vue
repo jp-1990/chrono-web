@@ -23,7 +23,7 @@
     :name="props.label"
     v-model="value"
     :type="props.type || 'text'"
-    class="border py-1 px-2 rounded-[3px] focus:outline-none focus:border-slate-500 text-sm/[24px] text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
+    class="border h-10 sm:h-9 bg-white py-1 px-2 rounded-[3px] focus:outline-none focus:border-slate-500 text-sm/[24px] text-slate-700 placeholder:text-slate-400/70 placeholder:font-light"
     :class="[valid === false ? 'border-red-600' : '']"
   />
 </template>

@@ -13,24 +13,34 @@
       class="relative flex flex-col justify-between items-start mb-2 bg-gradient-to-r from-slate-700 to-slate-800 border-b-2 border-b-slate-300"
     >
       <div
-        :class="[!!slots['description-extra'] ? 'h-[72px]' : 'h-[76px]']"
+        :class="[
+          !!slots['description-extra']
+            ? 'h-[78px] sm:h-[72px]'
+            : 'h-[82px] sm:h-[76px]'
+        ]"
         class="flex flex-col"
       >
         <span class="ml-4 mt-3 flex flex-row items-center">
-          <slot name="title-icon">
-            <title-icon class="text-slate-50" :size="32" />
-          </slot>
-          <h1 class="text-3xl ml-1.5 font-bold text-slate-50">
+          <div class="flex justify-center items-center h-9 w-9 sm:h-8 sm:w-8">
+            <slot name="title-icon">
+              <title-icon
+                class="flex justify-center items-center w-full h-full [&_svg]:h-full [&_svg]:w-full text-slate-50"
+              />
+            </slot>
+          </div>
+          <h1 class="text-4xl sm:text-3xl ml-1.5 font-bold text-slate-50">
             <slot name="title-text">title-text</slot>
           </h1>
         </span>
-        <h6 class="ml-5 text-xs/[14px] text-slate-300/80 font-light">
+        <h6
+          class="ml-5 text-sm/[16px] sm:text-xs/[14px] text-slate-300/80 font-light"
+        >
           <slot name="description-text">descrtiption_text</slot>
         </h6>
       </div>
       <div
         :class="[!!slots['description-extra'] ? 'flex' : 'hidden']"
-        class="items-center pl-5 pb-0.5 h-6 w-full bg-slate-800 text-slate-300 text-[10px]/[10px] font-light"
+        class="items-center pl-5 pb-0.5 h-7 sm:h-6 w-full bg-slate-800 text-slate-300 text-[12px]/[12px] sm:text-[10px]/[10px] font-light"
       >
         <slot name="description-extra"> description-extra </slot>
       </div>
