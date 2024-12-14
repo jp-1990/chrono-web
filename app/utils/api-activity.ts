@@ -39,6 +39,7 @@ export async function postActivity(args: PostActivityArgs) {
 
   return response;
 }
+postActivity.name = 'postActivity';
 
 export async function patchActivity(args: PatchActivityArgs) {
   let { id, ...body } = { ...args };

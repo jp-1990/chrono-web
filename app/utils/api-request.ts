@@ -65,7 +65,7 @@ export const apiRequest = async <
   if (isMutation) dbFn = writeHandlerToDBMap.get(fn.name);
   if (/get/g.test(fn.name)) dbFn = readHandlerToDBMap.get(fn.name);
 
-  console.log('dbfn', dbFn?.name);
+  console.log('fn/dbfn', fn.name, dbFn?.name);
 
   try {
     console.log('STEP: start try');
