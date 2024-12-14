@@ -110,7 +110,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (
     e: 'onClose',
-    v: MouseEvent | KeyboardEvent,
+    v: MouseEvent | KeyboardEvent | undefined,
     reason: 'submit' | 'cancel'
   ): void;
 }>();
@@ -154,17 +154,17 @@ function onTitleBlur() {
   }
 }
 
-function validateStartDate(v: string) {
+function validateStartDate(v: string | undefined) {
   // todo:: validate
   return true;
 }
 
-function validateEndDate(v: string) {
+function validateEndDate(v: string | undefined) {
   // todo:: validate
   return true;
 }
 
-function onClose(event: MouseEvent | KeyboardEvent) {
+function onClose(event: MouseEvent | KeyboardEvent | undefined) {
   resetFormState();
   emit('onClose', event, 'cancel');
 }

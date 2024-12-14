@@ -1,20 +1,22 @@
-<template>
-  <div class="w-screen h-screen flex items-center">
+<template v-slot:default>
+  <div class="relative w-screen h-screen flex items-center">
     <div class="h-screen flex flex-col flex-1 justify-center items-center">
       <div
-        class="flex flex-col rounded-sm overflow-hidden drop-shadow-sm mb-16 mt-12 sm:mt-0 sm:mb-12"
+        class="flex flex-col rounded-sm overflow-hidden drop-shadow-sm mb-12 mt-0"
       >
-        <span class="text-slate-50 bg-slate-400 font-bold text-6xl px-4 pb-2">
-          LOGO
-        </span>
-        <span class="text-slate-50 bg-slate-300 font-bold text-lg px-4 py-1">
-          company name
-        </span>
+        <div
+          class="flex flex-col h-48 w-48 rounded-[48px] items-center bg-gradient-to-t from-slate-700 to-slate-800 p-4"
+        >
+          <span class="text-slate-100 font-bold text-lg">
+            <component :size="128" :is="Logo" />
+          </span>
+          <span class="text-slate-100 mt-1.5 text-lg"> CHRONO </span>
+        </div>
       </div>
       <h1 class="hidden sm:flex text-6xl mb-12 font-light text-slate-400">
         Welcome back!
       </h1>
-      <section class="flex flex-col mb-16">
+      <section class="flex flex-col mb-11">
         <FormKit
           type="form"
           :actions="false"
@@ -49,8 +51,19 @@
             message-class="mb-2 !text-sm text-center"
             messages-class="!mt-0"
             :errors="errors"
-          />
+          >
+            <template v-slot:prefix>
+              <div class="mr-3 w-5 h-5" v-if="loading" />
+            </template>
+            <template v-slot:suffix>
+              <div
+                class="animate-spin ml-3 w-5 h-5 rounded-[100%] border-[3px] border-slate-500 border-b-slate-300 border-l-slate-400"
+                v-if="loading"
+              />
+            </template>
+          </FormKit>
         </FormKit>
+
         <div class="flex items-center mb-4">
           <span class="flex flex-1 h-px bg-slate-200" />
           <span class="text-sm text-slate-400 font-light mx-3">Or</span>
@@ -65,6 +78,15 @@
             @success="handleGoogleLoginSuccess"
             @error="handleGoogleLoginError"
           ></google-sign-in-button>
+        </div>
+        <div
+          :class="[oauthLoading ? 'border' : '']"
+          class="relative mx-14 mt-2 h-2 rounded-sm bg-white border-slate-100 overflow-hidden"
+        >
+          <div
+            v-if="oauthLoading"
+            class="absolute left-0 top-0 h-full w-24 bg-gradient-to-r from-white via-slate-600 via-75% to-white animate-slide"
+          ></div>
         </div>
       </section>
       <NuxtLink to="/reset-password" class="text-lg text-slate-800 mb-8">
@@ -90,66 +112,128 @@
         </NuxtLink>
       </section>
     </div>
+
+    <div
+      v-if="splash?.show"
+      class="absolute z-20 w-full h-full flex flex-col justify-center items-center bg-gradient-to-t from-slate-700 to-slate-800"
+    >
+      <div
+        class="flex flex-col h-48 w-48 rounded-[48px] items-center p-4 mb-14"
+      >
+        <span class="text-slate-200 font-bold text-lg">
+          <component :size="128" :is="Logo" />
+        </span>
+        <span class="text-slate-200 mt-1.5 text-lg"> CHRONO </span>
+      </div>
+      <h1 class="text-4xl mb-5 font-light text-slate-400">Welcome back!</h1>
+      <h2 class="text-5xl text-slate-300">{{ splash?.user.givenName }}</h2>
+      <div class="flex h-60 w-60"></div>
+    </div>
   </div>
 </template>
 
+<style>
+@keyframes slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-slide {
+  animation: slide 2s ease-in infinite;
+}
+</style>
+
 <script setup lang="ts">
+import Logo from 'vue-material-design-icons/TimerCheckOutline.vue';
 import {
   GoogleSignInButton,
   type CredentialResponse
 } from 'vue3-google-signin';
 import { useUserState } from '~/composables/state';
+import type { User } from '~/types/user';
 definePageMeta({
   layout: false
 });
 
+const oauthLoading = ref<boolean>(false);
+const loading = ref<boolean>(false);
 const errors = ref<string[]>([]);
+const splash = ref<{ show: boolean; user: User } | undefined>();
 
-// todo: use apirequest
-// todo: refactor
-// handle success event
 async function handleGoogleLoginSuccess(response: CredentialResponse) {
+  oauthLoading.value = true;
+  errors.value = [];
   // set token to auth header: bearer <token>
   const res = await postOAuth(response);
+  if (!res) {
+    errors.value = ['Something went wrong!'];
+    oauthLoading.value = false;
+    return;
+  }
 
   const userRes = await res.json();
   userRes._refreshCheck = Date.now() + 60 * 60 * 1000;
+
+  const userData = { ...userRes };
+  if (userData.email === 'marieta.avramova@gmail.com') {
+    userData.givenName = 'Panda';
+  }
+  splash.value = { show: true, user: userData };
 
   const { user } = useUserState();
   user.value = userRes;
 
   db.users.put(userRes);
 
+  oauthLoading.value = false;
+
+  await new Promise<void>((res) => {
+    setTimeout(() => {
+      res();
+    }, 3000);
+  });
+
   await navigateTo('/timeline');
 }
 
-// todo: refactor
 // handle an error event
 function handleGoogleLoginError() {
   console.error('Login failed');
 }
 
-// todo: use apirequest
-// todo: refactor
 async function handleEmailLogin(fields: { email: string; password: string }) {
+  loading.value = true;
   errors.value = [];
   const response = await postLogin(fields);
 
   if (!response) {
     errors.value = ['Incorrect email or password'];
+    loading.value = false;
     return;
   }
 
-  if (response) {
-    const userRes = await response.json();
-    userRes._refreshCheck = Date.now() + 60 * 60 * 1000;
+  const userRes = await response.json();
+  userRes._refreshCheck = Date.now() + 60 * 60 * 1000;
 
-    const { user } = useUserState();
-    user.value = userRes;
+  splash.value = { show: true, user: userRes };
 
-    db.users.put(userRes);
+  const { user } = useUserState();
+  user.value = userRes;
 
-    await navigateTo('/timeline');
-  }
+  db.users.put(userRes);
+
+  loading.value = false;
+
+  await new Promise<void>((res) => {
+    setTimeout(() => {
+      res();
+    }, 3000);
+  });
+
+  await navigateTo('/timeline');
 }
 </script>
