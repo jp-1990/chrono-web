@@ -227,7 +227,7 @@ const {
 // ITEMS
 
 const { data, pending, error, refresh } = await useAsyncData(
-  getActivities.name,
+  getActivities.id,
   async () => {
     const start = [
       startDate.value.getFullYear(),

@@ -4,9 +4,9 @@ import type { TypedResponse } from '~/types/api-request';
 import type { User } from '~/types/user';
 
 const handlerNameToRequest = new Map();
-handlerNameToRequest.set(postActivity.name, postActivity);
-handlerNameToRequest.set(patchActivity.name, patchActivity);
-handlerNameToRequest.set(deleteActivity.name, deleteActivity);
+handlerNameToRequest.set(postActivity.id, postActivity);
+handlerNameToRequest.set(patchActivity.id, patchActivity);
+handlerNameToRequest.set(deleteActivity.id, deleteActivity);
 
 function prepareArgs(values: any) {
   const many = Array.isArray(values);
@@ -178,11 +178,11 @@ export class IndexedDB {
       const datetime = new Date().toISOString();
       logging.info(undefined, {
         message: 'queuing request',
-        fn: fn.name,
+        fn: fn.id,
         id: datetime
       });
 
-      const fnName = fn.name;
+      const fnName = fn.id;
       const JSONArgs = JSON.stringify(args);
       const exp = add(new Date(), { hours: 24 }).toISOString();
 
@@ -196,7 +196,7 @@ export class IndexedDB {
         }
       ]);
 
-      logging.info(undefined, { message: 'request queued', fn: fn.name });
+      logging.info(undefined, { message: 'request queued', fn: fn.id });
       return result;
     },
     process: async () => {
@@ -263,8 +263,8 @@ export class IndexedDB {
           let args = JSON.parse(request.args);
 
           if (
-            request.fnName === patchActivity.name ||
-            request.fnName === deleteActivity.name
+            request.fnName === patchActivity.id ||
+            request.fnName === deleteActivity.id
           ) {
             const tempId = args[0].id;
             const id = tempIdToIdMap[tempId];
@@ -275,7 +275,7 @@ export class IndexedDB {
             ...args
           );
 
-          if (request.fnName === postActivity.name) {
+          if (request.fnName === postActivity.id) {
             const tempId = `${args[0].id}-offline`;
             const data = await response.json();
             tempIdToIdMap[tempId] = data.id;

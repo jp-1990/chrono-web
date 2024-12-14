@@ -39,7 +39,7 @@ export async function postActivity(args: PostActivityArgs) {
 
   return response;
 }
-postActivity.name = 'postActivity';
+postActivity.id = 'postActivity';
 
 export async function patchActivity(args: PatchActivityArgs) {
   let { id, ...body } = { ...args };
@@ -65,6 +65,7 @@ export async function patchActivity(args: PatchActivityArgs) {
 
   return response;
 }
+patchActivity.id = 'patchActivity';
 
 export async function deleteActivity(params: DeleteActivityParams) {
   const url = new URL(`${API_URL}/v1/activity/${params.id}`);
@@ -83,6 +84,7 @@ export async function deleteActivity(params: DeleteActivityParams) {
 
   return response;
 }
+deleteActivity.id = 'deleteActivity';
 
 export async function getActivities(params: GetActivitiesParams) {
   const url = new URL(`${API_URL}/v1/activity`);
@@ -103,3 +105,4 @@ export async function getActivities(params: GetActivitiesParams) {
   const response: TypedResponse<Activity[]> = await fetch(request);
   return response;
 }
+getActivities.id = 'getActivities';

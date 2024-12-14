@@ -1,14 +1,14 @@
 import type { TypedResponse } from '~/types/api-request';
 
 const readHandlerToDBMap = new Map();
-readHandlerToDBMap.set(getActivities.name, db.activities.find);
+readHandlerToDBMap.set(getActivities.id, db.activities.find);
 
 const writeHandlerToDBMap = new Map();
 // activities
-writeHandlerToDBMap.set(getActivities.name, db.activities.put);
-writeHandlerToDBMap.set(postActivity.name, db.activities.add);
-writeHandlerToDBMap.set(patchActivity.name, db.activities.put);
-writeHandlerToDBMap.set(deleteActivity.name, db.activities.delete);
+writeHandlerToDBMap.set(getActivities.id, db.activities.put);
+writeHandlerToDBMap.set(postActivity.id, db.activities.add);
+writeHandlerToDBMap.set(patchActivity.id, db.activities.put);
+writeHandlerToDBMap.set(deleteActivity.id, db.activities.delete);
 // users
 // todo: update user
 
@@ -19,7 +19,7 @@ writeHandlerToDBMap.set(deleteActivity.name, db.activities.delete);
   if offline & mutation - on request add to queue
     - id
     - datetime
-    - fn.name
+    - fn.id
     - args
     - exp - 24h
 
@@ -57,15 +57,15 @@ export const apiRequest = async <
     error: undefined
   };
 
-  const isMutation = /put|patch|post|delete/g.test(fn.name);
+  const isMutation = /put|patch|post|delete/g.test(fn.id);
 
   console.log({ isMutation });
 
   let dbFn: Function | undefined = undefined;
-  if (isMutation) dbFn = writeHandlerToDBMap.get(fn.name);
-  if (/get/g.test(fn.name)) dbFn = readHandlerToDBMap.get(fn.name);
+  if (isMutation) dbFn = writeHandlerToDBMap.get(fn.id);
+  if (/get/g.test(fn.id)) dbFn = readHandlerToDBMap.get(fn.id);
 
-  console.log('fn/dbfn', fn.name, dbFn?.name);
+  console.log('fn/dbfn', fn.id, fn.id, dbFn?.name);
 
   try {
     console.log('STEP: start try');
@@ -80,7 +80,7 @@ export const apiRequest = async <
         if (dbFn) {
           logging.info(undefined, {
             message: 'ONLINE: writing mutation to cache',
-            fn: fn.name
+            fn: fn.id
           });
           await dbFn(...(args as any));
         }
@@ -92,7 +92,7 @@ export const apiRequest = async <
       if (dbFn) {
         logging.info(undefined, {
           message: 'OFFLINE: using cache',
-          fn: fn.name
+          fn: fn.id
         });
         cachedData = await dbFn(...(args as any));
       }
@@ -111,7 +111,7 @@ export const apiRequest = async <
     }
 
     if (!response.ok) {
-      throw new Error(`${fn.name} [status:${response.status}]`);
+      throw new Error(`${fn.id} [status:${response.status}]`);
     }
 
     if (response.fromCache) {
@@ -128,13 +128,13 @@ export const apiRequest = async <
       }
 
       // if get - update cache
-      if (/get/g.test(fn.name) && output.data) {
-        const cacheUpdater = writeHandlerToDBMap.get(fn.name);
+      if (/get/g.test(fn.id) && output.data) {
+        const cacheUpdater = writeHandlerToDBMap.get(fn.id);
         console.log('cacheupdater', cacheUpdater);
         if (cacheUpdater) {
           logging.info(undefined, {
             message: 'ONLINE: writing update to cache',
-            fn: fn.name
+            fn: fn.id
           });
           cacheUpdater(output.data);
         }
@@ -153,7 +153,7 @@ export const apiRequest = async <
       { code: statusCode, message: err.message, stacktrace: err.stacktrace },
       {
         message: 'apiRequest error',
-        fn: fn.name
+        fn: fn.id
       }
     );
 
