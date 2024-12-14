@@ -1,6 +1,6 @@
-const appName = 'testing';
-const shortAppName = 'test';
-const appDescription = 'testing nuxt pwa';
+const appName = 'Chrono';
+const shortAppName = 'Chrono';
+const appDescription = 'Track your time by recording activities';
 const themeColor = '#1E293B';
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
