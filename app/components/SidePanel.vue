@@ -28,7 +28,9 @@
               />
             </slot>
           </div>
-          <h1 class="text-4xl sm:text-3xl ml-1.5 font-bold text-slate-50">
+          <h1
+            class="text-[34px]/[38px] sm:text-3xl ml-1.5 font-bold text-slate-50"
+          >
             <slot name="title-text">title-text</slot>
           </h1>
         </span>
