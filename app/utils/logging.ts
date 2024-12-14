@@ -81,7 +81,10 @@ class Logging {
 
   info(error?: LogError, data?: LogData) {
     const log = this.#internal_buildLog(SEVERITY.INFO, error, data);
-    console.log('LOGGING:', log.data?.message);
+    console.log(
+      'LOGGING:',
+      process.env.NODE_ENV === 'development' ? log.data?.message : log
+    );
   }
 
   warn(error?: LogError, data?: LogData) {

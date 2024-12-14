@@ -46,6 +46,11 @@ export const apiRequest = async <
   fn: T,
   ...args: Parameters<T>
 ): Promise<ApiRequestResponse<T>> => {
+  console.log('--------');
+  console.log('STEP: start apirequest');
+  console.log('writehandlers', writeHandlerToDBMap.keys());
+  console.log('readhandlers', readHandlerToDBMap.keys());
+
   const output: ApiRequestResponse<T> = {
     data: undefined,
     status: undefined,
@@ -54,13 +59,19 @@ export const apiRequest = async <
 
   const isMutation = /put|patch|post|delete/g.test(fn.name);
 
+  console.log({ isMutation });
+
   let dbFn: Function | undefined = undefined;
   if (isMutation) dbFn = writeHandlerToDBMap.get(fn.name);
   if (/get/g.test(fn.name)) dbFn = readHandlerToDBMap.get(fn.name);
 
+  console.log('dbfn', dbFn?.name);
+
   try {
+    console.log('STEP: start try');
     let response: TypedResponse;
     if (navigator.onLine) {
+      console.log('STEP: navigator.onLine === true');
       response = await fn(...args);
       output.status = response.status;
 
@@ -71,10 +82,11 @@ export const apiRequest = async <
             message: 'ONLINE: writing mutation to cache',
             fn: fn.name
           });
-          dbFn(...(args as any));
+          await dbFn(...(args as any));
         }
       }
     } else {
+      console.log('STEP: navigator.onLine === false');
       // if offline use the cache
       let cachedData: any;
       if (dbFn) {
@@ -103,9 +115,13 @@ export const apiRequest = async <
     }
 
     if (response.fromCache) {
+      console.log('STEP: response from cache');
       output.data = response.data;
     } else {
+      console.log('STEP: response from api');
+
       const contentType = response.headers.get('content-type');
+      console.log({ contentType });
       if (contentType?.includes('application/json')) {
         const json = await response.json();
         output.data = json;
@@ -114,6 +130,7 @@ export const apiRequest = async <
       // if get - update cache
       if (/get/g.test(fn.name) && output.data) {
         const cacheUpdater = writeHandlerToDBMap.get(fn.name);
+        console.log('cacheupdater', cacheUpdater);
         if (cacheUpdater) {
           logging.info(undefined, {
             message: 'ONLINE: writing update to cache',
@@ -124,8 +141,12 @@ export const apiRequest = async <
       }
     }
 
+    console.log('STEP: end apirequest: success');
+    console.log('--------');
     return output;
   } catch (err: any) {
+    console.log('error', err);
+
     const statusCode = parseInt(err.message.match(/status:(\d+)/)[1], 10);
 
     logging.error(
@@ -145,6 +166,8 @@ export const apiRequest = async <
 
     output.data = undefined;
     output.error = err;
+    console.log('STEP: end apirequest: success');
+    console.log('--------');
     return output;
   }
 };
