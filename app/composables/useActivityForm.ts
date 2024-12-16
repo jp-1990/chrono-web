@@ -249,7 +249,8 @@ export function useActivityForm({
       formState.value.data.timezone = activity.timezone;
       formState.value.data.data = activity.data;
 
-      formState.value.data.color = user.value.activities[activity.title];
+      formState.value.data.color =
+        user.value.activities[activity.title] ?? DEFAULT_COLOR;
       formState.value.data.start = applyTZOffset(new Date(activity.start))
         .toISOString()
         .slice(0, -8);
@@ -293,7 +294,7 @@ export function useActivityForm({
   });
 
   function setExerciseDefaultState() {
-    formState.value.data.color = user.value.activities['Exercise'];
+    formState.value.data.color = user.value.activities['Exercise'] ?? '#04da00';
     formState.value.data.title = exerciseVariant ?? 'Exercise';
     formState.value.data.variant = ActivityVariant.EXERCISE;
     formState.value.data.group = 'Exercise';
@@ -347,7 +348,8 @@ export function useActivityForm({
         preparedPayload.id = tempId;
 
         derivedActivities.value?.createActivity(preparedPayload, tempId);
-        const prevColor = user.value.activities[preparedPayload.title];
+        const prevColor =
+          user.value.activities[preparedPayload.title] ?? DEFAULT_COLOR;
         updateUserActivityColor(preparedPayload.title, preparedPayload.color);
 
         apiRequest(postActivity, preparedPayload).then((response) => {
@@ -397,7 +399,8 @@ export function useActivityForm({
         if (!preparedPayload) return;
 
         derivedActivities.value?.updateActivity(preparedPayload);
-        const prevColor = user.value.activities[preparedPayload.title];
+        const prevColor =
+          user.value.activities[preparedPayload.title] ?? DEFAULT_COLOR;
         updateUserActivityColor(preparedPayload.title, preparedPayload.color);
 
         apiRequest(patchActivity, preparedPayload).then((response) => {
