@@ -257,10 +257,11 @@ const { data, pending, error, refresh } = await useAsyncData(
       if (!activities) return null;
       const dates = getDatesInMonthYear(
         selectedMonth.value.getMonth(),
-        selectedMonth.value.getFullYear()
+        selectedYear.value.getFullYear()
       );
 
-      return new DerivedActivities(dates, activities.data);
+      const derrivedActivities = new DerivedActivities(dates, activities.data);
+      return derrivedActivities;
     }
   }
 );
