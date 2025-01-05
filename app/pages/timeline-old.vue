@@ -2,7 +2,7 @@
   <div class="relative flex flex-col flex-1 bg-white">
     <!-- header -->
     <section class="flex justify-between items-start mx-4 mt-3 min-h-[48px]">
-      <div class="mt-1">
+      <div class="ml-20 mt-1">
         <calendar
           :selected-month="selectedMonth"
           :selected-year="selectedYear"

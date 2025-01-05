@@ -156,7 +156,8 @@ import {
 import { useUserState } from '~/composables/state';
 import type { User } from '~/types/user';
 definePageMeta({
-  layout: false
+  layout: false,
+  middleware: 'auth'
 });
 
 const oauthLoading = ref<boolean>(false);

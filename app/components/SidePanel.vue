@@ -129,7 +129,8 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-router.beforeEach((_args) => {
+
+router.afterEach((_args) => {
   if (props.isOpen) {
     emit('onClose', undefined);
     return false;
