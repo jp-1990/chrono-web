@@ -185,9 +185,12 @@ function onTouchStartListener(e: TouchEvent) {
 }
 
 function onTouchMoveListener(e: TouchEvent) {
+  if (e.touches.length > 1) startX.value = undefined;
   if (!startX.value) return;
+
   const closeThreshold = 120; // window.innerWidth / 3;
   const currentX = e.changedTouches[0].pageX;
+
   if (currentX - startX.value > closeThreshold) {
     let keyboardInputs = [
       'text',
