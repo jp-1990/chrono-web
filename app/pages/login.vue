@@ -160,6 +160,8 @@ definePageMeta({
   middleware: 'auth'
 });
 
+const router = useRouter();
+
 const oauthLoading = ref<boolean>(false);
 const loading = ref<boolean>(false);
 const errors = ref<string[]>([]);
@@ -198,7 +200,7 @@ async function handleGoogleLoginSuccess(response: CredentialResponse) {
     }, 3000);
   });
 
-  await navigateTo('/timeline');
+  await router.replace('/timeline');
 }
 
 // handle an error event
@@ -235,6 +237,6 @@ async function handleEmailLogin(fields: { email: string; password: string }) {
     }, 3000);
   });
 
-  await navigateTo('/timeline');
+  await router.replace('/timeline');
 }
 </script>

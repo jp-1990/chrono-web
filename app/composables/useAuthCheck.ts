@@ -10,7 +10,7 @@ const authCheck = async () => {
   if ((refreshCheck ?? 0) < now) {
     if (AUTH_ROUTES.includes(route.path ?? '')) return;
     db.users.delete(id);
-    router.push({ path: '/login' });
+    router.replace({ path: '/login' });
   }
 };
 
