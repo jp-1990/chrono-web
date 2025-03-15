@@ -8,6 +8,7 @@ import type {
 } from '~/types/activity';
 import { timeOfDayToPercentage, getDateId } from './date';
 import type { DateId } from '~/types/date';
+import { ref } from 'vue';
 
 /**
   based on the timezone of the browser, split the activity at each instance of midnight

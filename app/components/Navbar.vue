@@ -93,11 +93,16 @@
 </template>
 
 <script setup lang="ts">
-import Dashboard from 'vue-material-design-icons/ViewDashboard.vue';
+import { ref } from 'vue';
+import { navigateTo, useRoute } from '#imports';
 import Settings from 'vue-material-design-icons/Cog.vue';
 import Logout from 'vue-material-design-icons/Logout.vue';
 import Logo from 'vue-material-design-icons/TimerCheckOutline.vue';
 import Timeline from 'vue-material-design-icons/ChartGantt.vue';
+import { db, useUserState } from '../composables/state';
+import { postLogout } from '../utils/api-user';
+import { useWindowEventListener } from '../composables/useEventListener';
+
 const currentRoute = useRoute();
 
 const { user } = useUserState();

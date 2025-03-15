@@ -6,7 +6,9 @@
 </template>
 
 <script setup lang="ts">
-import { useUserState } from './composables/state';
+import { db, useUserState } from './composables/state';
+import { useWindowEventListener } from './composables/useEventListener';
+import { logging } from './utils/logging';
 
 const { user } = useUserState();
 const storedUser = await db.users.getAll();

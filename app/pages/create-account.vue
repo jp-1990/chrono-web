@@ -84,6 +84,11 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
+import { postRegister } from '../utils/api-user';
+import { db, useUserState } from '../composables/state';
+import { definePageMeta, navigateTo } from '#imports';
+
 definePageMeta({
   layout: false
 });
@@ -116,7 +121,6 @@ const onSubmit = async (fields: {
     const { user } = useUserState();
     user.value = res;
 
-    // await db.init();
     db.users.add(res);
 
     await navigateTo('/timeline');

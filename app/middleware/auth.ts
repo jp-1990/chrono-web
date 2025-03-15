@@ -1,3 +1,5 @@
+import { abortNavigation, defineNuxtRouteMiddleware } from '#imports';
+import { db } from '~/composables/state';
 import { AUTH_ROUTES } from '~/constants/routes';
 
 export default defineNuxtRouteMiddleware(async (to) => {

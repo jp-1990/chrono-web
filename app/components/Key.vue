@@ -91,10 +91,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import KeyIcon from 'vue-material-design-icons/ChartLineVariant.vue';
+import { useWindowEventListener } from '../composables/useEventListener';
+import { millisecondsToHoursAndMinutes } from '../utils/date';
 
 // todo:: order keys by duration
-
-const props = defineProps<{
+defineProps<{
   keys: Record<string, [number, string]>;
 }>();
 

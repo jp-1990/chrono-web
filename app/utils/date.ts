@@ -116,15 +116,6 @@ export const applyTZOffset = (date: Date) => {
   return sub(date, { hours: tzOffset.hours, minutes: tzOffset.minutes });
 };
 
-export const isToday = (date: Date) => {
-  const today = new Date();
-  return (
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
-  );
-};
-
 export function prefixZero(n: number) {
   if (n < 10 && n >= 0) {
     return `0${n}`;

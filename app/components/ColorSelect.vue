@@ -37,7 +37,8 @@
 </template>
 
 <script lang="ts" setup>
-import { DEFAULT_COLOR } from '~~/constants/colors';
+import { onUpdated, ref, watch } from 'vue';
+import { DEFAULT_COLOR } from '../constants/colors';
 
 const props = defineProps<{
   forceClosed: boolean;

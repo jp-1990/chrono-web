@@ -6,6 +6,9 @@ const themeColor = '#1E293B';
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   ssr: false,
+  imports: {
+    autoImport: false
+  },
   vite: {
     build: {
       target: 'esnext'
@@ -15,11 +18,6 @@ export default defineNuxtConfig({
     strict: true,
     shim: false
   },
-  // hooks: {
-  //   'prerender:routes'({ routes }) {
-  //     routes.clear();
-  //   }
-  // },
   modules: [
     '@nuxtjs/tailwindcss',
     '@formkit/nuxt',

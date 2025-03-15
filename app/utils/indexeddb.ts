@@ -2,6 +2,8 @@ import { add } from 'date-fns';
 import type { Activity } from '~/types/activity';
 import type { TypedResponse } from '~/types/api-request';
 import type { User } from '~/types/user';
+import { deleteActivity, patchActivity, postActivity } from './api-activity';
+import { logging } from './logging';
 
 const handlerNameToRequest = new Map();
 handlerNameToRequest.set(postActivity.id, postActivity);

@@ -99,8 +99,11 @@ import CheckIcon from 'vue-material-design-icons/Check.vue';
 import DeleteIcon from 'vue-material-design-icons/Delete.vue';
 import { ActivityVariant, type FormattedActivity } from '~/types/activity';
 import { DEFAULT_COLOR } from '~/constants/colors';
-import { useUserState } from '#imports';
 import type { DerivedActivities } from '~/utils/activity';
+import { computed, ref, watch } from 'vue';
+import { useUserState } from '~/composables/state';
+import { useActivityForm } from '~/composables/useActivityForm';
+import { millisecondsToHoursAndMinutes } from '~/utils/date';
 
 const props = defineProps<{
   mode: 'create' | 'update' | undefined;

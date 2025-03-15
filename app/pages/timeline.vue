@@ -188,24 +188,31 @@
 </template>
 
 <script setup lang="ts">
-import { format } from 'date-fns';
 import { ref, computed } from 'vue';
+import { useAsyncData } from '#imports';
+import { format } from 'date-fns';
 import AddIcon from 'vue-material-design-icons/Plus.vue';
 import StrengthIcon from 'vue-material-design-icons/Dumbbell.vue';
 import CardioIcon from 'vue-material-design-icons/Run.vue';
 import MobilityIcon from 'vue-material-design-icons/Meditation.vue';
+
+import { DEFAULT_COLOR } from '../constants/colors';
+import { useAuthCheck } from '../composables/useAuthCheck';
+import { useMonthYearSelect } from '../composables/useMonthYearSelect';
+import { useStartEndDrag } from '../composables/useStartEndDrag';
+import { useWindowEventListener } from '../composables/useEventListener';
+import { db, useUserState } from '../composables/state';
+import type { FormattedActivity } from '../types/activity';
+import { getActivities } from '../utils/api-activity';
+import { apiRequest } from '../utils/api-request';
+import { DerivedActivities } from '../utils/activity';
 import {
   getDatesInMonthYear,
   getAllHoursInDay,
   getDateId,
-  buildLocalDatetime
-} from '~~/utils/date';
-import { DEFAULT_COLOR } from '~/constants/colors';
-import { useAuthCheck } from '~/composables/useAuthCheck';
-import { useMonthYearSelect } from '~/composables/useMonthYearSelect';
-import { getActivities } from '~/utils/api-activity';
-import { useUserState } from '~/composables/state';
-import type { FormattedActivity } from '~/types/activity';
+  buildLocalDatetime,
+  dragBreakpoint
+} from '../utils/date';
 
 useAuthCheck();
 

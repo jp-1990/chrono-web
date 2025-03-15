@@ -170,7 +170,7 @@ import DeleteIcon from 'vue-material-design-icons/Delete.vue';
 import StrengthIcon from 'vue-material-design-icons/Dumbbell.vue';
 import CardioIcon from 'vue-material-design-icons/Run.vue';
 import MobilityIcon from 'vue-material-design-icons/Meditation.vue';
-import { nextTick } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import {
   ActivityVariant,
   ExerciseVariant,
@@ -179,7 +179,11 @@ import {
 import type { DerivedActivities } from '~/utils/activity';
 import FormExerciseStrength from './FormExerciseStrength.vue';
 import FormExerciseMobility from './FormExerciseMobility.vue';
-import { getExerciseDefaultValue } from '~/composables/useActivityForm';
+import {
+  getExerciseDefaultValue,
+  useActivityForm
+} from '~/composables/useActivityForm';
+import { millisecondsToHoursAndMinutes } from '~/utils/date';
 
 const props = defineProps<{
   mode: 'create' | 'update' | undefined;

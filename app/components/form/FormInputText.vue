@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import type { InputTypeHTMLAttribute } from 'vue';
+import { ref, type InputTypeHTMLAttribute } from 'vue';
 import { required } from '~/utils/form/validation';
 const value = defineModel<string>('value');
 

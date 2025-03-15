@@ -1,6 +1,13 @@
-import type { DerivedActivities } from '#build/imports';
 import { add } from 'date-fns';
-import type { UnwrapRef } from 'vue';
+import {
+  watch,
+  toRaw,
+  type ComputedRef,
+  type Ref,
+  type UnwrapRef,
+  ref,
+  computed
+} from 'vue';
 import { DEFAULT_COLOR } from '~/constants/colors';
 import {
   ActivityVariant,
@@ -10,6 +17,16 @@ import {
   type PatchActivityArgs,
   type PostActivityArgs
 } from '~/types/activity';
+import type { DerivedActivities } from '~/utils/activity';
+import { applyTZOffset } from '~/utils/date';
+import { logging } from '~/utils/logging';
+import { db, useUserState } from './state';
+import { apiRequest } from '~/utils/api-request';
+import {
+  deleteActivity,
+  patchActivity,
+  postActivity
+} from '~/utils/api-activity';
 
 type FormStateData = {
   title: string | undefined;

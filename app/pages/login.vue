@@ -148,13 +148,17 @@
 </style>
 
 <script setup lang="ts">
+import { definePageMeta, useRouter } from '#imports';
+import { ref } from 'vue';
 import Logo from 'vue-material-design-icons/TimerCheckOutline.vue';
 import {
   GoogleSignInButton,
   type CredentialResponse
 } from 'vue3-google-signin';
-import { useUserState } from '~/composables/state';
-import type { User } from '~/types/user';
+import { db, useUserState } from '../composables/state';
+import type { User } from '../types/user';
+import { postLogin, postOAuth } from '../utils/api-user';
+
 definePageMeta({
   layout: false,
   middleware: 'auth'
@@ -203,7 +207,7 @@ async function handleGoogleLoginSuccess(response: CredentialResponse) {
   await router.replace('/timeline');
 }
 
-// handle an error event
+// todo: handle an error event
 function handleGoogleLoginError() {
   console.error('Login failed');
 }

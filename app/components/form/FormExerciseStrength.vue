@@ -89,6 +89,7 @@ import {
   type ExerciseStrength
 } from '~/types/activity';
 import { preventNonNumericInput } from '~/utils/ui';
+import { nextTick } from 'vue';
 
 const props = defineProps<{
   index: number;

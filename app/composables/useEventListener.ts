@@ -1,3 +1,5 @@
+import { onMounted, onUnmounted } from 'vue';
+
 export const useWindowEventListener = <K extends keyof WindowEventMap>(
   type: K,
   listener: (ev: WindowEventMap[K]) => any,

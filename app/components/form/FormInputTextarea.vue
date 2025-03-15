@@ -16,6 +16,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { required } from '~/utils/form/validation';
 const value = defineModel<string | undefined>('value');
 

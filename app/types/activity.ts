@@ -1,5 +1,16 @@
 import type { DateId } from './date';
 
+export type Container = {
+  left: number;
+  right: number;
+  width: number;
+};
+
+export enum Handles {
+  START = 'start',
+  END = 'end'
+}
+
 export enum ExerciseVariant {
   STRENGTH = 'Strength',
   CARDIO = 'Cardio',

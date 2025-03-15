@@ -110,9 +110,12 @@
 </template>
 
 <script setup lang="ts">
-import { useSlots, ref, watch } from 'vue';
+import { useRouter } from '#imports';
+import { useSlots, ref, watch, onMounted, onUnmounted } from 'vue';
 import CloseIcon from 'vue-material-design-icons/Close.vue';
 import TitleIcon from 'vue-material-design-icons/Timelapse.vue';
+import { useWindowEventListener } from '../composables/useEventListener';
+import { hideKeyboard } from '../utils/ui';
 
 const slots = useSlots();
 

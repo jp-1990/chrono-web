@@ -61,10 +61,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUpdated } from 'vue';
-import { useUserState } from '~/composables/state';
-import { DEFAULT_COLOR } from '~/constants/colors';
-import type { FormattedActivities, FormattedActivity } from '~/types/activity';
-import { type Container, Handles } from '~/types/item';
+import { isToday } from 'date-fns';
+import { useUserState } from '../composables/state';
+import { DEFAULT_COLOR } from '../constants/colors';
+import type {
+  FormattedActivities,
+  FormattedActivity,
+  Container
+} from '../types/activity';
+import { Handles } from '../types/activity';
 
 const { user } = useUserState();
 

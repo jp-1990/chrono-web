@@ -70,7 +70,8 @@ import { ref } from 'vue';
 import MonthCalendarIcon from 'vue-material-design-icons/CalendarFilter.vue';
 import LeftIcon from 'vue-material-design-icons/ChevronLeft.vue';
 import RightIcon from 'vue-material-design-icons/ChevronRight.vue';
-import { getAllMonthsInYear } from '~/utils/date';
+import { useWindowEventListener } from '../composables/useEventListener';
+import { getAllMonthsInYear } from '../utils/date';
 
 const emit = defineEmits<{
   (e: 'onChange', month: Date, year: Date): void;

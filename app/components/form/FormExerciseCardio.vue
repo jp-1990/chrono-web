@@ -134,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick } from 'vue';
 import AddIcon from 'vue-material-design-icons/Plus.vue';
 import CloseIcon from 'vue-material-design-icons/Close.vue';
 import CardioIcon from 'vue-material-design-icons/Run.vue';
