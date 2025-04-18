@@ -68,6 +68,23 @@ export const getDateId = (date: Date) => {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 };
 
+export const getActivityDate = ({
+  difference,
+  date
+}: {
+  difference: number;
+  date: Date;
+}) => {
+  let percentage = timeOfDayToPercentage(date) + difference;
+  if (percentage < 0) percentage = 0;
+  if (percentage > 100) percentage = 100;
+  const time = percentageToTimeOfDay(percentage);
+
+  const newDate = new Date(`${date?.toJSON().split('T')[0]}${time}`);
+
+  return newDate;
+};
+
 export const roundSeconds = (date: Date) => {
   const hours = date.getHours();
   if (hours === 23) return date;

@@ -201,7 +201,7 @@ import { useAuthCheck } from '../composables/useAuthCheck';
 import { useMonthYearSelect } from '../composables/useMonthYearSelect';
 import { useStartEndDrag } from '../composables/useStartEndDrag';
 import { useWindowEventListener } from '../composables/useEventListener';
-import { db, useUserState } from '../composables/state';
+import { useUserState } from '../composables/state';
 import type { FormattedActivity } from '../types/activity';
 import { getActivities } from '../utils/api-activity';
 import { apiRequest } from '../utils/api-request';
@@ -213,6 +213,8 @@ import {
   buildLocalDatetime,
   dragBreakpoint
 } from '../utils/date';
+import { db } from '../utils/indexeddb';
+import requestQueue from '../utils/request-queue';
 
 useAuthCheck();
 
@@ -423,7 +425,9 @@ const openCreateTaskModalListener = (e: KeyboardEvent) => {
 
 useWindowEventListener('keydown', openCreateTaskModalListener);
 useWindowEventListener('online', async () => {
-  await db.reqQueue.process();
+  // todo: reimplement this with new reqqueue
+  // await db.reqQueue.process();
+  await requestQueue.drain();
   await refresh();
 
   const start = [
@@ -447,10 +451,10 @@ useWindowEventListener('online', async () => {
     end: endString
   });
 
-  const idsToRemove: { id: string }[] = [];
+  const idsToRemove: string[] = [];
   for (const cachedActivity of cachedActivities) {
     !data.value?.ids.has(cachedActivity.id) &&
-      idsToRemove.push({ id: cachedActivity.id });
+      idsToRemove.push(cachedActivity.id);
   }
 
   if (idsToRemove.length) db.activities.delete(idsToRemove);

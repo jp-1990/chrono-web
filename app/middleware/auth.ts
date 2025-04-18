@@ -1,6 +1,6 @@
 import { abortNavigation, defineNuxtRouteMiddleware } from '#imports';
-import { db } from '~/composables/state';
 import { AUTH_ROUTES } from '~/constants/routes';
+import { db } from '~/utils/indexeddb';
 
 export default defineNuxtRouteMiddleware(async (to) => {
   if (!AUTH_ROUTES.includes(to.path)) return;

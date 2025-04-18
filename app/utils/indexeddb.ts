@@ -1,18 +1,10 @@
-import { add } from 'date-fns';
-import type { Activity } from '~/types/activity';
-import type { TypedResponse } from '~/types/api-request';
-import type { User } from '~/types/user';
-import { deleteActivity, patchActivity, postActivity } from './api-activity';
+import type { Activity } from '../types/activity';
+import type { User } from '../types/user';
 import { logging } from './logging';
-
-const handlerNameToRequest = new Map();
-handlerNameToRequest.set(postActivity.id, postActivity);
-handlerNameToRequest.set(patchActivity.id, patchActivity);
-handlerNameToRequest.set(deleteActivity.id, deleteActivity);
 
 function prepareArgs(values: any) {
   const many = Array.isArray(values);
-  const v = Array.isArray(values) ? values : [values];
+  const v = many ? values : [values];
   return { many, v };
 }
 
@@ -22,12 +14,18 @@ const storeKeys = {
   reqQueue: 'reqQueue'
 } as const;
 
-type PendingRequest = {
-  id: string;
-  datetime: string;
-  fnName: string;
+export type PendingRequest = {
+  resourceId: string;
+  httpMethod: 'get' | 'put' | 'patch' | 'post' | 'delete';
+  timestamp: string;
+  fnId: string;
   args: string;
-  exp: string;
+  exp: number;
+};
+
+type RequestQueue = {
+  id: 'request-queue';
+  queue: PendingRequest[];
 };
 
 type StoreKeys = (typeof storeKeys)[keyof typeof storeKeys];
@@ -35,7 +33,7 @@ type StoreKeys = (typeof storeKeys)[keyof typeof storeKeys];
 type StoreTypes = {
   activities: Activity;
   users: User;
-  reqQueue: PendingRequest;
+  reqQueue: RequestQueue;
 };
 
 type StoreFilters = {
@@ -49,6 +47,7 @@ export class IndexedDB {
 
   activities = {
     add: async (
+      _id: Activity['id'] | undefined,
       values:
         | (Activity & { color?: string })
         | (Activity & { color?: string })[]
@@ -71,6 +70,7 @@ export class IndexedDB {
       return many ? activities : activities[0];
     },
     put: async (
+      _id: Activity['id'] | undefined,
       values:
         | (Activity & { color?: string })
         | (Activity & { color?: string })[]
@@ -91,11 +91,11 @@ export class IndexedDB {
       }
       return many ? activities : activities[0];
     },
-    delete: async (values: Pick<Activity, 'id'> | Pick<Activity, 'id'>[]) => {
+    delete: async (values: Activity['id'] | Activity['id'][]) => {
       const { v, many } = prepareArgs(values);
       const res = await this.#delete(
         'activities',
-        v.map((v) => v.id)
+        v.map((v) => v)
       );
       return many ? res : res[0];
     },
@@ -173,139 +173,29 @@ export class IndexedDB {
   };
 
   reqQueue = {
-    add: async <T extends (...args: Parameters<T>) => Promise<TypedResponse>>(
-      fn: T,
-      ...args: Parameters<T>
-    ) => {
-      const datetime = new Date().toISOString();
-      logging.info(undefined, {
-        message: 'queuing request',
-        fn: fn.id,
-        id: datetime
-      });
+    enqueue: async (requests: PendingRequest[]) => {
+      let state = await this.#findById(storeKeys.reqQueue, 'request-queue');
+      if (!state) state = { id: 'request-queue', queue: [] };
 
-      const fnName = fn.id;
-      const JSONArgs = JSON.stringify(args);
-      const exp = add(new Date(), { hours: 24 }).toISOString();
+      state.queue.push(...requests);
 
-      const result = await this.#add(storeKeys.reqQueue, [
-        {
-          id: datetime,
-          args: JSONArgs,
-          datetime,
-          fnName,
-          exp
-        }
-      ]);
+      const result = await this.#put(storeKeys.reqQueue, [state]);
+      return result[0].queue;
+    },
+    dequeue: async () => {
+      const state = await this.#findById(storeKeys.reqQueue, 'request-queue');
 
-      logging.info(undefined, { message: 'request queued', fn: fn.id });
+      const result = state.queue.shift();
+
+      await this.#put(storeKeys.reqQueue, [state]);
       return result;
     },
-    process: async () => {
-      logging.info(undefined, { message: 'processing request queue' });
-      const pendingRequests = await new Promise<PendingRequest[]>(
-        (res, rej) => {
-          if (!this.#db) {
-            logging.error({ message: 'IndexedDB Database not initialized' });
-            return rej();
-          }
+    clear: async () => {
+      const state = await this.#findById(storeKeys.reqQueue, 'request-queue');
+      state.queue = [];
 
-          const transaction = this.#db.transaction(
-            storeKeys.reqQueue,
-            'readonly'
-          );
-          const store = transaction.objectStore(storeKeys.reqQueue);
-
-          // Open a cursor on the index
-          const cursorRequest = store.openCursor();
-
-          const requests: PendingRequest[] = [];
-
-          cursorRequest.onsuccess = (event: any) => {
-            const cursor = event.target.result;
-            if (cursor) {
-              const request = cursor.value;
-
-              if (!navigator.onLine) {
-                logging.info(undefined, {
-                  message: 'cancelled processing request queue',
-                  reason: 'connectivity lost'
-                });
-                rej('offline');
-              }
-
-              if (new Date().getTime() < new Date(request.exp).getTime()) {
-                requests.push(request);
-              }
-
-              cursor.continue();
-            } else {
-              res(requests); // No more entries
-            }
-          };
-
-          cursorRequest.onerror = (event: any) => {
-            rej(event.target.result);
-          };
-        }
-      );
-
-      const success: string[] = [];
-      const error: string[] = [];
-
-      const tempIdToIdMap = {};
-      for (const request of pendingRequests) {
-        try {
-          logging.info(undefined, {
-            message: 'processing request',
-            fn: request.fnName,
-            id: request.id
-          });
-
-          let args = JSON.parse(request.args);
-
-          if (
-            request.fnName === patchActivity.id ||
-            request.fnName === deleteActivity.id
-          ) {
-            const tempId = args[0].id;
-            const id = tempIdToIdMap[tempId];
-            if (id) args[0].id = id;
-          }
-
-          const response = await handlerNameToRequest.get(request.fnName)(
-            ...args
-          );
-
-          if (request.fnName === postActivity.id) {
-            const tempId = `${args[0].id}-offline`;
-            const data = await response.json();
-            tempIdToIdMap[tempId] = data.id;
-          }
-
-          success.push(request.id);
-        } catch (err: any) {
-          logging.error(
-            { message: err.message, stacktrace: err.stacktrace },
-            {
-              message: 'processing request failed',
-              fn: request.fnName,
-              id: request.id
-            }
-          );
-          error.push(request.id);
-        }
-      }
-
-      this.#delete(storeKeys.reqQueue, success);
-      // todo: DLQ?
-      this.#delete(storeKeys.reqQueue, error);
-
-      logging.info(undefined, {
-        message: 'processed request queue',
-        success: success,
-        error: error
-      });
+      await this.#put(storeKeys.reqQueue, [state]);
+      return undefined;
     }
   };
 
@@ -486,7 +376,7 @@ export class IndexedDB {
     });
   }
 
-  async #findById<T extends StoreKeys>(store: T, value: string) {
+  async #findById<T extends StoreKeys>(store: T, id: string) {
     return new Promise<StoreTypes[T]>((res, rej) => {
       if (!this.#db) {
         logging.error({ message: 'IndexedDB Database not initialized' });
@@ -496,7 +386,7 @@ export class IndexedDB {
       const transaction = this.#db.transaction(store, 'readonly');
       const objectStore = transaction.objectStore(store);
 
-      const result = objectStore.get(value);
+      const result = objectStore.get(id);
 
       result.onsuccess = (event: any) => {
         res(event.target.result);
@@ -544,3 +434,5 @@ export class IndexedDB {
     });
   }
 }
+
+export const db = await new IndexedDB().init();

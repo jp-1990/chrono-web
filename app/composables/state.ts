@@ -1,8 +1,5 @@
 import { useState } from '#imports';
-import type { User } from '~/types/user';
-import { IndexedDB } from '~/utils/indexeddb';
-
-export const db = await new IndexedDB().init();
+import type { User } from '../types/user';
 
 export function useUserState() {
   const user = useState<User>('userState', () => {

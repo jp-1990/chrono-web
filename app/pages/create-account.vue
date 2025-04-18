@@ -86,8 +86,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { postRegister } from '../utils/api-user';
-import { db, useUserState } from '../composables/state';
+import { useUserState } from '../composables/state';
 import { definePageMeta, navigateTo } from '#imports';
+import { db } from '~/utils/indexeddb';
 
 definePageMeta({
   layout: false

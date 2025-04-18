@@ -2,8 +2,12 @@ import { format } from 'date-fns';
 import { ref } from 'vue';
 import type { Container, FormattedActivity } from '~/types/activity';
 import { Handles } from '~/types/activity';
-import { roundSeconds, timeOfDayToPercentage } from '~/utils/date';
-import { Diff, getItemDate } from '~/utils/item';
+import { Diff } from '~/utils/activity';
+import {
+  roundSeconds,
+  timeOfDayToPercentage,
+  getActivityDate
+} from '~/utils/date';
 
 export const useStartEndDrag = (breakpoint: number) => {
   const dragTime = ref<string | undefined>(undefined);
@@ -77,7 +81,7 @@ export const useStartEndDrag = (breakpoint: number) => {
     diff.restrictMinValue();
     diff.restrictMaxValue();
 
-    const newDate = getItemDate({
+    const newDate = getActivityDate({
       difference: diff.value,
       date: new Date(target[handle])
     });
@@ -131,7 +135,7 @@ export const useStartEndDrag = (breakpoint: number) => {
     diff.restrictMaxValue();
     diff.restrictMinValue();
 
-    const newDate = getItemDate({
+    const newDate = getActivityDate({
       difference: diff.value,
       date: new Date(target[handle])
     });
@@ -151,7 +155,7 @@ export const useStartEndDrag = (breakpoint: number) => {
 
     diff.applyBreakpoint();
     setDragTime(
-      getItemDate({
+      getActivityDate({
         difference: diff.value,
         date: new Date(target[handle])
       }).toISOString()

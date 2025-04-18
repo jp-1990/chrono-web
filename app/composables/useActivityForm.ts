@@ -20,13 +20,14 @@ import {
 import type { DerivedActivities } from '~/utils/activity';
 import { applyTZOffset } from '~/utils/date';
 import { logging } from '~/utils/logging';
-import { db, useUserState } from './state';
+import { useUserState } from './state';
 import { apiRequest } from '~/utils/api-request';
 import {
   deleteActivity,
   patchActivity,
   postActivity
 } from '~/utils/api-activity';
+import { db } from '~/utils/indexeddb';
 
 type FormStateData = {
   title: string | undefined;
@@ -369,32 +370,34 @@ export function useActivityForm({
           user.value.activities[preparedPayload.title] ?? DEFAULT_COLOR;
         updateUserActivityColor(preparedPayload.title, preparedPayload.color);
 
-        apiRequest(postActivity, preparedPayload).then((response) => {
-          if (response.data) {
-            // todo: what do we do if there is drift?
-            let dataDrift = false;
-            if (navigator.onLine) {
-              dataDrift = detectDrift(response.data, preparedPayload);
-            }
-            if (!navigator.onLine) {
-              response.data.id = `${response.data.id}-offline`;
+        apiRequest(postActivity, preparedPayload.id, preparedPayload).then(
+          (response) => {
+            if (response.data) {
+              // todo: what do we do if there is drift?
+              let dataDrift = false;
+              if (navigator.onLine) {
+                dataDrift = detectDrift(response.data, preparedPayload);
+              }
+              if (!navigator.onLine) {
+                response.data.id = `${response.data.id}-offline`;
+              }
+
+              if (!dataDrift) {
+                derivedActivities.value?.deleteActivity(tempId);
+                derivedActivities.value?.createActivity(response.data as any);
+                db.activities.delete(tempId);
+                db.activities.add(response.data.id, response.data);
+              }
             }
 
-            if (!dataDrift) {
+            // rollback local changes
+            if (response.error) {
               derivedActivities.value?.deleteActivity(tempId);
-              derivedActivities.value?.createActivity(response.data as any);
-              db.activities.delete({ id: tempId });
-              db.activities.add(response.data);
+              db.activities.delete(tempId);
+              updateUserActivityColor(preparedPayload.title, prevColor);
             }
           }
-
-          // rollback local changes
-          if (response.error) {
-            derivedActivities.value?.deleteActivity(tempId);
-            db.activities.delete({ id: tempId });
-            updateUserActivityColor(preparedPayload.title, prevColor);
-          }
-        });
+        );
 
         break;
       }
@@ -420,20 +423,22 @@ export function useActivityForm({
           user.value.activities[preparedPayload.title] ?? DEFAULT_COLOR;
         updateUserActivityColor(preparedPayload.title, preparedPayload.color);
 
-        apiRequest(patchActivity, preparedPayload).then((response) => {
-          // todo: what do we do if there is drift?
-          // if (response.data && navigator.onLine) {
-          //   // confirm that the response from the server matches what we sent
-          //   const dataDrift = detectDrift(response.data, validPayload);
-          // }
+        apiRequest(patchActivity, preparedPayload.id, preparedPayload).then(
+          (response) => {
+            // todo: what do we do if there is drift?
+            // if (response.data && navigator.onLine) {
+            //   // confirm that the response from the server matches what we sent
+            //   const dataDrift = detectDrift(response.data, validPayload);
+            // }
 
-          // rollback local changes
-          if (response.error) {
-            derivedActivities.value?.updateActivity(prevValues as any);
-            db.activities.put(prevValues);
-            updateUserActivityColor(preparedPayload.title, prevColor);
+            // rollback local changes
+            if (response.error) {
+              derivedActivities.value?.updateActivity(prevValues as any);
+              db.activities.put(prevValues.id, prevValues);
+              updateUserActivityColor(preparedPayload.title, prevColor);
+            }
           }
-        });
+        );
 
         break;
       }
@@ -450,16 +455,14 @@ export function useActivityForm({
 
     derivedActivities.value?.deleteActivity(formState.value.data.id);
 
-    apiRequest(deleteActivity, {
-      id: formState.value.data.id
-    }).then((response) => {
+    apiRequest(deleteActivity, formState.value.data.id).then((response) => {
       // rollback local changes
       if (response.error) {
         derivedActivities.value?.createActivity(
           prevValues as any,
           prevValues.id
         );
-        db.activities.add(prevValues);
+        db.activities.add(prevValues.id, prevValues);
       }
     });
 

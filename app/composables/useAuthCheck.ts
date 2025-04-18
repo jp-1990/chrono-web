@@ -1,7 +1,7 @@
 import { onUpdated } from 'vue';
 import { useRoute, useRouter } from '#imports';
 import { AUTH_ROUTES } from '~/constants/routes';
-import { db } from './state';
+import { db } from '~/utils/indexeddb';
 
 const authCheck = async () => {
   const router = useRouter();

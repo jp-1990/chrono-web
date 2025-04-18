@@ -155,9 +155,10 @@ import {
   GoogleSignInButton,
   type CredentialResponse
 } from 'vue3-google-signin';
-import { db, useUserState } from '../composables/state';
+import { useUserState } from '../composables/state';
 import type { User } from '../types/user';
 import { postLogin, postOAuth } from '../utils/api-user';
+import { db } from '~/utils/indexeddb';
 
 definePageMeta({
   layout: false,

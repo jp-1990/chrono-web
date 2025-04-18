@@ -23,7 +23,8 @@ export default defineNuxtConfig({
     '@formkit/nuxt',
     'nuxt-vue3-google-signin',
     '@nuxt/fonts',
-    '@vite-pwa/nuxt'
+    '@vite-pwa/nuxt',
+    '@nuxt/test-utils/module'
   ],
   pwa: {
     scope: '/',

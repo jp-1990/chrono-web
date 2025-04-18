@@ -211,3 +211,89 @@ export class DerivedActivities {
     delete this.#idToDateId[id];
   }
 }
+
+type Container = {
+  left: number;
+  right: number;
+  width: number;
+};
+
+enum Handles {
+  START = 'start',
+  END = 'end'
+}
+
+export class Diff {
+  #handle: Handles;
+  #target: FormattedActivity;
+  #breakpoint: number;
+  #min: number;
+  #max: number;
+  value: number;
+  constructor(
+    pageX: number,
+    startX: number,
+    container: Container,
+    handle: Handles,
+    target: FormattedActivity,
+    min: number,
+    max: number,
+    breakpoint?: number
+  ) {
+    this.#target = target;
+    this.#handle = handle;
+    this.#min = min;
+    this.#max = max;
+    this.#breakpoint = breakpoint || 0;
+    this.value = ((pageX - startX) / (container.width || 1)) * 100;
+  }
+
+  applyBreakpoint() {
+    const diffToBreakpoint =
+      (timeOfDayToPercentage(new Date(this.#target[this.#handle])) +
+        this.value) %
+      this.#breakpoint;
+
+    if (diffToBreakpoint > this.#breakpoint / 2)
+      this.value -= diffToBreakpoint - this.#breakpoint;
+    if (diffToBreakpoint < this.#breakpoint / 2) this.value -= diffToBreakpoint;
+
+    return this;
+  }
+
+  restrictMinValue() {
+    switch (this.#handle) {
+      case Handles.START:
+        if (this.#target.startPercentage + this.value < this.#min) {
+          this.value = (this.#target.startPercentage - this.#min) * -1;
+        }
+        break;
+
+      case Handles.END:
+        if (this.#target.endPercentage + this.value < this.#min) {
+          this.value = (this.#target.endPercentage - this.#min - 1) * -1;
+        }
+        break;
+    }
+
+    return this;
+  }
+
+  restrictMaxValue() {
+    switch (this.#handle) {
+      case Handles.START:
+        if (this.#target.startPercentage + this.value > this.#max) {
+          this.value = this.#max - this.#target.startPercentage - 1;
+        }
+        break;
+
+      case Handles.END:
+        if (this.#target.endPercentage + this.value > this.#max) {
+          this.value = this.#max - this.#target.endPercentage;
+        }
+        break;
+    }
+
+    return this;
+  }
+}

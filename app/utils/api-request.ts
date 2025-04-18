@@ -1,106 +1,70 @@
-import type { TypedResponse } from '~/types/api-request';
-import {
-  deleteActivity,
-  getActivities,
-  patchActivity,
-  postActivity
-} from './api-activity';
-import { db } from '~/composables/state';
+import type { TypedResponse, APIRequest } from '../types/api-request';
 import { logging } from './logging';
+import { db, IndexedDB } from './indexeddb';
+import requestQueue from './request-queue';
 import { navigateTo } from '#imports';
 
-const readHandlerToDBMap = new Map();
-readHandlerToDBMap.set(getActivities.id, db.activities.find);
+function getDBfunction(
+  db: IndexedDB,
+  path: readonly [string, string] | undefined
+) {
+  if (!path) return undefined;
+  return db[path[0]][path[1]] as Function;
+}
 
-const writeHandlerToDBMap = new Map();
-// activities
-writeHandlerToDBMap.set(getActivities.id, db.activities.put);
-writeHandlerToDBMap.set(postActivity.id, db.activities.add);
-writeHandlerToDBMap.set(patchActivity.id, db.activities.put);
-writeHandlerToDBMap.set(deleteActivity.id, db.activities.delete);
-// users
-// todo: update user
-
-/*
-  request cache
-
-  reqs:
-  if offline & mutation - on request add to queue
-    - id
-    - datetime
-    - fn.id
-    - args
-    - exp - 24h
-
-  on connectivity established - drain queue safely:
-    read queue
-    check online status - if false return - else
-    await call fn with args
-    if error - DLQ
-    delete message from queue
-
-*/
-
-type ApiRequestResponse<
-  T extends (...args: Parameters<T>) => Promise<TypedResponse>
-> = {
-  data: Awaited<ReturnType<Awaited<ReturnType<T>>['json']>> | undefined;
-  status: number | undefined;
-  error: unknown;
-};
-
-export const apiRequest = async <
-  T extends (...args: Parameters<T>) => Promise<TypedResponse>
->(
-  fn: T,
-  ...args: Parameters<T>
-): Promise<ApiRequestResponse<T>> => {
-  const output: ApiRequestResponse<T> = {
+export const apiRequest: APIRequest = async (fn, ...args) => {
+  const output: Awaited<ReturnType<APIRequest>> = {
     data: undefined,
     status: undefined,
     error: undefined
   };
 
-  const isMutation = /put|patch|post|delete/g.test(fn.id);
+  const isWrite = /^(put|patch|post|delete)*$/g.test(fn.id);
+  const isRead = /^(get).*$/g.test(fn.id);
 
-  let dbFn: Function | undefined = undefined;
-  if (isMutation) dbFn = writeHandlerToDBMap.get(fn.id);
-  if (/get/g.test(fn.id)) dbFn = readHandlerToDBMap.get(fn.id);
+  // determine read/write handlers based on fn arg
+  let dbWriteFn: Function | undefined = undefined;
+  let dbReadFn: Function | undefined = undefined;
+  dbWriteFn = getDBfunction(db, fn.dbWriteHandlerPath);
+  dbReadFn = getDBfunction(db, fn.dbReadHandlerPath);
 
   try {
     let response: TypedResponse;
+    let data: any = undefined;
     if (navigator.onLine) {
-      response = await fn(...args);
+      // if device is online, expect the request queue to immediate call the function
+      response = (await requestQueue.enqueue(fn, ...args)) as TypedResponse;
       output.status = response.status;
 
       // if mutation - perform action on cache
-      if (isMutation) {
-        if (dbFn) {
-          logging.info(undefined, {
-            message: 'ONLINE: writing mutation to cache',
-            fn: fn.id
-          });
-          await dbFn(...(args as any));
-        }
-      }
-    } else {
-      // if offline use the cache
-      let cachedData: any;
-      if (dbFn) {
+      if (isWrite && dbWriteFn) {
         logging.info(undefined, {
-          message: 'OFFLINE: using cache',
+          message: 'ONLINE: writing mutation to cache',
           fn: fn.id
         });
-        cachedData = await dbFn(...(args as any));
+        await dbWriteFn(...(args as any));
+      }
+    } else {
+      // otherwise, use the cache and expect the request to be queued
+      let cachedData: any;
+      logging.info(undefined, {
+        message: 'OFFLINE: using cache',
+        fn: fn.id
+      });
+
+      // get functions will have both a read and write handler
+      // here we want to call the primary action (ie get = read)
+      if (isWrite && dbWriteFn) {
+        cachedData = await dbWriteFn(...args);
+      }
+      if (isRead && dbReadFn) {
+        cachedData = await dbReadFn(...args);
       }
 
-      // if mutation - queue request
-      if (isMutation) {
-        db.reqQueue.add(fn, ...args);
-      }
+      requestQueue.enqueue(fn, ...args);
 
+      data = cachedData ?? undefined;
       response = {
-        data: cachedData ?? undefined,
         status: 200,
         ok: true,
         fromCache: true
@@ -112,8 +76,10 @@ export const apiRequest = async <
     }
 
     if (response.fromCache) {
-      output.data = response.data;
+      // if the response is from the cache we are done
+      output.data = data;
     } else {
+      // if the response is from the server we must parse it and update the cache
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
         const json = await response.json();
@@ -121,15 +87,12 @@ export const apiRequest = async <
       }
 
       // if get - update cache
-      if (/get/g.test(fn.id) && output.data) {
-        const cacheUpdater = writeHandlerToDBMap.get(fn.id);
-        if (cacheUpdater) {
-          logging.info(undefined, {
-            message: 'ONLINE: writing update to cache',
-            fn: fn.id
-          });
-          cacheUpdater(output.data);
-        }
+      if (isRead && output.data && dbWriteFn) {
+        logging.info(undefined, {
+          message: 'ONLINE: writing update to cache',
+          fn: fn.id
+        });
+        dbWriteFn(output.data.id, output.data);
       }
     }
 
@@ -145,6 +108,7 @@ export const apiRequest = async <
       }
     );
 
+    // if the response returns an auth error code, eject the user to the login page
     switch (statusCode) {
       case 401:
       case 403: {
